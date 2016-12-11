@@ -312,6 +312,7 @@ class CAllSaleOrder
 	*/
 	public static function DoSaveOrder(&$arOrder, $arAdditionalFields, $orderId, &$arErrors, $arCoupons = array(), $arStoreBarcodeOrderFormData = array(), $bSaveBarcodes = false)
 	{
+		Trace("DoSaveOrder");
 		global $APPLICATION;
 
 		$orderId = (int)$orderId;

@@ -5,6 +5,7 @@ class CSaleOrder extends CAllSaleOrder
 {
 	function Add($arFields)
 	{
+		Trace("sale add");
 		global $DB, $USER_FIELD_MANAGER, $CACHE_MANAGER, $APPLICATION;
 
 		$isOrderConverted = \Bitrix\Main\Config\Option::get("main", "~sale_converted_15", 'N');
@@ -135,6 +136,7 @@ class CSaleOrder extends CAllSaleOrder
 
 	function Update($ID, $arFields, $bDateUpdate = true)
 	{
+		Trace("sale update");
 		global $DB, $USER_FIELD_MANAGER, $CACHE_MANAGER, $APPLICATION;
 
 		$isOrderConverted = \Bitrix\Main\Config\Option::get("main", "~sale_converted_15", 'N');

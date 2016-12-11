@@ -50,21 +50,27 @@ $theme = COption::GetOptionString("main", "wizard_eshop_bootstrap_theme_id", "bl
 					</div>
 				</div>
 				<div class="col-lg-3 col-md-3 col-sm-4 col-xs-12 hidden-xs">
-					<?$APPLICATION->IncludeComponent("bitrix:sale.basket.basket.line", "", array(
-							"PATH_TO_BASKET" => SITE_DIR."personal/cart/",
-							"PATH_TO_PERSONAL" => SITE_DIR."personal/",
-							"SHOW_PERSONAL_LINK" => "N",
-							"SHOW_NUM_PRODUCTS" => "Y",
-							"SHOW_TOTAL_PRICE" => "Y",
-							"SHOW_PRODUCTS" => "N",
-							"POSITION_FIXED" =>"N",
-							"SHOW_AUTHOR" => "Y",
-							"PATH_TO_REGISTER" => SITE_DIR."login/",
-							"PATH_TO_PROFILE" => SITE_DIR."personal/"
-						),
-						false,
-						array()
-					);?>
+					<?$APPLICATION->IncludeComponent(
+	"bitrix:sale.basket.basket.line", 
+	".default", 
+	array(
+		"PATH_TO_BASKET" => SITE_DIR."personal/cart/",
+		"PATH_TO_PERSONAL" => SITE_DIR."personal/",
+		"SHOW_PERSONAL_LINK" => "N",
+		"SHOW_NUM_PRODUCTS" => "Y",
+		"SHOW_TOTAL_PRICE" => "Y",
+		"SHOW_PRODUCTS" => "N",
+		"POSITION_FIXED" => "N",
+		"SHOW_AUTHOR" => "Y",
+		"PATH_TO_REGISTER" => SITE_DIR."login/",
+		"PATH_TO_PROFILE" => SITE_DIR."personal/",
+		"COMPONENT_TEMPLATE" => ".default",
+		"PATH_TO_ORDER" => SITE_DIR."personal/order/make/",
+		"SHOW_EMPTY_VALUES" => "Y",
+		"HIDE_ON_BASKET_PAGES" => "N"
+	),
+	false
+);?>
 				</div>
 			</div>
 			<div class="row">
