@@ -1481,3 +1481,7 @@ hr.bxe-light{
 	background-size: 18px auto;
 	height: 18px;
 }
+
+.bx-soa-section-hide {
+    display: none;
+}

@@ -116,6 +116,8 @@ $this->addExternalCss('/bitrix/components/bitrix/sale.location.selector.steps/te
 $APPLICATION->SetAdditionalCSS('/bitrix/css/main/themes/'.$arParams['TEMPLATE_THEME'].'/style.css', true);
 $APPLICATION->SetAdditionalCSS($templateFolder.'/style.css', true);
 $this->addExternalJs($templateFolder.'/order_ajax.js');
+$this->addExternalJs($templateFolder.'/order_ajax_ext.js');
+
 \Bitrix\Sale\PropertyValueCollection::initJs();
 $this->addExternalJs($templateFolder.'/script.js');
 $this->addExternalJs($scheme.'://api-maps.yandex.ru/2.1.34/?load=package.full&lang='.$locale);
@@ -350,7 +352,7 @@ $messages = \Bitrix\Main\Localization\Loc::loadLanguageFile(__FILE__);
 
 <script type="text/javascript">
 	BX.message(<?=CUtil::PhpToJSObject($messages)?>);
-	BX.Sale.OrderAjaxComponent.init({
+	BX.Sale.OrderAjaxComponentExt.init({
 		result: <?=CUtil::PhpToJSObject($arResult['JS_DATA'])?>,
 		locations: <?=CUtil::PhpToJSObject($arResult['LOCATIONS'])?>,
 		params: <?=CUtil::PhpToJSObject($arParams)?>,
@@ -412,7 +414,7 @@ $messages = \Bitrix\Main\Localization\Loc::loadLanguageFile(__FILE__);
 <script>
 	(function bx_ymaps_waiter(){
 		if (typeof ymaps !== 'undefined')
-			ymaps.ready(BX.proxy(BX.Sale.OrderAjaxComponent.initMaps, BX.Sale.OrderAjaxComponent));
+			ymaps.ready(BX.proxy(BX.Sale.OrderAjaxComponentExt.initMaps, BX.Sale.OrderAjaxComponentExt));
 		else
 			setTimeout(bx_ymaps_waiter, 100);
 	})();
@@ -423,7 +425,7 @@ $messages = \Bitrix\Main\Localization\Loc::loadLanguageFile(__FILE__);
 			return;
 
 		if (typeof window['yaCounter<?=$arParams['YM_GOALS_COUNTER']?>'] !== 'undefined')
-			BX.Sale.OrderAjaxComponent.reachGoal('initialization');
+			BX.Sale.OrderAjaxComponentExt.reachGoal('initialization');
 		else
 			setTimeout(function(){bx_counter_waiter(++i)}, 100);
 	})();
