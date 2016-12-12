@@ -1054,7 +1054,10 @@ ul.bx-soa-pp-list li {
         }*/
 }
 
-@media only screen and (-webkit-min-device-pixel-ratio: 2),@media only screen and (min--moz-device-pixel-ratio: 2),@media only screen and (-moz-min-device-pixel-ratio: 2),@media only screen and (-o-min-device-pixel-ratio: 2/1),@media only screen and (min-device-pixel-ratio: 2),@media only screen and (min-resolution: 192dpi),@media only screen and (min-resolution: 2dppx){
+@media only screen and (-webkit-min-device-pixel-ratio: 2),@media only screen and (min--moz-device-pixel-ratio: 2),
+    @media only screen and (-moz-min-device-pixel-ratio: 2),@media only screen and (-o-min-device-pixel-ratio: 2/1),
+        @media only screen and (min-device-pixel-ratio: 2),@media only screen and (min-resolution: 192dpi),
+            @media only screen and (min-resolution: 2dppx){
     .bx-soa-location-input-container {
         border-width: .5px;
     }
@@ -1483,5 +1486,5 @@ hr.bxe-light{
 }
 
 .bx-soa-section-hide {
-    display: none;
+    display: none !important;
 }
