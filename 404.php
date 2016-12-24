@@ -7,7 +7,6 @@ CHTTP::SetStatus("404 Not Found");
 require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
 
 $APPLICATION->SetTitle("Страница не найдена");?>
-
 	<div class="bx-404-container">
 		<div class="bx-404-block"><img src="<?=SITE_DIR?>images/404.png" alt=""></div>
 		<div class="bx-404-text-block">Неправильно набран адрес, <br>или такой страницы на сайте больше не существует.</div>
@@ -50,7 +49,6 @@ $APPLICATION->SetTitle("Страница не найдена");?>
 		);
 		?>
 	</div>
-
 	<div class="col-sm-offset-1 col-sm-4">
 		<div class="bx-map-title"><i class="fa fa-info-circle"></i> О магазине</div>
 		<?

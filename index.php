@@ -1,6 +1,7 @@
 <?
 require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
-$APPLICATION->SetTitle("Интернет-магазин \"Одежда\"");
+$APPLICATION->SetPageProperty("title", "«ПродМаркет»: Качественные и недорогие продукты");
+$APPLICATION->SetTitle("«ПродМаркет»: Качественные и недорогие продукты");
 ?>
 <?if (IsModuleInstalled("advertising")):?>
 <?$APPLICATION->IncludeComponent(
@@ -26,7 +27,6 @@ $APPLICATION->SetTitle("Интернет-магазин \"Одежда\"");
 	false
 );?>
 <?endif?>
-
 <h2>Тренды сезона</h2>
 <?$APPLICATION->IncludeComponent("bitrix:catalog.section", "template1", Array(
 	"IBLOCK_TYPE_ID" => "catalog",

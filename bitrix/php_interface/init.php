@@ -2,6 +2,14 @@
 define("LOG_FILENAME",
     $_SERVER["DOCUMENT_ROOT"]."/log/log_".date("Ymd").".log");
 
+//global $SERVER_PORT,$HTTP_HOST;
+//if (($pos = strpos($HTTP_HOST,':')) !== false)
+//    $HTTP_HOST = substr($HTTP_HOST,0,$pos);
+//$SERVER_PORT = 80;
+//
+//$_SERVER["SERVER_PORT"] = $SERVER_PORT;
+//$_SERVER["HTTP_HOST"] = $HTTP_HOST;
+
 function test_dump($v) {
     global $USER;
     if ($USER -> isAdmin()) {
@@ -96,12 +104,6 @@ class mail_new
         }
         $zak = $zak."</table>";
 
-
-
-
-
-
-
         CModule::IncludeModule("sale");
         $db_props = CSaleOrderPropsValue::GetList(array("ORDER_ID" => desc), array("ORDER_ID" => $ID));
 
@@ -127,10 +129,6 @@ class mail_new
                 $savoi.="Способ оплаты: ".$arPaySys["PSA_NAME"]."<br />";
             }
         }
-
-
-
-
 
         $arEventFields = array(
             "ORDER_ID"         => $ID,

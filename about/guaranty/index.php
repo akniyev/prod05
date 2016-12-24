@@ -1,6 +1,7 @@
 <?
 require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
-$APPLICATION->SetTitle("Гарантия");
+$APPLICATION->SetPageProperty("title", "Гарантия качества «ПродМаркет»");
+$APPLICATION->SetTitle("Гарантия качества");
 ?>
 <div class="row">
 	<div class="col-xs-12">

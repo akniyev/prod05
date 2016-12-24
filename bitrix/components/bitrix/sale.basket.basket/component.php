@@ -91,8 +91,10 @@ if (strlen($_REQUEST["BasketRefresh"]) > 0 || strlen($_REQUEST["BasketOrder"]) >
 
 		if (!empty($_REQUEST["BasketOrder"]) && empty($arResult["WARNING_MESSAGE"]))
 		{
-			if (!array_key_exists('paypalbutton_x', $_POST) && !array_key_exists('paypalbutton_y', $_POST))
-				LocalRedirect($arParams["PATH_TO_ORDER"]);
+		    Trace("REDIRECT!!!!");
+			if (!array_key_exists('paypalbutton_x', $_POST) && !array_key_exists('paypalbutton_y', $_POST)) {
+			    LocalRedirect($arParams["PATH_TO_ORDER"]);
+            }
 		}
 		else
 		{
