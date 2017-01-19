@@ -624,14 +624,14 @@ class CStackCacheEntry
 		)
 		{
 			$objCache = \Bitrix\Main\Data\Cache::createInstance();
-			//Force cache rewrite
-			$saveClearState = $objCache->setClearCache(true);
 
-			if($objCache->StartDataCache($this->ttl, $this->entity, $DB->type."/".$this->entity,  $this->values, "stack_cache"))
+			//Force cache rewrite
+			$objCache->forceRewriting(true);
+
+			if($objCache->startDataCache($this->ttl, $this->entity, $DB->type."/".$this->entity, $this->values, "stack_cache"))
 			{
-				$objCache->EndDataCache();
+				$objCache->endDataCache();
 			}
-			$objCache->setClearCache($saveClearState);
 
 			$this->cleanGet = true;
 			$this->cleanSet = true;

@@ -28,7 +28,7 @@ class Manager
 	 *
 	 * @return int
 	 * @throws \Exception
-	 * @see AppTable::getMap to get a bit more  information about possible keys in $data
+	 * @see AppTable::getMap to get a bit more information about possible keys in $data
 	 */
 	public static function createApp($appCode = "", $data = array(), $initConfig = array())
 	{
@@ -508,7 +508,7 @@ class Manager
 			$offlineParams = &$structuredConfig["offline"];
 			$offlineParams["file_list"]["bitrix_mobile_core.js"] = Tools::getMobileJSCorePath();
 			$changeMark = Tools::getArrayFilesHash($offlineParams["file_list"]);
-			$offlineParams["change_mark"] = md5($changeMark);
+			$offlineParams["change_mark"] = $changeMark;
 		}
 
 		if($structuredConfig["buttons"]["badge"])

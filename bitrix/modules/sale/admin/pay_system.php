@@ -66,17 +66,7 @@ if (($ids = $lAdmin->GroupAction()) && $saleModulePermissions >= "W")
 					continue;
 				}
 
-				$restrictionList =  \Bitrix\Sale\Services\PaySystem\Restrictions\Manager::getRestrictionsList($id);
-				if ($restrictionList)
-				{
-					// init restrictions
-					\Bitrix\Sale\Services\PaySystem\Restrictions\Manager::getClassesList();
-
-					foreach ($restrictionList as $restriction)
-						$restriction["CLASS_NAME"]::delete($restriction['ID'], $id);
-				}
-
-				$result = Bitrix\Sale\Internals\PaySystemActionTable::delete($id);
+				$result = \Bitrix\Sale\PaySystem\Manager::delete($id);
 				if (!$result->isSuccess())
 				{
 					if ($result->getErrorMessages())

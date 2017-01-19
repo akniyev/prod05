@@ -150,25 +150,12 @@ final class MailHandler
 			$fields["POST_TEXT"]
 		);
 
+		\Bitrix\Disk\Uf\FileUserType::setValueForAllowEdit("BLOG_COMMENT", true);
+
 		$commentId = \CBlogComment::add($fields);
 
 		if ($commentId)
 		{
-			if (!empty($fields[$ufCode]))
-			{
-				$tmp = array(
-					"AUTHOR_ID" => $fields["AUTHOR_ID"],
-					$ufCode => $fields[$ufCode]
-				);
-
-				\Bitrix\Disk\Uf\FileUserType::setValueForAllowEdit(array(
-					"ENTITY_ID" => "BLOG_COMMENT",
-					"VALUE_ID" => $commentId
-				), true);
-
-				\CBlogComment::update($commentId, $tmp);
-			}
-
 			\BXClearCache(true, "/blog/comment/".intval($postId / 100)."/".$postId."/");
 			$connection = \Bitrix\Main\Application::getConnection();
 			$helper = $connection->getSqlHelper();
@@ -190,6 +177,7 @@ final class MailHandler
 
 				if ($log = $res->fetch())
 				{
+					$extranetSiteId = false;
 					if (Loader::includeModule('extranet'))
 					{
 						$extranetSiteId = \CExtranet::getExtranetSiteId();
@@ -365,6 +353,7 @@ final class MailHandler
 		}
 
 		$pathToPost = Config\Option::get("socialnetwork", "userblogpost_page", '', $siteId);
+		$blog = $postId = false;
 
 		if ($blogGroupId = Config\Option::get("socialnetwork", "userbloggroup_id", false, $siteId))
 		{
@@ -487,33 +476,21 @@ final class MailHandler
 				"/\[ATTACHMENT\s*=\s*([^\]]*)\]/is".BX_UTF_PCRE_MODIFIER,
 				function ($matches) use ($attachmentRelations)
 				{
-					if (isset($attachmentRelations[$matches[1]]))
-					{
-						return "[DISK FILE ID=".$attachmentRelations[$matches[1]]."]";
-					}
+					return (
+						isset($attachmentRelations[$matches[1]])
+							? "[DISK FILE ID=".$attachmentRelations[$matches[1]]."]"
+							: ""
+					);
 				},
 				$fields["DETAIL_TEXT"]
 			);
+
+			\Bitrix\Disk\Uf\FileUserType::setValueForAllowEdit("BLOG_POST", true);
 
 			$postId = \CBlogPost::add($fields);
 
 			if ($postId)
 			{
-				if (!empty($fields[$ufCode]))
-				{
-					$tmp = array(
-						"AUTHOR_ID" => $fields["AUTHOR_ID"],
-						$ufCode => $fields[$ufCode]
-					);
-
-					\Bitrix\Disk\Uf\FileUserType::setValueForAllowEdit(array(
-						"ENTITY_ID" => "BLOG_POST",
-						"VALUE_ID" => $postId
-					), true);
-
-					\CBlogPost::update($postId, $tmp);
-				}
-
 				BXClearCache(true, "/".$siteId."/blog/last_messages_list/");
 
 				$fields["ID"] = $postId;
@@ -525,7 +502,8 @@ final class MailHandler
 					"PATH_TO_POST" => $pathToPost,
 					"user_id" => $userId,
 					"NAME_TEMPLATE" => \CSite::getNameFormat(null, $siteId),
-					"SHOW_LOGIN" => "Y"
+					"SHOW_LOGIN" => "Y",
+					"SEND_COUNTER_TO_AUTHOR" => "Y"
 				);
 				\CBlogPost::notify($fields, $blog, $paramsNotify);
 

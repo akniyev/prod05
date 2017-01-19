@@ -117,8 +117,6 @@ abstract class BasketBase
 				$orderPrice += $basketItem->getFinalPrice();
 		}
 
-		$orderPrice = roundEx($orderPrice, SALE_VALUE_PRECISION);
-
 		return $orderPrice;
 	}
 
@@ -135,10 +133,10 @@ abstract class BasketBase
 		foreach ($this->collection as $basketItem)
 		{
 			if (!$basketItem->isBundleChild())
-				$orderPrice += roundEx($basketItem->getBasePrice() * $basketItem->getQuantity(), SALE_VALUE_PRECISION);
+				$orderPrice += PriceMaths::roundPrecision($basketItem->getBasePrice() * $basketItem->getQuantity());
 		}
 
-		$orderPrice = roundEx($orderPrice, SALE_VALUE_PRECISION);
+		$orderPrice = PriceMaths::roundPrecision($orderPrice);
 
 		return $orderPrice;
 	}
@@ -340,6 +338,60 @@ abstract class BasketBase
 	public static function deleteOld($days)
 	{
 		return true;
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return Basket
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity = null)
+	{
+		if ($cloneEntity === null)
+		{
+			$cloneEntity = new \SplObjectStorage();
+		}
+		else
+		{
+			if ($this->isClone() && $cloneEntity->contains($this))
+			{
+				return $cloneEntity[$this];
+			}
+		}
+		
+		$basketClone = clone $this;
+		$basketClone->isClone = true;
+
+		if ($this->order)
+		{
+			if ($cloneEntity->contains($this->order))
+			{
+				$basketClone->order = $cloneEntity[$this->order];
+			}
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $basketClone;
+		}
+
+		/**
+		 * @var int key
+		 * @var BasketItem $basketItem
+		 */
+		foreach ($basketClone->collection as $key => $basketItem)
+		{
+			if (!$cloneEntity->contains($basketItem))
+			{
+				$cloneEntity[$basketItem] = $basketItem->createClone($cloneEntity);
+			}
+
+			$basketClone->collection[$key] = $cloneEntity[$basketItem];
+		}
+
+
+		return $basketClone;
 	}
 
 }

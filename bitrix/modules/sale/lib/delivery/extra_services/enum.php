@@ -41,7 +41,7 @@ class Enum extends Base
 		return $this->convertToOperatingCurrency($result);
 	}
 
-	public static function prepareParamsToSave($params)
+	public static function prepareParamsToSave(array $params)
 	{
 		if(!isset($params["PARAMS"]["PRICES"]) || !is_array($params["PARAMS"]["PRICES"]))
 			return $params;

@@ -228,6 +228,7 @@
 .feed-com-text-inner-inner .bx-smile {
 	vertical-align: text-bottom;
 }
+/* date, rating, reply, more */
 .feed-com-informers {
 	color: #999;
 	display: inline-block;
@@ -240,7 +241,41 @@
 .feed-com-informers a,
 .feed-com-informers a:hover {
 	text-decoration: none;
+	font-size: 11px;
+	color: #999;
 }
+
+.feed-com-informers .ilike-light .bx-ilike-right {
+	height: 14px !important;
+	padding: 0 1px 0 14px !important;
+	font-size: 11px;
+	background-position: 0 -43px;
+}
+.feed-com-informers .ilike-light .bx-you-like .bx-ilike-right {
+	background-position: 0 -23px;
+}
+.ilike-light .bx-ilike-button {
+	-moz-user-select: none;
+	color: #929292;
+	display: inline-block;
+	height: 14px !important;
+	position: relative;
+}
+
+.ilike-light .bx-ilike-right-wrap {
+	height: auto !important;
+}
+
+.feed-com-informers .feed-inform-ilike-icon {
+	margin-left: 6px;
+}
+
+.feed-com-informers .feed-com-reply {
+	color: #999999;
+	margin-left: 10px;
+}
+
+/* date, rating, reply, more */
 
 .feed-com-add-block {
 	padding: 14px 17px 13px 71px;

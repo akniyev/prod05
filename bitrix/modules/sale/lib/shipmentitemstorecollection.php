@@ -70,10 +70,10 @@ class ShipmentItemStoreCollection
 	}
 
 	/**
-	 * @param ShipmentItemStore $shipmentItemStore
+	 * @param Internals\CollectableEntity $shipmentItemStore
 	 * @return bool|void
 	 */
-	public function addItem(ShipmentItemStore $shipmentItemStore)
+	public function addItem(Internals\CollectableEntity $shipmentItemStore)
 	{
 		parent::addItem($shipmentItemStore);
 	}
@@ -222,13 +222,13 @@ class ShipmentItemStoreCollection
 	}
 
 	/**
-	 * @param ShipmentItemStore $item
+	 * @param Internals\CollectableEntity $item
 	 * @param null $name
 	 * @param null $oldValue
 	 * @param null $value
 	 * @return bool
 	 */
-	public function onItemModify(ShipmentItemStore $item, $name = null, $oldValue = null, $value = null)
+	public function onItemModify(Internals\CollectableEntity $item, $name = null, $oldValue = null, $value = null)
 	{
 //		$shipmentItem = $this->getShipmentItem();
 
@@ -241,11 +241,11 @@ class ShipmentItemStoreCollection
 	}
 
 	/**
-	 * @param ShipmentItemStore $item
+	 * @param Internals\CollectableEntity $item
 	 * @return Result
 	 * @throws \Exception
 	 */
-	public function checkAvailableQuantity(ShipmentItemStore $item)
+	public function checkAvailableQuantity(Internals\CollectableEntity $item)
 	{
 		$result = new Result();
 		$shipmentItem = $this->getShipmentItem();
@@ -496,6 +496,60 @@ class ShipmentItemStoreCollection
 		}
 
 		return null;
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return ShipmentItemStoreCollection
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$shipmentItemStoreCollectionClone = clone $this;
+		$shipmentItemStoreCollectionClone->isClone = true;
+
+		/** @var ShipmentItem $shipmentItem */
+		if ($shipmentItem = $this->shipmentItem)
+		{
+			if (!$cloneEntity->contains($shipmentItem))
+			{
+				$cloneEntity[$shipmentItem] = $shipmentItem->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($shipmentItem))
+			{
+				$shipmentItemStoreCollectionClone->shipmentItem = $cloneEntity[$shipmentItem];
+			}
+			
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $shipmentItemStoreCollectionClone;
+		}
+
+
+		/**
+		 * @var int key
+		 * @var ShipmentItemStore $shipmentItemStore
+		 */
+		foreach ($shipmentItemStoreCollectionClone->collection as $key => $shipmentItemStore)
+		{
+			if (!$cloneEntity->contains($shipmentItemStore))
+			{
+				$cloneEntity[$shipmentItemStore] = $shipmentItemStore->createClone($cloneEntity);
+			}
+
+			$shipmentItemStoreCollectionClone->collection[$key] = $cloneEntity[$shipmentItemStore];
+		}
+
+		return $shipmentItemStoreCollectionClone;
 	}
 
 } 

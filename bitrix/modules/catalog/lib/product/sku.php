@@ -133,7 +133,10 @@ class Sku
 		{
 			$iblockId = (int)$iblockId;
 			if ($iblockId <= 0)
+			{
+				/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 				$iblockId = (int)\CIBlockElement::getIBlockByID($productId);
+			}
 			if ($iblockId <= 0)
 			{
 				$process = false;
@@ -143,6 +146,7 @@ class Sku
 
 		if ($process)
 		{
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			$iblockData = \CCatalogSku::getInfoByIBlock($iblockId);
 			if (empty($iblockData))
 			{
@@ -209,39 +213,56 @@ class Sku
 					}
 					else
 					{
-						if (!$useCatalogTab)
-						{
+						/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
+						$parentIBlock = \CCatalogSku::getInfoByIblock($parent[$productId]['IBLOCK_ID']);
+						if ($useCatalogTab && $parentIBlock['CATALOG_TYPE'] == \CCatalogSku::TYPE_FULL)
+							$parentFields = static::getParentDataAsProduct($parent[$productId]['ID']);
+						else
 							$parentFields = static::getDefaultParentSettings(static::getOfferState(
 								$parent[$productId]['ID'],
 								$parent[$productId]['IBLOCK_ID']
 							));
-							$existParent = Catalog\ProductTable::getList(array(
-								'select' => array('ID'),
-								'filter' => array('=ID' => $parent[$productId]['ID'])
-							))->fetch();
-							if ($existParent)
+						$existParent = Catalog\ProductTable::getList(array(
+							'select' => array('ID', 'AVAILABLE', 'SUBSCRIBE'),
+							'filter' => array('=ID' => $parent[$productId]['ID'])
+						))->fetch();
+						if ($existParent)
+						{
+							if(Catalog\SubscribeTable::checkPermissionSubscribe($existParent['SUBSCRIBE']))
 							{
-								$updateResult = Catalog\ProductTable::update($parent[$productId]['ID'], $parentFields);
+								if($existParent['AVAILABLE'] == Catalog\ProductTable::STATUS_NO
+									&& $parentFields['AVAILABLE'] == Catalog\ProductTable::STATUS_YES)
+								{
+									Catalog\SubscribeTable::runAgentToSendNotice($existParent['ID']);
+								}
+								elseif($existParent['AVAILABLE'] == Catalog\ProductTable::STATUS_YES
+									&& $parentFields['AVAILABLE'] == Catalog\ProductTable::STATUS_NO
+									&& (string)Main\Config\Option::get('catalog', 'subscribe_repeated_notify') == 'Y')
+								{
+									Catalog\SubscribeTable::runAgentToSendRepeatedNotice($existParent['ID']);
+								}
 							}
-							else
-							{
-								$parentFields['ID'] = $parent[$productId]['ID'];
-								$updateResult = Catalog\ProductTable::add($parentFields);
-							}
-							unset($existParent);
-							if (!$updateResult->isSuccess())
-							{
-								$process = false;
-								$result = false;
-							}
-							else
-							{
-								$fields = array(
-									'TYPE' => Catalog\ProductTable::TYPE_OFFER,
-								);
-							}
-							unset($updateResult, $parentFields);
+							
+							$updateResult = Catalog\ProductTable::update($parent[$productId]['ID'], $parentFields);
 						}
+						else
+						{
+							$parentFields['ID'] = $parent[$productId]['ID'];
+							$updateResult = Catalog\ProductTable::add($parentFields);
+						}
+						unset($existParent);
+						if (!$updateResult->isSuccess())
+						{
+							$process = false;
+							$result = false;
+						}
+						else
+						{
+							$fields = array(
+								'TYPE' => Catalog\ProductTable::TYPE_OFFER,
+							);
+						}
+						unset($updateResult, $parentFields);
 					}
 					if ($process)
 					{
@@ -326,6 +347,7 @@ class Sku
 	public static function handlerIblockElementUpdate($newFields, $oldFields)
 	{
 		static::disablePropertyHandler();
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$iblockData = \CCatalogSku::getInfoByOfferIBlock($newFields['IBLOCK_ID']);
 		if (empty($iblockData))
 			return;
@@ -366,6 +388,7 @@ class Sku
 
 		if ($process)
 		{
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			$iblockData = \CCatalogSku::getInfoByOfferIBlock($fields['IBLOCK_ID']);
 			$process = !empty($iblockData);
 		}
@@ -432,6 +455,7 @@ class Sku
 	{
 		if ((int)$elementData['WF_PARENT_ELEMENT_ID'] > 0)
 			return;
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$iblockData = \CCatalogSku::getInfoByOfferIBlock($elementData['IBLOCK_ID']);
 		if (empty($iblockData))
 			return;
@@ -476,6 +500,7 @@ class Sku
 	 */
 	public static function handlerIblockElementSetPropertyValues($elementId, $iblockId, $newValues, $propertyIdentifyer, $propertyList, $currentValues)
 	{
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$iblockData = \CCatalogSku::getInfoByOfferIBlock($iblockId);
 		if (empty($iblockData))
 			return;
@@ -580,6 +605,7 @@ class Sku
 		if (!isset(self::$offers[$elementId]))
 			return;
 
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$iblockData = \CCatalogSku::getInfoByOfferIBlock($iblockId);
 		if (!empty($iblockData))
 		{
@@ -617,7 +643,10 @@ class Sku
 			return $result;
 		$iblockId = (int)$iblockId;
 		if ($iblockId <= 0)
+		{
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			$iblockId = (int)\CIBlockElement::getIBlockByID($productId);
+		}
 		if ($iblockId <= 0)
 			return $result;
 
@@ -760,8 +789,6 @@ class Sku
 			return static::getDefaultParentSettings(self::OFFERS_NOT_AVAILABLE);
 
 		$fieldKeys = Catalog\Helpers\Tools::prepareKeys($productFields, array('QUANTITY', 'QUANTITY_TRACE', 'CAN_BUY_ZERO'));
-		if (empty($fieldKeys['EXIST']))
-			return array();
 
 		if (!empty($fieldKeys['MISSING']))
 		{

@@ -17,4 +17,5 @@ $MESS["MPL_MES_HREF"] = "View comment";
 $MESS["MPL_HAVE_WRITTEN"] = "wrote:";
 $MESS["MPL_SAFE_EDIT"] = "You are typing a message. Reset changes?";
 $MESS["BLOG_C_VIEW1"] = "More comments";
+$MESS["BPC_MES_CREATE_TASK"] = "Create task";
 ?>

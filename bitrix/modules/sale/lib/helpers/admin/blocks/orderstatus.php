@@ -3,6 +3,8 @@
 namespace Bitrix\Sale\Helpers\Admin\Blocks;
 
 use Bitrix\Sale\Helpers\Admin\OrderEdit;
+use Bitrix\Sale\Internals\StatusLangTable;
+use Bitrix\Sale\Internals\StatusTable;
 use Bitrix\Sale\Order;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Sale\TradingPlatform\OrderTable;
@@ -47,6 +49,24 @@ class OrderStatus
 								).
 							'</div></td>
 					</tr>';
+
+		if(!empty($data["AFFILIATE_NAME"]))
+		{
+			$data['AFFILIATE_NAME'] = htmlspecialcharsbx($data["AFFILIATE_NAME"]);
+
+			if(intval($data['AFFILIATE_ID']) > 0)
+			{
+				$data["AFFILIATE_NAME"] = '<a href="/bitrix/admin/sale_affiliate_edit.php?lang='.LANGUAGE_ID.'&ID='.$data['AFFILIATE_ID'].'">'.
+						$data["AFFILIATE_NAME"].
+					'</a>';
+			}
+
+			$result .= '
+				<tr>
+					<td class="adm-detail-content-cell-l">'.Loc::getMessage("SALE_ORDER_STATUS_AFFILIATE").':</td>
+					<td class="adm-detail-content-cell-r"><div>'.$data["AFFILIATE_NAME"].'</div></td>
+				</tr>';
+		}
 
 		if(strlen($data['SOURCE_NAME']) > 0)
 		{
@@ -230,9 +250,33 @@ class OrderStatus
 				"CREATOR_USER_ID" => $creator["ID"],
 				"STATUS_ID" => $order->getField('STATUS_ID'),
 				"CANCELED" => $order->getField("CANCELED"),
-			    "EMP_CANCELED_NAME" => $cancelerName,
-			    "SOURCE_NAME" => $sourceName
+				"EMP_CANCELED_NAME" => $cancelerName,
+				"SOURCE_NAME" => $sourceName
 			);
+
+			if(intval($order->getField('AFFILIATE_ID')) > 0)
+			{
+				$result["AFFILIATE_ID"] = intval($order->getField('AFFILIATE_ID'));
+
+				$dbAffiliate = \CSaleAffiliate::GetList(
+					array(),
+					array("ID" => $result["AFFILIATE_ID"]),
+					false,
+					false,
+					array("ID", "USER_ID")
+				);
+
+				if($arAffiliate = $dbAffiliate->Fetch())
+				{
+					$result["AFFILIATE_ID"] = $arAffiliate["ID"];
+					$result["AFFILIATE_NAME"] = OrderEdit::getUserName($arAffiliate["USER_ID"], $order->getSiteId());
+				}
+				else
+				{
+					$result["AFFILIATE_ID"] = 0;
+					$result["AFFILIATE_NAME"] = "-";
+				}
+			}
 		}
 
 		return $result;
@@ -268,7 +312,23 @@ class OrderStatus
 		if($orderStatus === false)
 			$orderStatus = \Bitrix\Sale\OrderStatus::getInitialStatus();
 
-		return \Bitrix\Sale\OrderStatus::getAllowedUserStatuses($userId, $orderStatus);
+		$result = \Bitrix\Sale\OrderStatus::getAllowedUserStatuses($userId, $orderStatus);
+
+		if(empty($result[$orderStatus]))
+		{
+			$dbRes = \Bitrix\Sale\Internals\StatusTable::getList(array(
+				'select' => array('ID', 'NAME' => 'Bitrix\Sale\Internals\StatusLangTable:STATUS.NAME'),
+				'filter' => array(
+					'=Bitrix\Sale\Internals\StatusLangTable:STATUS.LID' => LANGUAGE_ID,
+					'=ID' => $orderStatus
+				)
+			));
+
+			if($status = $dbRes->fetch())
+				$result = array($orderStatus => $status['NAME']) + $result;
+		}
+
+		return $result;
 	}
 
 	public static function getEditSimple($userId, $fieldName, $status)

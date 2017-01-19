@@ -517,6 +517,7 @@
 		this.available = false;
 		this.convertBoolean = (typeof convertBoolean == "undefined" ? true: convertBoolean);
 		this.platform = null;
+		this.apiVersion = 0;
 		this.db = null;
 		this.isDatabaseSupported = true;
 		if (window.openDatabase)
@@ -568,7 +569,7 @@
 			for (var key in params)
 			{
 				if (typeof(params[key]) == "object")
-					params[key] = this.prepareParams(params[key]);
+					params[key] = this.prepareParams(params[key], convertBoolean);
 				if (typeof(params[key]) == "function")
 					params[key] = this.RegisterCallBack(params[key]);
 				else if(convertBooleanFlag)
@@ -1121,6 +1122,7 @@
 			return;
 		}
 
+
 		var alertData = {
 			callback: function ()
 			{
@@ -1129,7 +1131,8 @@
 			button: "",
 			text: ""
 		};
-		if (params)
+
+		if (typeof params == "object")
 		{
 			if (params.title)
 				alertData.title = params.title;
@@ -1139,6 +1142,10 @@
 				alertData.text = params.text;
 			if (params.callback && typeof(params.callback) == "function")
 				alertData.callback = params.callback;
+		}
+		else
+		{
+			alertData.text = params;
 		}
 
 		navigator.notification.alert(
@@ -1448,7 +1455,10 @@
 	 *}
 	 *
 	 * </pre>
-	 * @param params The parameters
+	 * @param params - the set of options
+	 * @config {array} items - array of menu items
+	 * @config {bool} useNavigationBarColor - color of navigation bar will be apply
+	 * as a background color for the page menu. false by default
 	 * @returns {*}
 	 */
 	app.menuCreate = function (params)
@@ -1486,26 +1496,28 @@
 	 */
 	app.enableInVersion = function (ver, strict)
 	{
-		var api_version = 1;
-		try
+		if(this.apiVersion == 0)
 		{
-			if(typeof (BXMobileAppContext) != "undefined" && typeof (BXMobileAppContext.getApiVersion) == "function")
+			try
 			{
-				api_version = BXMobileAppContext.getApiVersion();
-			}
-			else if(typeof(appVersion) != "undefined")
-			{
-				api_version = appVersion;
-			}
+				if(typeof (BXMobileAppContext) != "undefined" && typeof (BXMobileAppContext.getApiVersion) == "function")
+				{
+					this.apiVersion = BXMobileAppContext.getApiVersion();
+				}
+				else if(typeof(appVersion) != "undefined")
+				{
+					this.apiVersion = appVersion;
+				}
 
-		} catch (e)
-		{
-			//do nothing
+			} catch (e)
+			{
+				//do nothing
+			}
 		}
 
 		return (typeof(strict)!="undefined" && strict == true)
-					? (parseInt(api_version) == parseInt(ver))
-					: (parseInt(api_version) >= parseInt(ver));
+					? (parseInt(this.apiVersion) == parseInt(ver))
+					: (parseInt(this.apiVersion) >= parseInt(ver));
 	};
 
 
@@ -1579,6 +1591,7 @@
 	 * Generates the javascript-event
 	 * that can be caught by any application browsers
 	 * except current browser
+	 * @deprecated
 	 * @param eventName
 	 * @param params
 	 * @param where
@@ -1738,6 +1751,13 @@
 	 */
 	app.showModalDialog = function (options)
 	{
+		//"cache" flag must be false by default
+		// for modal pages to save backward compatibility
+		if(typeof(options["cache"]) == "undefined")
+		{
+			options["cache"] = false;
+		}
+
 		return this.exec("showModalDialog", options);
 	};
 
@@ -2135,7 +2155,7 @@
 	 */
 	app.BasicAuth = function (params)
 	{
-		//basic autorization
+		//basic authorization
 		//params.success, params.check_url
 		params = params || {};
 
@@ -2450,7 +2470,7 @@
 					variable[i] = BitrixMobile.Utils.htmlspecialchars(variable[i]);
 				}
 			}
-			else if (typeof(variable) == "object")
+			else if (typeof(variable) == "object" && variable != null)
 			{
 
 				var obj = {};
@@ -2796,6 +2816,32 @@
 
 	document.addEventListener("deviceready", function ()
 	{
+		if(typeof (BXMobileAppContext) != "undefined")
+		{
+
+			BX.addCustomEvent("onAppPaused", function ()
+				{
+					BXMobileAppContext.active = false;
+				}
+			);
+
+			BX.addCustomEvent("UIApplicationDidBecomeActiveNotification", function ()
+				{
+					BXMobileAppContext.active = true;
+				}
+			);
+
+			BXMobileAppContext.isAppActive = function()
+			{
+				if(typeof (this.active) == "undefined" || !app.enableInVersion(16))
+				{
+					this.active = !BXMobileAppContext.isBackground();
+				}
+
+				return this.active;
+			}
+		}
+
 		app.available = true;
 
 		BX.addCustomEvent("onSessIdChanged", function (data)
@@ -2827,6 +2873,8 @@
 		this.offline = null;
 		this.processData = null;
 		this.xhr = null;
+		this.data = null;
+		this.headers = null;
 };
 
 	MobileAjaxWrapper.prototype.Init = function (params)
@@ -2844,6 +2892,7 @@
 		this.method = params.method;
 		this.url = params.url;
 		this.data = params.data;
+		this.headers = (typeof params.headers != 'undefined' ? params.headers : []);
 		this.processData = params.processData;
 		this.start = params.start;
 		this.preparePost = params.preparePost;
@@ -2857,32 +2906,39 @@
 			this.loadstart_callback = params.callback_loadstart;
 		if (params.callback_loadend != 'undefined')
 			this.loadend_callback = params.callback_loadend;
-	}
+	};
 
 	MobileAjaxWrapper.prototype.Wrap = function (params)
 	{
 		this.Init(params);
 
 		this.xhr = BX.ajax({
-			'timeout': 30,
-			'start' : this.start,
-			'preparePost' : this.preparePost,
-			'method': this.method,
-			'dataType': this.type,
-			'url': this.url,
-			'data': this.data,
-			'processData': this.processData,
-			'onsuccess': BX.defer(
+			timeout: 30,
+			start : this.start,
+			preparePost : this.preparePost,
+			method: this.method,
+			dataType: this.type,
+			url: this.url,
+			data: this.data,
+			headers: this.headers,
+			processData: this.processData,
+			onsuccess: BX.defer(
 				function (response)
 				{
+					var bFailed = false;
+
 					if (this.xhr.status === 0)
-						var bFailed = true;
+					{
+						bFailed = true;
+					}
 					else if (this.type == 'json')
 					{
-						var bFailed = (typeof response == 'object' && typeof response.status != 'undefined' && response.status == 'failed');
+						bFailed = (typeof response == 'object' && typeof response.status != 'undefined' && response.status == 'failed');
 					}
 					else if (this.type == 'html')
-						var bFailed = (response == '{"status":"failed"}');
+					{
+						bFailed = (response == '{"status":"failed"}');
+					}
 
 					if (bFailed)
 					{
@@ -3177,5 +3233,13 @@
 
 function ReadyDevice(func)
 {
-	document.addEventListener("deviceready", func, false);
+	if(app.available == true && typeof(func) == "function")
+	{
+		func();
+	}
+	else
+	{
+		document.addEventListener("deviceready", func, false);
+	}
+
 }

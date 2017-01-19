@@ -1,4 +1,6 @@
 <?
+use Bitrix\Main\Page\Asset;
+
 class CPullOptions
 {
 	public static function CheckNeedRun($bGetSectionStatus = true)
@@ -414,10 +416,42 @@ class CPullOptions
 			{
 				CJSCore::Init(array('pull'));
 
-				$pullConfig = CPullChannel::GetConfig($userId);
-
 				global $APPLICATION;
-				$APPLICATION->AddAdditionalJS('<script type="text/javascript">BX.bind(window, "load", function() { BX.PULL.start('.(empty($pullConfig)? '': CUtil::PhpToJsObject($pullConfig)).'); });</script>');
+
+				if(\Bitrix\Main\Page\Frame::getInstance()->getUseAppCache())
+				{
+					$pullInitJs = <<<JS
+					
+					var pullInited = false;
+					BX.bind(window, "load", function(){
+						var config = BX.frameCache.getPullConfig();
+						if(config != null)
+						{
+							pullInited = true;
+							BX.PULL.start(config);
+						}
+					});
+					
+					BX.addCustomEvent("pullConfigHasBeenChanged",function(config){
+						if(pullInited)
+						{
+							BX.PULL.updateChannelID(config);
+							BX.PULL.tryConnect();
+							return;
+						}
+						
+						BX.PULL.start(config);
+						
+					});
+JS;
+					Asset::getInstance()->addString('<script type="text/javascript">'.$pullInitJs.'</script>');
+				}
+				else
+				{
+					$pullConfig = CPullChannel::GetConfig($userId);
+					$APPLICATION->AddAdditionalJS('<script type="text/javascript">BX.bind(window, "load", function() { BX.PULL.start('.(empty($pullConfig)? '': CUtil::PhpToJsObject($pullConfig)).'); });</script>');
+
+				}
 			}
 		}
 	}

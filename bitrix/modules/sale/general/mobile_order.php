@@ -93,19 +93,19 @@ class CSaleMobileOrderUtils
 		$items = array(
 			array(
 				"text" => GetMessage("SMOB_ALL_ORDERS"),
-				"data-url" => "/bitrix/admin/mobile/sale_orders_list.php",
+				"data-url" => "/bitrix/admin/mobile/sale_orders_list.php?lang=".LANGUAGE_ID,
 				"data-pageid" => "orders_list",
 				"default" => true,
 				"push-param" => "sl"
 			),
 			array(
 				"text" => GetMessage("SMOB_WAITING_FOR_PAY"),
-				"data-url" => "/bitrix/admin/mobile/sale_orders_list.php?action=get_filtered&filter_name=waiting_for_pay",
+				"data-url" => "/bitrix/admin/mobile/sale_orders_list.php?lang=".LANGUAGE_ID."&action=get_filtered&filter_name=waiting_for_pay",
 				"data-pageid" => "orders_waiting_for_pay",
 			),
 			array(
 				"text" => GetMessage("SMOB_WAITING_FOR_DELIVERY"),
-				"data-url" => "/bitrix/admin/mobile/sale_orders_list.php?action=get_filtered&filter_name=waiting_for_delivery",
+				"data-url" => "/bitrix/admin/mobile/sale_orders_list.php?lang=".LANGUAGE_ID."&action=get_filtered&filter_name=waiting_for_delivery",
 				"data-pageid" => "orders_waiting_for_delivery",
 			)
 		);
@@ -114,7 +114,7 @@ class CSaleMobileOrderUtils
 		{
 			$items[] = array(
 				"text" => GetMessage("SMOB_PUSH_SETTINGS"),
-				"data-url" => "/bitrix/admin/mobile/sale_orders_push.php",
+				"data-url" => "/bitrix/admin/mobile/sale_orders_push.php?lang=".LANGUAGE_ID,
 				"data-pageid" => "orders_push"
 			);
 		}
@@ -636,8 +636,10 @@ class CSaleMobileOrderUtils
 
 	function getDateTime($strDate)
 	{
-		$stmp = MakeTimeStamp($strDate, "DD.MM.YYYY HH:MI:SS");
-		return date("d.m.Y", $stmp).' '.date("H:i", $stmp);
+		return FormatDateFromDB(
+			$strDate,
+			CSite::GetDateFormat('FULL', LANGUAGE_ID)
+		);
 	}
 
 	function getPreparedTemplate($template, $arFields)

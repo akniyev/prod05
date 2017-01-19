@@ -191,6 +191,8 @@
 				this.dom.cont.parentNode.insertBefore(BX.create("DIV", {props: {className: "bxhtmled-warning"}, text: BX.message('BXEdInvalidBrowser')}), this.dom.cont);
 			}
 
+			this.InitImageUploader();
+
 			this.Show();
 
 			BX.onCustomEvent(BXHtmlEditor, 'OnEditorCreated', [this]);
@@ -790,6 +792,12 @@
 
 		OnCreateIframe: function()
 		{
+			if (!document.body.contains(this.dom.iframeCont))
+			{
+				//do not create frame if DOM doesn't contain editor's html structure (autocomposite).
+				return;
+			}
+
 			this.On('OnCreateIframeBefore');
 			this.iframeView.OnCreateIframe();
 			this.selection = new BXEditorSelection(this);
@@ -2641,6 +2649,276 @@
 					}
 				});
 			}catch(e){}
+		},
+
+		InitImageUploader: function()
+		{
+			if (this.config.uploadImagesFromClipboard !== false)
+			{
+				var uploadUrl = this.config.actionUrl;
+				uploadUrl += (uploadUrl.indexOf('?') !== -1 ? "&" : "?") + 'action=uploadfile';
+				this.imageUploader = BX.Uploader.getInstance({
+					id: this.CID,
+					streams: 1,
+					allowUpload: "A",
+					uploadFileUrl: uploadUrl,
+					uploadMethod: "immediate",
+					showImage: false,
+					sortItems: false,
+					input: null,
+					placeHolder: null,
+					uploadFormData: "N"
+				});
+
+				var _this = this;
+
+				BX.addCustomEvent(this, "OnImageDataUriHandle", function (editor, imageBase64)
+				{
+					var blob = BX.UploaderUtils.dataURLToBlob(imageBase64.src);
+					if (blob && blob.size > 0 && blob.type.indexOf("image/") == 0)
+					{
+						blob.name = (blob.name || imageBase64.title || (this.GetDefaultImageName() + "." + blob.type.substr(6)));
+						blob.uniqId = imageBase64.uniqId;
+						blob.editorBase64Src = imageBase64.src;
+						_this.imageUploader.onChange([blob]);
+					}
+				});
+
+				BX.addCustomEvent(this.imageUploader, "onFileIsCreated", function (id, item)
+				{
+					BX.addCustomEvent(item, "onUploadDone", function (item, result)
+					{
+						_this.HandleImageDataUriCaughtUploadedCallback({
+							src: item.file.editorBase64Src, uniqId: item.file.uniqId
+						}, {
+							src: result.file.uploadedPath
+						});
+					});
+
+					//BX.addCustomEvent(item, "onUploadError", function(item, result){});
+				});
+			}
+		},
+
+		GetDefaultImageName: function()
+		{
+			var imageName = {value: false};
+			this.On("OnGetDefaultUploadImageName", [imageName]);
+			if (!imageName.value)
+			{
+				imageName.value = 'content-img';
+			}
+
+			return imageName.value;
+		},
+
+		InitClipboardHandler: function()
+		{
+			var
+				_this = this;
+
+			this.base64Images = [];
+
+			function checkImages(images)
+			{
+				_this.pasteCheckItteration++;
+				var i;
+				for (i = 0; i < images.length; i++)
+				{
+					if (!images[i].getAttribute('data-bx-paste-check'))
+					{
+						if (images[i].complete)
+							_this.CheckImage(images[i], false);
+						else
+							BX.bind(images[i], 'load', BX.proxy(_this.CheckImage, _this));
+						images[i].setAttribute('data-bx-paste-check', 'Y');
+					}
+				}
+
+				if (_this.pasteCheckItteration == 1)
+					setTimeout(function(){checkImages(images);}, 500);
+				else if (_this.pasteCheckItteration < 15)
+					setTimeout(function(){checkImages(images);}, 1000);
+			}
+
+			BX.bind(this.iframeView.element, 'paste', function (e)
+			{
+				var
+					imageHandled = false,
+					clipboard = e.clipboardData;
+
+				if (clipboard && clipboard.items)
+				{
+					var item = clipboard.items[0];
+					if (item && item.type.indexOf('image/') > -1)
+					{
+						var blob = item.getAsFile();
+						if (blob)
+						{
+							var reader = new FileReader();
+							reader.readAsDataURL(blob);
+							reader.onload = function (event)
+							{
+								imageHandled = true;
+								var img = new Image();
+								img.src = event.target.result;
+
+								setTimeout(function()
+								{
+									_this.selection.InsertNode(img);
+									_this.HandleImageDataUri(img);
+								}, 100);
+							}
+						}
+					}
+				}
+
+				if (!imageHandled)
+				{
+					var
+						doc = _this.GetIframeDoc(),
+						images = doc.body.getElementsByTagName('IMG');
+
+					_this.pasteCheckItteration = 0;
+					checkImages(images);
+				}
+			});
+
+			BX.addCustomEvent(this, 'OnImageDataUriCaughtUploaded', BX.proxy(this.HandleImageDataUriCaughtUploadedCallback, this));
+			//BX.addCustomEvent(this, 'OnImageDataUriCaughtFailed', BX.proxy(this.HandleImageDataUriCaughtFailedCallback, this));
+		},
+
+		GetBase64Image: function(base64source)
+		{
+			var i, result = false;
+
+			for (i = 0; i < this.base64Images.length; i++)
+			{
+				if (this.base64Images[i].source == base64source)
+				{
+					result = this.base64Images[i];
+				}
+			}
+			return result;
+		},
+
+		RegisterBase64Image: function(base64source, status)
+		{
+			this.base64Images.push({
+				source: base64source,
+				status: status,
+				index: this.base64Images.length
+			});
+		},
+
+		CheckImage: function(image, unbind)
+		{
+			if (image && image.getAttribute)
+			{
+				var src = image.getAttribute('src');
+				if (src.indexOf('data:image/') !== -1)
+				{
+					this.HandleImageDataUri(image);
+				}
+
+				if (unbind !== false)
+					BX.unbind(image, 'load', BX.proxy(this.CheckImage, this));
+			}
+		},
+
+		HandleImageDataUri: function(image)
+		{
+			if (!image.getAttribute('data-bx-unique-id'))
+			{
+				this.skipPasteControl = true;
+				if (this.pasteControl.isOpened)
+					this.pasteControl.Hide();
+
+				var base64Image = this.GetBase64Image(image.src);
+
+				if (base64Image === false)
+				{
+					this.RegisterBase64Image(image.src, 'requested');
+
+					var uniqId = 'bx_base64_id_' + Math.round(Math.random() * 1000000000);
+					image.setAttribute('data-bx-unique-id', uniqId);
+					image.removeAttribute('data-bx-orig-src');
+
+					this.On('OnImageDataUriHandle', [this,
+						{
+							src: image.src,
+							title: image.title || '',
+							uniqId: uniqId
+						}]);
+				}
+				else
+				{
+					if (base64Image.status == 'uploaded')
+					{
+						this.HandleImageDataUriCaughtUploadedCallback(
+							{
+								src: image.src,
+								title: image.title || '',
+								uniqId: base64Image.uniqId
+							},
+							{
+								src: base64Image.fileSrc
+							},
+							base64Image.htmlForInsert || null
+						);
+					}
+				}
+			}
+		},
+
+		HandleImageDataUriCaughtUploadedCallback: function(imageReferer, file, htmlForInsert)
+		{
+			if (imageReferer && imageReferer.uniqId && file && file.src)
+			{
+				var base64Image = this.GetBase64Image(imageReferer.src);
+				if (base64Image && !base64Image.fileSrc)
+				{
+					base64Image.status = 'uploaded';
+					base64Image.uniqId = imageReferer.uniqId;
+					base64Image.fileSrc = file.src;
+					base64Image.htmlForInsert = htmlForInsert;
+				}
+
+				var
+						i,image,
+						images = this.GetIframeDoc().body.getElementsByTagName('IMG');
+
+				for (i = 0; i < images.length; i++)
+				{
+					image = images[i];
+					if (image.getAttribute('data-bx-unique-id') == imageReferer.uniqId
+						||
+						image.getAttribute('src') == imageReferer.src
+					)
+					{
+						if (htmlForInsert && htmlForInsert.replacement)
+						{
+							this.selection.SetAfter(image);
+							this.selection.InsertHTML(htmlForInsert.replacement);
+
+							BX.remove(image);
+							if (htmlForInsert.callback)
+							{
+								setTimeout(htmlForInsert.callback, 300);
+							}
+						}
+						else
+						{
+							image.src = file.src;
+							image.setAttribute('src', file.src);
+							image.setAttribute('data-bx-orig-src', file.src);
+							image.removeAttribute('data-bx-paste-check');
+							image.removeAttribute('data-bx-unique-id');
+						}
+					}
+				}
+			}
+			this.skipPasteControl = false;
 		}
 	};
 
@@ -3659,7 +3937,6 @@
 		DoMerge: function()
 		{
 			var
-				onlyTextNodes = true,
 				i, len = this.textNodes.length,
 				textBits = [], textNode, parent, text;
 
@@ -3846,10 +4123,8 @@
 				range.setEnd(rangeEndNode, rangeEndOffset);
 			}
 
-
 			// Simplify elements
 			textNodes = range.getNodes([3]);
-
 			for (i = 0; i < textNodes.length; ++i)
 			{
 				textNode = textNodes[i];
@@ -3919,12 +4194,18 @@
 			}
 			else
 			{
+				// TODO: fix it. Now code fails on this example, try to make "22" italic
+				// <i>11 </i>22<i><br>
+				// 33 </i><br>
+				/*
 				// Compare element with its sibling
 				adjacentNode = el[propName];
 				if (adjacentNode && this.AreElementsMergeable(node, adjacentNode))
 				{
+
 					return adjacentNode[forward ? "firstChild" : "lastChild"];
 				}
+				*/
 			}
 			return null;
 		},
@@ -4137,7 +4418,6 @@
 					this.PostApply(textNodes, range);
 				}
 			}
-
 			return range;
 		},
 
@@ -4626,6 +4906,7 @@
 			"figure": {},
 			"figcaption": {},
 			"fieldset": {},
+			"legend": {},
 
 			// Lists
 			"menu": {rename_tag: "ul"}, // ??
@@ -4697,6 +4978,7 @@
 
 			"details": {},
 			"summary": {},
+			"footer": {},
 
 			// tags to remove
 			"title": {remove: 1},
@@ -4733,7 +5015,6 @@
 			// Tags to rename
 			// to DIV
 			"multicol": {rename_tag: "div"},
-			"footer": {rename_tag: "div"},
 			"map": {rename_tag: "div"},
 			"body": {rename_tag: "div"},
 			"html": {rename_tag: "div"},
@@ -4756,7 +5037,6 @@
 			"tt": {rename_tag: "span"},
 			"blink": {rename_tag: "span"},
 			"plaintext": {rename_tag: "span"},
-			"legend": {rename_tag: "span"},
 			"kbd": {rename_tag: "span"},
 			"meter": {rename_tag: "span"},
 			"datalist": {rename_tag: "span"},

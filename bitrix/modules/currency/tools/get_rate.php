@@ -37,12 +37,18 @@ else
 	else
 	{
 		$baseCurrency = Currency\CurrencyManager::getBaseCurrency();
+		$baseCurrency = '';
 		$date = '';
 		$currency = '';
+		if (isset($_REQUEST['BASE_CURRENCY']))
+			$baseCurrency = (string)$_REQUEST['BASE_CURRENCY'];
+		if ($baseCurrency == '')
+			$baseCurrency = Currency\CurrencyManager::getBaseCurrency();
 		if (isset($_REQUEST['DATE_RATE']))
 			$date = (string)$_REQUEST['DATE_RATE'];
 		if (isset($_REQUEST['CURRENCY']))
 			$currency = (string)$_REQUEST['CURRENCY'];
+
 		if ($baseCurrency == '')
 		{
 			$result['STATUS'] = 'ERROR';
@@ -67,7 +73,8 @@ else
 					$url = 'http://bank.gov.ua/NBUStatService/v1/statdirectory?exchange&date='.$DB->FormatDate($date, CLang::GetDateFormat('SHORT', LANGUAGE_ID), 'YMD');
 					break;
 				case 'BYR':
-					$url = 'http://www.nbrb.by//Services/XmlExRates.aspx?ondate='.$DB->FormatDate($date, CLang::GetDateFormat('SHORT', LANGUAGE_ID), 'Y-M-D');
+				case 'BYN':
+					$url = 'http://www.nbrb.by/Services/XmlExRates.aspx?ondate='.$DB->FormatDate($date, CLang::GetDateFormat('SHORT', LANGUAGE_ID), 'Y-M-D');
 					break;
 				case 'RUB':
 				case 'RUR':
@@ -115,6 +122,7 @@ else
 					}
 					break;
 				case 'BYR':
+				case 'BYN':
 					if (is_array($data) && count($data["DailyExRates"]["#"]["Currency"])>0)
 					{
 						$currencyList = $data['DailyExRates']['#']['Currency'];
@@ -159,3 +167,4 @@ else
 	}
 }
 echo CUtil::PhpToJSObject($result, false, true, true);
+require($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/main/include/epilog_admin_after.php');

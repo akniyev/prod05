@@ -458,7 +458,7 @@ class CAllForumMessage
 			"TITLE" => $arMessage["TOPIC_INFO"]["TITLE"].($arMessage["NEW_TOPIC"] == "Y" && !empty($arMessage["TOPIC_INFO"]["DESCRIPTION"]) ?
 					", ".$arMessage["TOPIC_INFO"]["DESCRIPTION"] : ""),
 			"TAGS" => (($arMessage["NEW_TOPIC"] == "Y") ? $arMessage["TOPIC_INFO"]["TAGS"] : ""),
-			"BODY" => GetMessage("AVTOR_PREF")." ".$arMessage["AUTHOR_NAME"].". ".(forumTextParser::clearAllTags($arMessage["POST_MESSAGE"])),
+			"BODY" => GetMessage("AVTOR_PREF")." ".$arMessage["AUTHOR_NAME"].". ".(CSearch::KillTags(forumTextParser::clearAllTags($arMessage["POST_MESSAGE"]))),
 			"ENTITY_TYPE_ID"  => $arMessage["NEW_TOPIC"] == "Y"? "FORUM_TOPIC": "FORUM_POST",
 			"ENTITY_ID"  => $arMessage["NEW_TOPIC"] == "Y"? $arMessage["TOPIC_ID"]: $arMessage["ID"],
 			"USER_ID" => $arMessage["AUTHOR_ID"],
@@ -507,7 +507,19 @@ class CAllForumMessage
 			$arSearchInd["URL"] = CForumNew::PreparePath2Message($arParams["DEFAULT_URL"], $urlPatterns);
 		}
 		CSearch::DeleteIndex("forum", $ID);
-		CSearch::Index("forum", $ID, $arSearchInd, true);
+		/***************** Events onMessageIsIndexed ***********************/
+		$index = true;
+		foreach(GetModuleEvents("forum", "onMessageIsIndexed", true) as $arEvent)
+		{
+			if (ExecuteModuleEventEx($arEvent, array($ID, $arMessage, &$arSearchInd)) === false)
+			{
+				$index = false;
+				break;
+			}
+		}
+		/***************** /Events *****************************************/
+		if ($index == true)
+			CSearch::Index("forum", $ID, $arSearchInd, true);
 	}
 
 	public static function Delete($ID)

@@ -1,3 +1,90 @@
+
+BasketPoolQuantity = function()
+{
+	this.processing = false;
+	this.poolQuantity = {};
+	this.updateTimer = null;
+	this.currentQuantity = {};
+
+	this.updateQuantity();
+};
+
+
+BasketPoolQuantity.prototype.updateQuantity = function()
+{
+	var items = BX('basket_items');
+
+	if (!!items && items.rows.length > 0)
+	{
+		for (var i = 1; items.rows.length > i; i++)
+		{
+			var itemId = items.rows[i].id;
+			this.currentQuantity[itemId] = BX('QUANTITY_' + itemId).value;
+		}
+	}
+
+};
+
+
+BasketPoolQuantity.prototype.changeQuantity = function(itemId)
+{
+	var quantity = BX('QUANTITY_' + itemId).value;
+	var isPoolEmpty = this.isPoolEmpty();
+
+	if (this.currentQuantity[itemId] && this.currentQuantity[itemId] != quantity)
+	{
+		this.poolQuantity[itemId] = this.currentQuantity[itemId] = quantity;
+	}
+
+	if (!isPoolEmpty)
+	{
+		this.enableTimer(true);
+	}
+	else
+	{
+		this.trySendPool();
+	}
+};
+
+
+BasketPoolQuantity.prototype.trySendPool = function()
+{
+	if (!this.isPoolEmpty() && !this.isProcessing())
+	{
+		this.enableTimer(false);
+		recalcBasketAjax({});
+	}
+};
+
+BasketPoolQuantity.prototype.isPoolEmpty = function()
+{
+	return ( Object.keys(this.poolQuantity).length == 0 );
+};
+
+BasketPoolQuantity.prototype.clearPool = function()
+{
+	this.poolQuantity = {};
+};
+
+BasketPoolQuantity.prototype.isProcessing = function()
+{
+	return (this.processing === true);
+};
+
+BasketPoolQuantity.prototype.setProcessing = function(value)
+{
+	this.processing = (value === true);
+};
+
+BasketPoolQuantity.prototype.enableTimer = function(value)
+{
+	clearTimeout(this.updateTimer);
+	if (value === false)
+		return;
+
+	this.updateTimer = setTimeout(function(){ basketPoolQuantity.trySendPool(); }, 1500);
+};
+
 /**
  * @param basketItemId
  * @param {{BASKET_ID : string, BASKET_DATA : { GRID : { ROWS : {} }}, COLUMNS: {}, PARAMS: {}, DELETE_ORIGINAL : string }} res
@@ -874,7 +961,9 @@ function updateQuantity(controlId, basketId, ratio, bUseFloatQuantity)
 		BX("QUANTITY_" + basketId).value = newVal;
 
 		if (autoCalculate)
-			recalcBasketAjax({});
+		{
+			basketPoolQuantity.changeQuantity(basketId);
+		}
 	}
 	else
 	{
@@ -887,7 +976,9 @@ function updateQuantity(controlId, basketId, ratio, bUseFloatQuantity)
 			BX("QUANTITY_" + basketId).value = newVal;
 
 			if (autoCalculate)
-				recalcBasketAjax({});
+			{
+				basketPoolQuantity.changeQuantity(basketId);
+			}
 		}else
 		{
 			BX(controlId).value = oldVal;
@@ -935,13 +1026,13 @@ function getCorrectRatioQuantity(quantity, ratio, bUseFloatQuantity)
 {
 	var newValInt = quantity * 10000,
 		ratioInt = ratio * 10000,
-		reminder = newValInt % ratioInt,
+		reminder = (quantity / ratio - ((quantity / ratio).toFixed(0))).toFixed(6),
 		result = quantity,
 		bIsQuantityFloat = false,
 		i;
 	ratio = parseFloat(ratio);
 
-	if (reminder === 0)
+	if (reminder == 0)
 	{
 		return result;
 	}
@@ -980,6 +1071,11 @@ function correctQuantity(quantity)
  */
 function recalcBasketAjax(params)
 {
+	if (basketPoolQuantity.isProcessing())
+	{
+		return false;
+	}
+
 	BX.showWait();
 
 	var property_values = {},
@@ -1024,6 +1120,9 @@ function recalcBasketAjax(params)
 			postData['DELAY_' + delayedItems.rows[i].id] = 'Y';
 	}
 
+	basketPoolQuantity.setProcessing(true);
+	basketPoolQuantity.clearPool();
+
 	BX.ajax({
 		url: '/bitrix/components/bitrix/sale.basket.basket/ajax.php',
 		method: 'POST',
@@ -1032,6 +1131,7 @@ function recalcBasketAjax(params)
 		onsuccess: function(result)
 		{
 			BX.closeWait();
+			basketPoolQuantity.setProcessing(false);
 
 			if(params.coupon)
 			{
@@ -1042,7 +1142,15 @@ function recalcBasketAjax(params)
 				}
 			}
 
-			updateBasketTable(null, result);
+			if (basketPoolQuantity.isPoolEmpty())
+			{
+				updateBasketTable(null, result);
+				basketPoolQuantity.updateQuantity();
+			}
+			else
+			{
+				basketPoolQuantity.enableTimer(true);
+			}
 		}
 	});
 }
@@ -1137,6 +1245,8 @@ function deleteCoupon(e)
 }
 
 BX.ready(function() {
+
+	basketPoolQuantity = new BasketPoolQuantity();
 	var sku_props = BX.findChildren(BX('basket_items'), {tagName: 'li', className: 'sku_prop'}, true),
 		i,
 		couponBlock;
@@ -1150,4 +1260,9 @@ BX.ready(function() {
 	couponBlock = BX('coupons_block');
 	if (!!couponBlock)
 		BX.bindDelegate(couponBlock, 'click', { 'attribute': 'data-coupon' }, BX.delegate(function(e){deleteCoupon(e); }, this));
+
+	if (basketJSParams['EVENT_ONCHANGE_ON_START'] && basketJSParams['EVENT_ONCHANGE_ON_START'] == "Y")
+	{
+		BX.onCustomEvent('OnBasketChange');
+	}
 });

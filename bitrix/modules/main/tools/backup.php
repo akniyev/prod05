@@ -567,6 +567,7 @@ if ($NS['step'] == 7)
 	{
 		ShowBackupStatus('Deleting old backups');
 		$arFiles = array();
+		$arParts = array();
 
 		$TotalSize = $NS['arc_size'];
 
@@ -592,6 +593,7 @@ if ($NS['step'] == 7)
 					$m = filemtime($f);
 
 					$arFiles[$name] = $m;
+					$arParts[$name][] = $item;
 					$TotalSize += $s;
 				}
 				closedir($dir);
@@ -621,20 +623,16 @@ if ($NS['step'] == 7)
 			}
 
 			$cnt--;
-			$f = $p.'/'.$name;
-	//		echo "delete ".$f."\n";
-
-			$bDel = false;
-			while(file_exists($f))
+			foreach($arParts[$name] as $item)
 			{
+				$f = $p.'/'.$item;
 				$size = filesize($f);
 				$TotalSize -= $size;
-				if (($bDel = unlink($f)) && $arParams["disk_space"] > 0)
+				if (!unlink($f))
+					RaiseErrorAndDie('Could not delete file: '.$f, 700, $NS['arc_name']);
+				if ($arParams["disk_space"] > 0)
 					CDiskQuota::updateDiskQuota("file", $size , "del");
-				$f = CTar::getNextName($f);
 			}
-			if (!$bDel)
-				RaiseErrorAndDie('Could not delete file: '.$f, 700, $NS['arc_name']);
 		}
 	}
 	$NS['step'] = 8;

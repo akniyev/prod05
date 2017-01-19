@@ -21,11 +21,10 @@ function reportViewShowTopButtons(&$component, &$arParams, &$arResult)
 		<i class="reports-title-button-excel-icon"></i><span class="reports-link"><?=GetMessage('REPORT_EXCEL_EXPORT')?></span>
 	</a>
 	&nbsp;
-<? if ($arResult['MARK_DEFAULT'] > 0) : ?>
 	<a class="reports-title-button" href="<?=CComponentEngine::MakePathFromTemplate($arParams["PATH_TO_REPORT_CONSTRUCT"], array("report_id" => $arParams['REPORT_ID'], 'action' => 'copy'));?>">
 		<i class="reports-title-button-edit-icon"></i><span class="reports-link"><?=GetMessage('REPORT_COPY')?></span>
 	</a>
-<? else : ?>
+<? if ($arResult['MARK_DEFAULT'] <= 0 && $arResult['AUTHOR']) : ?>
 	<a class="reports-title-button" href="<?=CComponentEngine::MakePathFromTemplate($arParams["PATH_TO_REPORT_CONSTRUCT"], array("report_id" => $arParams['REPORT_ID'], 'action' => 'edit'));?>">
 		<i class="reports-title-button-edit-icon"></i><span class="reports-link"><?=GetMessage('REPORT_EDIT')?></span>
 	</a>
@@ -413,9 +412,6 @@ function getResultColumnDataType(&$viewColumnInfo, &$customColumnTypes = array()
 										// convert type of value
 										switch ($chartInfo['requestData']['columnTypes'][$columnIndex])
 										{
-											case 'boolean':
-												$dataValue = ($dataValue) ? true : false;
-												break;
 											case 'date':
 											case 'datetime':
 												if (!empty($dataValue))
@@ -431,6 +427,7 @@ function getResultColumnDataType(&$viewColumnInfo, &$customColumnTypes = array()
 												if (is_string($dataValue)) $dataValue = str_replace(' ', '', $dataValue);
 												$dataValue = (int)$dataValue;
 												break;
+											case 'boolean':
 											case 'string':
 											case 'text':
 											case 'enum':

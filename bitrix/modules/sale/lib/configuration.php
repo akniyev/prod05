@@ -13,6 +13,10 @@ class Configuration
 	const RESERVE_ON_FULL_PAY = 'P';
 	const RESERVE_ON_ALLOW_DELIVERY = 'D';
 	const RESERVE_ON_SHIP = 'S';
+	const ALLOW_DELIVERY_ON_PAY = 'R';
+	const ALLOW_DELIVERY_ON_FULL_PAY = 'P';
+	const STATUS_ON_PAY = 'R';
+	const STATUS_ON_FULL_PAY = 'P';
 
 	/**
 	 * Returns reservation condition list.
@@ -94,7 +98,47 @@ class Configuration
 	 */
 	public static function needAllowDeliveryOnPay()
 	{
-		return ((string)Config\Option::get('sale', 'status_on_payed_2_allow_delivery') == 'Y');
+		$condition = static::getAllowDeliveryOnPayCondition();
+		return in_array($condition, array(static::ALLOW_DELIVERY_ON_PAY, static::RESERVE_ON_ALLOW_DELIVERY));
+	}
+
+	/**
+	 * @return string
+	 * @throws \Bitrix\Main\ArgumentNullException
+	 */
+	public static function getAllowDeliveryOnPayCondition()
+	{
+		return Config\Option::get('sale', 'status_on_change_allow_delivery_after_paid');
+	}
+
+	/**
+	 * @param bool $extendedMode
+	 *
+	 * @return array
+	 */
+	public static function getAllowDeliveryAfterPaidConditionList($extendedMode = false)
+	{
+		if ($extendedMode)
+		{
+			return array(
+				self::ALLOW_DELIVERY_ON_PAY => Loc::getMessage('SALE_CONFIGURATION_ON_PAY'),
+				self::ALLOW_DELIVERY_ON_FULL_PAY => Loc::getMessage('SALE_CONFIGURATION_ON_FULL_PAY'),
+			);
+		}
+		return array(
+			self::ALLOW_DELIVERY_ON_PAY,
+			self::ALLOW_DELIVERY_ON_FULL_PAY,
+		);
+	}
+
+	public static function getStatusPaidCondition()
+	{
+		return Config\Option::get('sale', 'status_on_paid_condition');
+	}
+
+	public static function getStatusAllowDeliveryCondition()
+	{
+		return Config\Option::get('sale', 'status_on_paid_condition');
 	}
 
 	/**

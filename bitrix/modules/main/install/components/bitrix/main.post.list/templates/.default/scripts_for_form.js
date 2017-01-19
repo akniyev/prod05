@@ -40,6 +40,7 @@
 
 			OnUCUserQuote : BX.delegate(function(entityId, author, res, safeEdit, loaded)
 			{
+				var origRes = BX.util.htmlspecialchars(res);
 				if (this.entitiesId[entityId])
 				{
 					if (!this._checkTextSafety([entityId, 0], safeEdit))
@@ -100,9 +101,15 @@
 							// Here we take selected text via editor tools
 							// we don't use "res"
 							this.handler.oEditor.action.actions.quote.setExternalSelectionFromRange();
-							if (author !== '')
+							var extSel = this.handler.oEditor.action.actions.quote.getExternalSelection();
+							if (extSel === '' && origRes !== '')
 							{
-								this.handler.oEditor.action.actions.quote.setExternalSelection(author + this.handler.oEditor.action.actions.quote.getExternalSelection());
+								extSel = origRes;
+								this.handler.oEditor.action.actions.quote.setExternalSelection(author + extSel);
+							}
+							else if (author)
+							{
+								this.handler.oEditor.action.actions.quote.setExternalSelection(author + extSel);
 							}
 						}
 						else

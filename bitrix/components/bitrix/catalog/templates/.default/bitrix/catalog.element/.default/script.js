@@ -40,6 +40,7 @@ window.JCCatalogElement = function (arParams)
 		showOfferGroup: false,
 		useCompare: false,
 		useStickers: false,
+		useSubscribe: false,
 		mainPictureMode: 'IMG',
 		showBasisPrice: false,
 		basketAction: ['BUY'],
@@ -72,7 +73,8 @@ window.JCCatalogElement = function (arParams)
 		discountPerc: ['DISCOUNT_PERC_ID'],
 		basket: ['BASKET_PROP_DIV', 'BUY_ID', 'ADD_BASKET_ID', 'BASKET_ACTIONS_ID', 'NOT_AVAILABLE_MESS'],
 		magnifier: ['MAGNIFIER_ID', 'MAGNIFIER_AREA_ID'],
-		compare: ['COMPARE_LINK_ID']
+		compare: ['COMPARE_LINK_ID'],
+		subscribe: ['SUBSCRIBE_ID']
 	};
 
 	this.visualPostfix = {
@@ -120,7 +122,8 @@ window.JCCatalogElement = function (arParams)
 		// offer groups
 		OFFER_GROUP: '_set_group_',
 		// compare
-		COMPARE_LINK_ID: '_compare_link'
+		COMPARE_LINK_ID: '_compare_link',
+		SUBSCRIBE_ID: '_subscribe'
 	};
 
 	this.visual = {};
@@ -194,6 +197,7 @@ window.JCCatalogElement = function (arParams)
 	this.obAddToBasketBtn = null;
 	this.obBasketActions = null;
 	this.obNotAvail = null;
+	this.obSubscribe = null;
 	this.obSkuProps = null;
 	this.obSlider = null;
 	this.obMeasure = null;
@@ -508,6 +512,11 @@ window.JCCatalogElement.prototype.Init = function()
 		this.obCompare = BX(this.visual.COMPARE_LINK_ID);
 	}
 
+	if (this.config.useSubscribe)
+	{
+		this.obSubscribe = BX(this.visual.SUBSCRIBE_ID);
+	}
+
 	if (0 === this.errorCode)
 	{
 		if (this.config.showQuantity)
@@ -664,6 +673,7 @@ window.JCCatalogElement.prototype.initConfig = function()
 		this.config.showOfferGroup = !!this.params.CONFIG.OFFER_GROUP;
 		this.config.useCompare = !!this.params.CONFIG.DISPLAY_COMPARE;
 		this.config.useStickers = !!this.params.CONFIG.USE_STICKERS;
+		this.config.useSubscribe = !!this.params.CONFIG.USE_SUBSCRIBE;
 		if (!!this.params.CONFIG.MAIN_PICTURE_MODE)
 		{
 			this.config.mainPictureMode = this.params.CONFIG.MAIN_PICTURE_MODE;
@@ -736,6 +746,10 @@ window.JCCatalogElement.prototype.initConfig = function()
 	if (this.config.useStickers)
 	{
 		this.initVisualParams('stickers');
+	}
+	if (this.config.useSubscribe)
+	{
+		this.initVisualParams('subscribe');
 	}
 };
 
@@ -1106,10 +1120,7 @@ window.JCCatalogElement.prototype.hideMagnifier = function()
 window.JCCatalogElement.prototype.moveMagnifierArea = function(e)
 {
 	var
-		currentPos = {
-			X: 0,
-			Y: 0
-		},
+		currentPos,
 		posBigImg = BX.pos(this.obPict),
 		intersect = {},
 		params = {},
@@ -1274,8 +1285,12 @@ window.JCCatalogElement.prototype.inRect = function(e, rect)
 		};
 
 	currentPos.globalX = e.clientX + wndSize.scrollLeft;
+	if (e.offsetX && e.offsetX < 0)
+		currentPos.globalX -= e.offsetX;
 	currentPos.X = currentPos.globalX - rect.left;
 	currentPos.globalY = e.clientY + wndSize.scrollTop;
+	if (e.offsetY && e.offsetY < 0)
+		currentPos.globalY -= e.offsetY;
 	currentPos.Y = currentPos.globalY - rect.top;
 	return currentPos;
 };
@@ -1830,6 +1845,10 @@ window.JCCatalogElement.prototype.QuantitySet = function(index)
 			{
 				BX.style(this.obNotAvail, 'display', 'none');
 			}
+			if (BX.proxy_context.parentNode && !!this.obSubscribe)
+			{
+				BX.style(this.obSubscribe, 'display', 'none');
+			}
 		}
 		else
 		{
@@ -1840,6 +1859,12 @@ window.JCCatalogElement.prototype.QuantitySet = function(index)
 			if (!!this.obNotAvail)
 			{
 				BX.style(this.obNotAvail, 'display', '');
+			}
+			if (BX.proxy_context.parentNode && !!this.obSubscribe)
+			{
+				BX.style(this.obSubscribe, 'display', '');
+				this.obSubscribe.setAttribute('data-item', this.offers[index].ID);
+				BX(this.visual.SUBSCRIBE_ID+'_hidden').click();
 			}
 		}
 		if (this.config.showQuantity)
@@ -2400,13 +2425,10 @@ window.JCCatalogElement.prototype.ChangeInfo = function()
 
 		this.incViewedCounter();
 		eventData.newId = this.offers[this.offerNum].ID;
-		if (eventData.currentId != eventData.newId)
-		{
-			// only for compatible catalog.store.amout custom templates
-			BX.onCustomEvent('onCatalogStoreProductChange', [this.offers[this.offerNum].ID]);
-			// new event
-			BX.onCustomEvent('onCatalogElementChangeOffer', eventData);
-		}
+		// only for compatible catalog.store.amout custom templates
+		BX.onCustomEvent('onCatalogStoreProductChange', [this.offers[this.offerNum].ID]);
+		// new event
+		BX.onCustomEvent('onCatalogElementChangeOffer', eventData);
 		eventData = null;
 	}
 };
@@ -2543,24 +2565,18 @@ window.JCCatalogElement.prototype.Compare = function()
 
 window.JCCatalogElement.prototype.CompareResult = function(result)
 {
-	var popupContent, popupButtons, popupTitle;
+	var popupContent, popupButtons;
 	if (!!this.obPopupWin)
 		this.obPopupWin.close();
 
-	if (typeof result !== 'object')
-		return false;
+	if (!BX.type.isPlainObject(result))
+		return;
 
 	this.InitPopupWindow();
-	popupTitle = {
-		content: BX.create('div', {
-			style: { marginRight: '30px', whiteSpace: 'nowrap' },
-			text: BX.message('COMPARE_TITLE')
-		})
-	};
 	if (result.STATUS === 'OK')
 	{
 		BX.onCustomEvent('OnCompareChange');
-		popupContent = '<div style="width: 96%; margin: 10px 2%; text-align: center;"><p>'+BX.message('COMPARE_MESSAGE_OK')+'</p></div>';
+		popupContent = '<div style="width: 100%; margin: 0; text-align: center;"><p>'+BX.message('COMPARE_MESSAGE_OK')+'</p></div>';
 		if (this.config.showClosePopup)
 		{
 			popupButtons = [
@@ -2596,7 +2612,7 @@ window.JCCatalogElement.prototype.CompareResult = function(result)
 	}
 	else
 	{
-		popupContent = '<div style="width: 96%; margin: 10px 2%; text-align: center;"><p>'+(!!result.MESSAGE ? result.MESSAGE : BX.message('COMPARE_UNKNOWN_ERROR'))+'</p></div>';
+		popupContent = '<div style="width: 100%; margin: 0; text-align: center;"><p>'+(!!result.MESSAGE ? result.MESSAGE : BX.message('COMPARE_UNKNOWN_ERROR'))+'</p></div>';
 		popupButtons = [
 			new BasketButton({
 				ownerClass: this.obProduct.className,
@@ -2608,11 +2624,10 @@ window.JCCatalogElement.prototype.CompareResult = function(result)
 			})
 		];
 	}
-	this.obPopupWin.setTitleBar(popupTitle);
+	this.obPopupWin.setTitleBar(BX.message('COMPARE_TITLE'));
 	this.obPopupWin.setContent(popupContent);
 	this.obPopupWin.setButtons(popupButtons);
 	this.obPopupWin.show();
-	return false;
 };
 
 window.JCCatalogElement.prototype.CompareRedirect = function()
@@ -2762,12 +2777,7 @@ window.JCCatalogElement.prototype.Basket = function()
 		if (this.basketData.useProps && !this.basketData.emptyProps)
 		{
 			this.InitPopupWindow();
-			this.obPopupWin.setTitleBar({
-				content: BX.create('div', {
-					style: { marginRight: '30px', whiteSpace: 'nowrap' },
-					text: BX.message('TITLE_BASKET_PROPS')
-				})
-			});
+			this.obPopupWin.setTitleBar(BX.message('TITLE_BASKET_PROPS'));
 			if (BX(this.visual.BASKET_PROP_DIV))
 			{
 				contentBasketProps = BX(this.visual.BASKET_PROP_DIV).innerHTML;
@@ -2797,12 +2807,12 @@ window.JCCatalogElement.prototype.Basket = function()
 
 window.JCCatalogElement.prototype.BasketResult = function(arResult)
 {
-	var popupContent, popupButtons, popupTitle, productPict;
+	var popupContent, popupButtons, productPict;
 	if (!!this.obPopupWin)
 		this.obPopupWin.close();
 
-	if (typeof arResult !== 'object')
-		return false;
+	if (!BX.type.isPlainObject(arResult))
+		return;
 
 	if (arResult.STATUS === 'OK' && this.basketMode === 'BUY')
 	{
@@ -2811,12 +2821,6 @@ window.JCCatalogElement.prototype.BasketResult = function(arResult)
 	else
 	{
 		this.InitPopupWindow();
-		popupTitle = {
-			content: BX.create('div', {
-				style: { marginRight: '30px', whiteSpace: 'nowrap' },
-				text: (arResult.STATUS === 'OK' ? BX.message('TITLE_SUCCESSFUL') : BX.message('TITLE_ERROR'))
-			})
-		};
 		if (arResult.STATUS === 'OK')
 		{
 			BX.onCustomEvent('OnBasketChange');
@@ -2833,7 +2837,7 @@ window.JCCatalogElement.prototype.BasketResult = function(arResult)
 						);
 					break;
 			}
-			popupContent = '<div style="width: 96%; margin: 10px 2%; text-align: center;"><img src="'+productPict+'" height="130" style="max-height:130px"><p>'+this.product.name+'</p></div>';
+			popupContent = '<div style="width: 100%; margin: 0; text-align: center;"><img src="'+productPict+'" height="130" style="max-height:130px"><p>'+this.product.name+'</p></div>';
 			if (this.config.showClosePopup)
 			{
 				popupButtons = [
@@ -2869,7 +2873,7 @@ window.JCCatalogElement.prototype.BasketResult = function(arResult)
 		}
 		else
 		{
-			popupContent = '<div style="width: 96%; margin: 10px 2%; text-align: center;"><p>'+(!!arResult.MESSAGE ? arResult.MESSAGE : BX.message('BASKET_UNKNOWN_ERROR'))+'</p></div>';
+			popupContent = '<div style="width: 100%; margin: 0; text-align: center;"><p>'+(!!arResult.MESSAGE ? arResult.MESSAGE : BX.message('BASKET_UNKNOWN_ERROR'))+'</p></div>';
 			popupButtons = [
 				new BasketButton({
 					ownerClass: this.obProduct.className,
@@ -2881,12 +2885,11 @@ window.JCCatalogElement.prototype.BasketResult = function(arResult)
 				})
 			];
 		}
-		this.obPopupWin.setTitleBar(popupTitle);
+		this.obPopupWin.setTitleBar(arResult.STATUS === 'OK' ? BX.message('TITLE_SUCCESSFUL') : BX.message('TITLE_ERROR'));
 		this.obPopupWin.setContent(popupContent);
 		this.obPopupWin.setButtons(popupButtons);
 		this.obPopupWin.show();
 	}
-	return false;
 };
 
 window.JCCatalogElement.prototype.BasketRedirect = function()
@@ -2906,7 +2909,8 @@ window.JCCatalogElement.prototype.InitPopupWindow = function()
 		overlay : true,
 		closeByEsc: true,
 		titleBar: true,
-		closeIcon: {top: '10px', right: '10px'}
+		closeIcon: true,
+		contentColor: 'white'
 	});
 };
 

@@ -124,6 +124,11 @@ final class Manager
 		}
 		unset($discount, $appliedDiscounts);
 
+		if(!$discounts)
+		{
+			return array();
+		}
+
 		$potentialGiftData = $this->getPotentialGiftData($discounts, $appliedList);
 
 		$collections = array();

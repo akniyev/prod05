@@ -75,6 +75,7 @@ if(strlen($arResult["ERROR"]) <= 0 && $saleModulePermissions >= "W" && check_bit
 		case "save_restriction":
 			Manager::getClassesList();
 
+			/** @var \Bitrix\Sale\Services\Base\Restriction $className */
 			$className = ($request->get('className') !== null) ? trim($request->get('className')): '';
 			$params = ($request->get('params') !== null) ? $request->get('params') : array();
 			$sort = ($request->get('sort') !== null) ? (int)$request->get('sort') : 100;
@@ -87,19 +88,11 @@ if(strlen($arResult["ERROR"]) <= 0 && $saleModulePermissions >= "W" && check_bit
 			if(!$paySystemId)
 				throw new \Bitrix\Main\ArgumentNullException("paySystemId");
 
-			if ($className != '\Bitrix\Sale\Services\PaySystem\Restrictions\Currency')
+			foreach ($className::getParamsStructure() as $key => $rParams)
 			{
-				foreach ($className::getParamsStructure() as $key => $rParams)
-				{
-					$errors = \Bitrix\Sale\Internals\Input\Manager::getError($rParams, $params[$key]);
-					if (!empty($errors))
-						$arResult["ERROR"] .= Loc::getMessage('SALE_PS_ERROR_FIELD').': "'.$rParams["LABEL"].'" '.implode("\n", $errors)."\n";
-				}
-			}
-			else
-			{
-				$service = \Bitrix\Sale\PaySystem\Manager::getObjectById($paySystemId);
-				$params = array('CURRENCY' => $service->getCurrency());
+				$errors = \Bitrix\Sale\Internals\Input\Manager::getError($rParams, $params[$key]);
+				if (!empty($errors))
+					$arResult["ERROR"] .= Loc::getMessage('SALE_PS_ERROR_FIELD').': "'.$rParams["LABEL"].'" '.implode("\n", $errors)."\n";
 			}
 
 			if ($arResult["ERROR"] == '')
@@ -122,6 +115,8 @@ if(strlen($arResult["ERROR"]) <= 0 && $saleModulePermissions >= "W" && check_bit
 			break;
 
 		case "delete_restriction":
+			Manager::getClassesList();
+
 			$restrictionId = ($request->get('restrictionId') !== null) ? (int)$request->get('restrictionId') : 0;
 			$paySystemId = ($request->get('paySystemId') !== null) ? (int)$request->get('paySystemId') : 0;
 
@@ -233,9 +228,16 @@ if(strlen($arResult["ERROR"]) <= 0 && $saleModulePermissions >= "W" && check_bit
 				require $_SERVER['DOCUMENT_ROOT'].$path.'/.description.php';
 
 				if (isset($psDescription)) // for compatibility
+				{
 					$arResult["DESCRIPTION"] = $psDescription;
+				}
 				elseif (isset($description))
-					$arResult["DESCRIPTION"] = $description;
+				{
+					if (is_array($description))
+						$arResult["DESCRIPTION"] = (array_key_exists('MAIN', $description)) ? $description['MAIN'] : implode("\n", $description);
+					else
+						$arResult["DESCRIPTION"] = $description;
+				}
 
 				if ($paySystemId <= 0)
 				{
@@ -265,7 +267,7 @@ if(strlen($arResult["ERROR"]) <= 0 && $saleModulePermissions >= "W" && check_bit
 			);
 			$http = new \Bitrix\Main\Web\HttpClient();
 			$response = @$http->get('https://'.$_SERVER['SERVER_NAME'].'/bitrix/tools/sale_ps_result.php');
-			if (!$response || $http->getStatus() != 200)
+			if ($response === false || $http->getStatus() != 200)
 			{
 				$arResult['CHECK_STATUS'] =  'ERROR';
 				$arResult['CHECK_MESSAGE'] =  join('\n', $http->getError());

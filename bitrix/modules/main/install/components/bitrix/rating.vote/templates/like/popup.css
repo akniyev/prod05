@@ -2,7 +2,7 @@
 * html .bx-ilike-wrap-block {width:186px;}
 .bx-ilike-popup {background-color:#fff; display:inline-block; max-height:121px;  margin: 0 0 2px 0; padding: 0 6px 5px 0; overflow-y:auto; overflow-x:hidden; width:180px; -moz-user-select: none; -khtml-user-select: none; user-select: none;}
 * html .bx-ilike-popup {width:186px;height:130px;}
-.bx-ilike-popup-img {display:block; color:#656365; text-decoration:none; overflow:hidden; zoom:1; height: 23px;}
+.bx-ilike-popup-img {display:block; color:#656365; text-decoration:none; overflow:hidden; zoom:1; height: 23px;white-space: nowrap;}
 .bx-ilike-popup-img:link span,
 .bx-ilike-popup-img:visited span{color:#50688e; text-decoration:none;}
 .bx-ilike-popup-img:hover span{color:#50688e; text-decoration:underline;}

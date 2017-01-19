@@ -4064,21 +4064,21 @@ class CIBlockCMLImport
 				$this->bCatalog
 				&& isset($arElement["STORE_AMOUNT"])
 				&& !empty($arElement["STORE_AMOUNT"])
-				&& CCatalogProduct::GetById($arElement["ID"])
+				&& ($arElementTmp = CCatalogProduct::GetById($arElement["ID"]))
 			)
 			{
 				CCatalogProduct::Update($arElement["ID"], array(
-					"QUANTITY" => array_sum($arElement["STORE_AMOUNT"]),
+					"QUANTITY" => array_sum($arElement["STORE_AMOUNT"]) - $arElementTmp["QUANTITY_RESERVED"],
 				));
 			}
 			elseif(
 				$this->bCatalog
 				&& isset($arElement["QUANTITY"])
-				&& CCatalogProduct::GetById($arElement["ID"])
+				&& ($arElementTmp = CCatalogProduct::GetById($arElement["ID"]))
 			)
 			{
 				CCatalogProduct::Update($arElement["ID"], array(
-					"QUANTITY" => $arElement["QUANTITY"],
+					"QUANTITY" => $arElement["QUANTITY"] - $arElementTmp["QUANTITY_RESERVED"],
 				));
 			}
 		}
@@ -5543,7 +5543,13 @@ class CIBlockCMLExport
 			$rsLink = CIBlockElement::GetProperty($this->arIBlock["ID"], $arElement["ID"], $arPropOrder, array("ACTIVE"=>"Y", "CODE" => "CML2_LINK"));
 			$arLink = $rsLink->Fetch();
 			if(is_array($arLink) && !is_array($arLink["VALUE"]) && $arLink["VALUE"] > 0)
-				$xml_id = $this->GetElementXML_ID($this->PRODUCT_IBLOCK_ID, $arLink["VALUE"])."#".$xml_id;
+			{
+				$parent_xml_id = $this->GetElementXML_ID($this->PRODUCT_IBLOCK_ID, $arLink["VALUE"]);
+				if ($parent_xml_id === $xml_id)
+					$xml_id = $parent_xml_id;
+				else
+					$xml_id = $parent_xml_id."#".$xml_id;
+			}
 		}
 
 		fwrite($this->fp, "\t\t\t\t<".GetMessage("IBLOCK_XML2_ID").">".htmlspecialcharsbx($xml_id)."</".GetMessage("IBLOCK_XML2_ID").">\n");

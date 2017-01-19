@@ -1813,6 +1813,8 @@ class Asset
 		{
 			$this->kernelAsset['CSS'][$key] = $module;
 		}
+
+		$this->moduleInfo['CSS'][$module]['FILES_INFO'] = true;
 	}
 
 	/**
@@ -1836,6 +1838,8 @@ class Asset
 		{
 			$this->kernelAsset['JS'][$key] = $module;
 		}
+
+		$this->moduleInfo['JS'][$module]['FILES_INFO'] = true;
 	}
 
 	/**

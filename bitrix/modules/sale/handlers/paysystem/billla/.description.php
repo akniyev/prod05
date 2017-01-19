@@ -5,6 +5,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true)
 use \Bitrix\Main\Localization\Loc;
 
 Loc::loadMessages(__FILE__);
+Loc::loadLanguageFile(__FILE__, 'la');
 
 $data = array(
 	'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_TITLE'),
@@ -16,7 +17,7 @@ $data = array(
 			'GROUP' => 'PAYMENT',
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_LA_DATE_DESC'),
 			'DEFAULT' => array(
-				'PROVIDER_VALUE' => 'DATE_BILL',
+				'PROVIDER_VALUE' => 'DATE_BILL_DATE',
 				'PROVIDER_KEY' => 'PAYMENT'
 			)
 		),
@@ -27,7 +28,7 @@ $data = array(
 			'GROUP' => 'PAYMENT',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => 'DATE_PAY_BEFORE',
-				'PROVIDER_KEY' => 'PAYMENT'
+				'PROVIDER_KEY' => 'ORDER'
 			)
 		),
 		'SELLER_COMPANY_NAME' => array(
@@ -188,7 +189,7 @@ $data = array(
 		),
 		'BILLLA_COMMENT1' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_COMMENT1'),
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'FOOTER_SETTINGS',
 			'SORT' => 2000,
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => Loc::getMessage('SALE_HPS_BILL_LA_COMMENT1_VALUE'),
@@ -197,14 +198,14 @@ $data = array(
 		),
 		'BILLLA_COMMENT2' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_COMMENT2'),
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'FOOTER_SETTINGS',
 			'SORT' => 2100,
 		),
 		'BILLLA_PATH_TO_LOGO' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_LOGO'),
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_LA_LOGO_DESC'),
 			'SORT' => 2200,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'INPUT' => array(
 				'TYPE' => 'FILE'
 			)
@@ -212,7 +213,7 @@ $data = array(
 		'BILLLA_LOGO_DPI' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_LOGO_DPI'),
 			'SORT' => 2300,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'TYPE' => 'SELECT',
 			'INPUT' => array(
 				'TYPE' => 'ENUM',
@@ -228,7 +229,7 @@ $data = array(
 		'BILLLA_PATH_TO_STAMP' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_PRINT'),
 			'SORT' => 2400,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'BUYER_PERSON_COMPANY',
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_LA_PRINT_DESC'),
 			'INPUT' => array(
 				'TYPE' => 'FILE'
@@ -255,7 +256,7 @@ $data = array(
 		'BILLLA_BACKGROUND' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_BACKGROUND'),
 			'SORT' => 2700,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_LA_BACKGROUND_DESC'),
 			'INPUT' => array(
 				'TYPE' => 'FILE'
@@ -265,7 +266,7 @@ $data = array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_BACKGROUND_STYLE'),
 			'SORT' => 2800,
 			'TYPE' => 'SELECT',
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'INPUT' => array(
 				'TYPE' => 'ENUM',
 				'OPTIONS' => array(
@@ -277,7 +278,7 @@ $data = array(
 		'BILLLA_MARGIN_TOP' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_MARGIN_TOP'),
 			'SORT' => 2900,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '15',
 				'PROVIDER_KEY' => 'VALUE'
@@ -286,7 +287,7 @@ $data = array(
 		'BILLLA_MARGIN_RIGHT' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_MARGIN_RIGHT'),
 			'SORT' => 3000,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '15',
 				'PROVIDER_KEY' => 'VALUE'
@@ -295,7 +296,7 @@ $data = array(
 		'BILLLA_MARGIN_BOTTOM' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_MARGIN_BOTTOM'),
 			'SORT' => 3100,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '15',
 				'PROVIDER_KEY' => 'VALUE'
@@ -304,11 +305,191 @@ $data = array(
 		'BILLLA_MARGIN_LEFT' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_LA_MARGIN_LEFT'),
 			'SORT' => 3200,
-			'GROUP' => 'CONNECT_SETTINGS_BILLLA',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '20',
 				'PROVIDER_KEY' => 'VALUE'
 			)
-		)
+		),
+		"BILLLA_COLUMN_NUMBER_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_NUMBER_SHOW"),
+			'SORT' => 3300,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_COLUMN_NUMBER_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_NUMBER_TITLE"),
+			'SORT' => 3400,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_NUMBER_VALUE", null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_COLUMN_NAME_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_NAME_SHOW"),
+			'SORT' => 3500,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_COLUMN_NAME_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_NAME_TITLE"),
+			'SORT' => 3600,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_NAME_VALUE", null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_COLUMN_QUANTITY_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_QUANTITY_SHOW"),
+			'SORT' => 3700,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_COLUMN_QUANTITY_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_QUANTITY_TITLE"),
+			'SORT' => 3900,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_QUANTITY_VALUE", null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_COLUMN_MEASURE_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_MEASURE_SHOW"),
+			'SORT' => 4000,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_COLUMN_MEASURE_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_MEASURE_SHOW"),
+			'SORT' => 4100,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage('SALE_HPS_BILL_LA_COLUMN_MEASURE_VALUE', null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_COLUMN_PRICE_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_PRICE_SHOW"),
+			'SORT' => 4200,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_COLUMN_PRICE_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_PRICE_TITLE"),
+			'SORT' => 4300,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_PRICE_VALUE", null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_COLUMN_SUM_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_SUM_SHOW"),
+			'SORT' => 4400,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_COLUMN_SUM_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_SUM_TITLE"),
+			'SORT' => 4500,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_SUM_VALUE", null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_COLUMN_VAT_RATE_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_VAT_RATE_SHOW"),
+			'SORT' => 4600,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_COLUMN_VAT_RATE_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_COLUMN_VAT_RATE_TITLE"),
+			'SORT' => 4700,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage('SALE_HPS_BILL_LA_COLUMN_VAT_RATE_VALUE', null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_HEADER" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_HEADER"),
+			'SORT' => 4800,
+			'GROUP' => 'HEADER_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage('SALE_HPS_BILL_LA_HEADER_VALUE', null, 'la'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLLA_PAYER_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_PAYER_SHOW"),
+			'SORT' => 4900,
+			'GROUP' => 'BUYER_PERSON_COMPANY',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLLA_TOTAL_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_LA_TOTAL_SHOW"),
+			'SORT' => 5000,
+			'GROUP' => 'FOOTER_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
 	)
 );

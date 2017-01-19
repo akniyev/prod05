@@ -155,7 +155,7 @@ class CDeliveryPecom
 				"CITY" => array(
 					"TYPE" => "TEXT_RO",
 					"TITLE" => GetMessage('SALE_DH_PECOM_EXCH_CITY'),
-					"VALUE" => $locString,
+					"DEFAULT" => $locString,
 					"GROUP" => "exchange_sett"
 				),
 				"CITY_DELIVERY" => array(

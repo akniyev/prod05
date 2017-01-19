@@ -23,6 +23,7 @@ $MESS["CPT_BC_FILTER_VIEW_MODE"] = "Вид отображения умного �
 $MESS["CPT_BC_TPL_TOP_VIEW_MODE"] = "Показ элементов top'а";
 $MESS["CPT_BC_FILTER_VIEW_MODE_VERTICAL"] = "Вертикальный";
 $MESS["CPT_BC_FILTER_VIEW_MODE_HORIZONTAL"] = "Горизонтальный";
+$MESS["CPT_BC_INSTANT_RELOAD"] = "Мгновенная фильтрация при включенном AJAX";
 $MESS["CPT_BC_SECTIONS_SHOW_PARENT_NAME"] = "Показывать название раздела";
 $MESS["CPT_BC_SECTIONS_HIDE_SECTION_NAME"] = "Не показывать названия подразделов";
 $MESS["CP_BC_TPL_PROP_EMPTY"] = "не выбрано";

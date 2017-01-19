@@ -200,7 +200,7 @@ abstract class BasketItemBase
 		$value = parent::getField($name);
 		if ($name == "BASE_PRICE" && $value === null)
 		{
-			$value = roundEx($this->getField('PRICE') + $this->getField('DISCOUNT_PRICE'), SALE_VALUE_PRECISION);
+			$value = PriceMaths::roundPrecision($this->getField('PRICE') + $this->getField('DISCOUNT_PRICE'));
 		}
 
 		return $value;
@@ -234,6 +234,16 @@ abstract class BasketItemBase
 		if (array_key_exists('VAT_INCLUDED', $fields) && strval($fields['VAT_INCLUDED']) != '')
 		{
 			$this->setField('VAT_INCLUDED', $fields['VAT_INCLUDED']);
+		}
+		
+		if (array_key_exists('PRODUCT_PROVIDER_CLASS', $fields) && strval($fields['PRODUCT_PROVIDER_CLASS']) != '')
+		{
+			$this->setField('PRODUCT_PROVIDER_CLASS', $fields['PRODUCT_PROVIDER_CLASS']);
+		}
+
+		if (array_key_exists('SUBSCRIBE', $fields) && strval($fields['SUBSCRIBE']) != '')
+		{
+			$this->setField('SUBSCRIBE', $fields['SUBSCRIBE']);
 		}
 
 		return parent::setFields($fields);
@@ -285,9 +295,9 @@ abstract class BasketItemBase
 			return 0;
 
 		if ($this->isVatInPrice())
-			$vat = roundEx(($this->getPrice() * $this->getQuantity() * $this->getVatRate() / ($this->getVatRate() + 1)), SALE_VALUE_PRECISION);
+			$vat = PriceMaths::roundPrecision(($this->getPrice() * $this->getQuantity() * $this->getVatRate() / ($this->getVatRate() + 1)));
 		else
-			$vat = roundEx(($this->getPrice() * $this->getQuantity() * $this->getVatRate()), SALE_VALUE_PRECISION);
+			$vat = PriceMaths::roundPrecision(($this->getPrice() * $this->getQuantity() * $this->getVatRate()));
 
 		return $vat;
 	}
@@ -297,7 +307,7 @@ abstract class BasketItemBase
 	 */
 	public function getInitialPrice()
 	{
-		$price = roundEx($this->getPrice() * $this->getQuantity(), SALE_VALUE_PRECISION);
+		$price = PriceMaths::roundPrecision($this->getPrice() * $this->getQuantity());
 
 		if ($this->isVatInPrice())
 			$price -= $this->getVat();
@@ -310,7 +320,7 @@ abstract class BasketItemBase
 	 */
 	public function getFinalPrice()
 	{
-		$price = roundEx($this->getPrice() * $this->getQuantity(), SALE_VALUE_PRECISION);
+		$price = PriceMaths::roundPrecision($this->getPrice() * $this->getQuantity());
 
 		if (!$this->isVatInPrice())
 			$price += $this->getVat();
@@ -365,24 +375,6 @@ abstract class BasketItemBase
 	public function getDefaultPrice()
 	{
 		return floatval($this->getField('DEFAULT_PRICE'));
-	}
-
-	/**
-	 * @param float $price			Price value.
-	 * @return void
-	 */
-	protected function setPrice($price)
-	{
-		$this->setField('PRICE', floatval($price));
-	}
-
-	/**
-	 * @param float $quantity		Quantity value.
-	 * @return void
-	 */
-	protected function setQuantity($quantity)
-	{
-		$this->setField('QUANTITY', floatval($quantity));
 	}
 
 	/**
@@ -515,5 +507,6 @@ abstract class BasketItemBase
 
 		return false;
 	}
+
 
 }

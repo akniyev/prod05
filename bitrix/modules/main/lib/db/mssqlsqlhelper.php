@@ -324,6 +324,18 @@ class MssqlSqlHelper extends SqlHelper
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @param string $fieldName
+	 *
+	 * return string
+	 */
+	public function softCastTextToChar($fieldName)
+	{
+		return 'CONVERT(VARCHAR(8000), '.$fieldName.')';
+	}
+
+	/**
 	 * Returns callback to be called for a field value on fetch.
 	 *
 	 * @param Entity\ScalarField $field Type "source".
@@ -633,7 +645,15 @@ class MssqlSqlHelper extends SqlHelper
 			{
 				$sourceSelectValues[] = $this->convertToDb($insertFields[$columnName], $tableField);
 				$sourceSelectColumns[] = $quotedName;
-				$targetConnectColumns[] = "source.".$quotedName." = target.".$quotedName;
+				if($insertFields[$columnName] === null)
+				{
+					//can't just compare NULLs
+					$targetConnectColumns[] = "(source.".$quotedName." IS NULL AND target.".$quotedName." IS NULL)";
+				}
+				else
+				{
+					$targetConnectColumns[] = "(source.".$quotedName." = target.".$quotedName.")";
+				}
 			}
 
 			if (isset($updateFields[$columnName]) || array_key_exists($columnName, $updateFields))

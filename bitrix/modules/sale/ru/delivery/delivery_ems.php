@@ -632,7 +632,7 @@ class CDeliveryEMS
 
 			return array(
 				"RESULT" => "OK",
-				"VALUE" => $data['rsp']['price'],
+				"VALUE" => $result,
 				'TRANSIT' => $data['rsp']['term']['min'].'-'.$data['rsp']['term']['max']." ".GetMessage("SALE_DH_EMS_DAYS")
 			);
 		}

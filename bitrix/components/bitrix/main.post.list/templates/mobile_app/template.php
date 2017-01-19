@@ -18,6 +18,7 @@ CUtil::InitJSCore(array("uploader", "date", "fx", "ls")); // does not work
 ob_start();
 ?>
 <!--RCRD_#FULL_ID#-->
+<a id="com#ID#" name="com#ID#" bx-mpl-full-id="#FULL_ID#"></a>
 <div id="record-#FULL_ID#" class="post-comment-block post-comment-block-#NEW#" <?=($arResult["ajax_comment"] == $comment["ID"] ? ' data-send="Y"' : '')?> <?
 	?>bx-mpl-id="#FULL_ID#" <?
 	?>bx-mpl-reply-show="#SHOW_POST_FORM#" <?
@@ -25,6 +26,7 @@ ob_start();
 	?>bx-mpl-edit-url="#EDIT_URL#" bx-mpl-edit-show="#EDIT_SHOW#" <?
 	?>bx-mpl-moderate-url="#MODERATE_URL#" bx-mpl-moderate-show="#MODERATE_SHOW#" bx-mpl-moderate-approved="#APPROVED#" <?
 	?>bx-mpl-delete-url="#DELETE_URL###ID#" bx-mpl-delete-show="#DELETE_SHOW#" <?
+	?>bx-mpl-createtask-url="#CREATETASK_URL###ID#" bx-mpl-createtask-show="#CREATETASK_SHOW#" <?
 	?>bx-mpl-vote-id="#VOTE_ID#" <?
 	?>onclick="return mobileShowActions('#ENTITY_XML_ID#', '#ID#', arguments[0])" <?
 ?>>
@@ -47,10 +49,16 @@ BX.ready(function()
 	<!--/noindex-->
 	#AFTER_HEADER#
 	#BEFORE#
-	<div class="post-comment-text" id="record-#FULL_ID#-text">#TEXT#</div>
+	<div class="post-comment-wrap">
+		<div class="post-comment-text" id="record-#FULL_ID#-text">#TEXT#</div>
+		<div class="post-comment-more" onclick="mobileExpand(this, event)"><div class="post-comment-more-but"></div></div>
+	</div>
 	#AFTER#
 <?
-if (\Bitrix\MobileApp\Mobile::getApiVersion() >= 10)
+if (
+		\Bitrix\MobileApp\Mobile::getApiVersion() >= 10
+		&& (!isset($arParams["SHOW_POST_FORM"]) || $arParams["SHOW_POST_FORM"] != 'N')
+)
 {
 	?><div class="post-comment-reply"><?
 		?><div class="post-comment-reply-text" id="record-#FULL_ID#-reply-action" onclick="return mobileReply('#ENTITY_XML_ID#', event)" <?
@@ -77,7 +85,10 @@ ob_start();
 		</div>
 	</div>
 	<!--/noindex-->
-	<div class="post-comment-text" id="record-#FULL_ID#-text">#TEXT#</div><?
+	<div class="post-comment-wrap">
+		<div class="post-comment-text" id="record-#FULL_ID#-text">#TEXT#</div>
+		<div class="post-comment-more" onclick="mobileExpand(this, event)"><div class="post-comment-more-but"></div></div>
+	</div><?
 if (\Bitrix\MobileApp\Mobile::getApiVersion() >= 10)
 {
 	?><div class="post-comment-reply"><?
@@ -133,7 +144,11 @@ ob_start();
 		</div>
 	</div>
 	<!--/noindex-->
-	<div class="post-comment-text">
+	<div class="post-comment-wrap">
+		<div class="post-comment-text" id="record-#FULL_ID#-text">#TEXT#</div>
+		<div class="post-comment-more" onclick="mobileExpand(this, event)"><div class="post-comment-more-but"></div></div>
+	</div>
+	<div class="post-comment-files">
 		<div class="comment-loading">
 			<div class="newpost-progress-label"></div>
 			<div id="record-#FULL_ID#-ind" class="newpost-progress-indicator"></div>

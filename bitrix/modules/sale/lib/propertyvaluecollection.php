@@ -53,7 +53,7 @@ class PropertyValueCollection
 		return $property;
 	}
 
-	public function addItem(PropertyValue $property)
+	public function addItem(Internals\CollectableEntity $property)
 	{
 		/** @var PropertyValue $property */
 		$property = parent::addItem($property);
@@ -77,7 +77,15 @@ class PropertyValueCollection
 		return $order->onPropertyValueCollectionModify(EventActions::DELETE, $oldItem);
 	}
 
-	public function onItemModify(PropertyValue $item, $name = null, $oldValue = null, $value = null)
+	/**
+	 * @param Internals\CollectableEntity $item
+	 * @param null $name
+	 * @param null $oldValue
+	 * @param null $value
+	 *
+	 * @return bool
+	 */
+	public function onItemModify(Internals\CollectableEntity $item, $name = null, $oldValue = null, $value = null)
 	{
 		$this->setAttributes($item);
 
@@ -110,6 +118,24 @@ class PropertyValueCollection
 		$propertyCollection = new static();
 		$propertyCollection->setOrder($order);
 
+		static $groups = array();
+
+		$personTypeId = $order->getPersonTypeId();
+
+		if (empty($groups[$personTypeId]))
+		{
+
+			$groupRes = OrderPropsGroupTable::getList(array(
+				'select' => array('ID', 'NAME', 'PERSON_TYPE_ID'),
+				'filter' => array('PERSON_TYPE_ID' => $order->getPersonTypeId()),
+				'order'  => array('SORT' => 'ASC'),
+			));
+			while ($row = $groupRes->fetch())
+			{
+				$groups[$personTypeId][$row['ID']] = $row;
+			}
+		}
+
 		$props = PropertyValue::loadForOrder($order);
 
 		/** @var PropertyValue $prop */
@@ -119,7 +145,7 @@ class PropertyValueCollection
 			$propertyCollection->addItem($prop);
 
 			$propertyCollection->setAttributes($prop);
-			$propertyCollection->propertyGroupMap[$prop->getGroupId() > 0 ? $prop->getGroupId() : 0][] = $prop;
+			$propertyCollection->propertyGroupMap[$prop->getGroupId() > 0 && isset($groups[$personTypeId][$prop->getGroupId()])? $prop->getGroupId() : 0][] = $prop;
 		}
 
 		return $propertyCollection;
@@ -154,11 +180,16 @@ class PropertyValueCollection
 				$itemsFromDb[$itemsFromDbItem["ID"]] = $itemsFromDbItem;
 		}
 
+		$isChanged = false;
+
 		/** @var PropertyValue $property */
 		foreach ($this->collection as $property)
 		{
 			$isNew = (bool)($property->getId() <= 0);
-			$isChanged = $property->isChanged();
+			if (!$isChanged && $property->isChanged())
+			{
+				$isChanged = true;
+			}
 
 			if ($order->getId() > 0 && $isChanged)
 			{
@@ -205,7 +236,7 @@ class PropertyValueCollection
 				unset($itemsFromDb[$property->getId()]);
 		}
 
-		if ($result->isSuccess() && $order->getId() > 0)
+		if ($result->isSuccess() && $order->getId() > 0 && $isChanged)
 		{
 			OrderHistory::addAction(
 				'PROPERTY',
@@ -488,5 +519,51 @@ class PropertyValueCollection
 			if($property->getField('ORDER_PROPS_ID') == $orderPropertyId)
 				return $property;
 		}
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return PropertyValueCollection
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$propertyValueCollectionClone = clone $this;
+		$propertyValueCollectionClone->isClone = true;
+
+		if ($this->order)
+		{
+			if ($cloneEntity->contains($this->order))
+			{
+				$propertyValueCollectionClone->order = $cloneEntity[$this->order];
+			}
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $propertyValueCollectionClone;
+		}
+
+		/**
+		 * @var int key
+		 * @var PropertyValue $propertyValue
+		 */
+		foreach ($propertyValueCollectionClone->collection as $key => $propertyValue)
+		{
+			if (!$cloneEntity->contains($propertyValue))
+			{
+				$cloneEntity[$propertyValue] = $propertyValue->createClone($cloneEntity);
+			}
+
+			$propertyValueCollectionClone->collection[$key] = $cloneEntity[$propertyValue];
+		}
+
+		return $propertyValueCollectionClone;
 	}
 }

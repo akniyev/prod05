@@ -27,6 +27,9 @@ $isItSavingProcess = ($_SERVER['REQUEST_METHOD'] == "POST" && (strlen($_POST["sa
 $isItReloadingProcess = ($_SERVER['REQUEST_METHOD'] == "POST" && (!isset($_POST["save"]) && !isset($_POST["apply"]))) ? true : false;
 $isItViewProcess = $_SERVER['REQUEST_METHOD'] != "POST";
 $classNamesList = Services\Manager::getHandlersList();
+$disableButtonsFlag = false;
+$backUrlReq = !empty($_REQUEST["back_url"]) ? str_replace("mode=list", "", $_REQUEST["back_url"]) : '';
+$backUrl = urlencode($APPLICATION->GetCurPageParam("", array("mode")));
 
 /*
  * Process form fields received via POST
@@ -63,21 +66,32 @@ if (($isItReloadingProcess || $isItSavingProcess) && $saleModulePermissions == "
 	else
 		$fields["ALLOW_EDIT_SHIPMENT"] = "N";
 
-	if(array_key_exists("LOGOTIP", $_FILES) && $_FILES["LOGOTIP"]["error"] == 0)
+	$needSaveLogo = false;
+
+	if(!empty($_POST["LOGOTIP_del"]) && $_POST["LOGOTIP_del"] == 'Y')
+	{
+		$fields["LOGOTIP"]["del"] = trim($_POST["LOGOTIP_del"]);
+		$needSaveLogo = true;
+	}
+	elseif(!empty($_FILES["LOGOTIP"]) && is_array($_FILES["LOGOTIP"]) && $_FILES["LOGOTIP"]["error"] == 0)
 	{
 		$imageFileError = CFile::CheckImageFile($_FILES["LOGOTIP"]);
 
 		if (is_null($imageFileError))
 		{
 			$fields["LOGOTIP"] = $_FILES["LOGOTIP"];
-			$fields["LOGOTIP"]["del"] = trim($_POST["LOGOTIP_del"]);
-			$fields["LOGOTIP"]["MODULE_ID"] = "sale";
-			CFile::SaveForDB($fields, "LOGOTIP", "sale/delivery/logotip");
+			$needSaveLogo = true;
 		}
 		else
 		{
 			$srvStrError .= $imageFileError . ".<br>";
 		}
+	}
+
+	if($needSaveLogo)
+	{
+		$fields["LOGOTIP"]["MODULE_ID"] = "sale";
+		CFile::SaveForDB($fields, "LOGOTIP", "sale/delivery/logotip");
 	}
 	elseif(isset($_POST["LOGOTIP_FILE_ID"]) && intval($_POST["LOGOTIP_FILE_ID"]))
 	{
@@ -213,7 +227,7 @@ if (($isItReloadingProcess || $isItSavingProcess) && $saleModulePermissions == "
 			}
 			elseif(strlen($_POST["save"]) > 0)
 			{
-				LocalRedirect((isset($_REQUEST["back_url"]) ? $_REQUEST["back_url"] : "sale_delivery_service_list.php?lang=".LANG."&filter_group=".$fields["PARENT_ID"]));
+				LocalRedirect((!empty($backUrlReq) ? $backUrlReq : "sale_delivery_service_list.php?lang=".LANG."&filter_group=".$fields["PARENT_ID"]));
 			}
 		}
 	}
@@ -227,6 +241,7 @@ if(empty($fields) && $ID <= 0)
 {
 	$fields["PARENT_ID"] = $_REQUEST["PARENT_ID"] ? $_REQUEST["PARENT_ID"] : 0;
 	$fields["PROFILE_ID"] = $_REQUEST["PROFILE_ID"] ? $_REQUEST["PROFILE_ID"] : "";
+	$fields["SERVICE_TYPE"] = $_REQUEST["SERVICE_TYPE"] ? $_REQUEST["SERVICE_TYPE"] : "";
 	$fields["CURRENCY"] = COption::GetOptionString("sale", "default_currency", "RUB");
 	$fields["RIGHTS"] = "YYY"; //Admin Manager Client
 	$fields["ACTIVE"] = "Y";
@@ -244,6 +259,7 @@ $serviceConfig = array();
 $canHasProfiles = false;
 $showRestrictions = true;
 $showExtraServices = false;
+$additionalTabs = array();
 $parentService = null;
 $showFieldsList = \Bitrix\Sale\Delivery\Services\Table::getMap();
 
@@ -327,26 +343,39 @@ if(isset($fields["CLASS_NAME"]) && strlen($fields["CLASS_NAME"]) > 0)
 	}
 
 	$service = Services\Manager::createObject($fields);
-	$res = $service->execAdminAction();
-
-	if(!$res->isSuccess())
-		$srvStrError = implode("<br>\n", $res->getErrorMessages())."<br>";
 
 	if($service)
 	{
+		$res = $service->execAdminAction();
+
+		if(!$res->isSuccess())
+			$srvStrError = implode("<br>\n", $res->getErrorMessages())."<br>";
+
 		$fields = $service->prepareFieldsForUsing($fields);
-		$serviceConfig = $service->getConfig();
+
+		try
+		{
+			$serviceConfig = $service->getConfig();
+		}
+		catch(\Bitrix\Main\SystemException $e)
+		{
+			$srvStrError .= "<br>\n".$e->getMessage()."<br>";
+			$disableButtonsFlag = true;
+		}
+
 		$showRestrictions = $service->whetherAdminRestrictionsShow();
 		$showExtraServices = $service->whetherAdminExtraServicesShow();
+		$additionalTabs = $service->getAdminAdditionalTabs();
 		$showFieldsList = $service->getAdminFieldsList();
 		$canHasProfiles = $service->canHasProfiles() && ($ID > 0);
 
 		if($ID <= 0)
 		{
-			if(strlen($fields["PROFILE_ID"]) > 0)
+			if(strlen($fields["PROFILE_ID"]) > 0 || strlen($fields["SERVICE_TYPE"]) > 0)
 			{
 				$fields["NAME"] = $service->getName();
 				$fields["DESCRIPTION"] = $service->getDescription();
+				$fields["LOGOTIP"] = $service->getLogotip();
 			}
 
 			if(strlen($fields["NAME"]) <= 0)
@@ -434,6 +463,23 @@ if($service && $ID > 0 && strlen($service->getTrackingClass()) > 0 )
 	);
 }
 
+if($service && is_array($additionalTabs) && !empty($additionalTabs) && $ID > 0)
+{
+	$i = 0;
+
+	foreach($additionalTabs as $tab)
+	{
+		if(!isset($tab["TAB"]))
+			throw new \Bitrix\Main\ArgumentNullException('additionalTabs["TAB"]');
+
+		$aTabs[] = array(
+			"DIV" => "edit_additional_tab_".$i++,
+			"TAB" => $tab["TAB"],
+			"ICON" => "sale",
+			"TITLE" => $tab["TITLE"]
+		);
+	}
+}
 $tabControl = new CAdminTabControl("tabControl", $aTabs);
 
 /* Profiles */
@@ -455,7 +501,7 @@ if($canHasProfiles)
 
 	$profilesList = new CAdminResult($dbSubServicesRes, $sTableIDSubService);
 	$profilesList->NavStart();
-	$lAdminSubServices->NavText($profilesList->GetNavPrint("PROFILES"));
+	$lAdminSubServices->NavText($profilesList->GetNavPrint(Loc::getMessage('SALE_DSE_TAB_PROFILES')));
 
 	$profileHeader = array(
 		array("id"=>"ID", "content"=>"ID", "sort"=>"ID", "default"=>true),
@@ -468,7 +514,7 @@ if($canHasProfiles)
 
 	while ($profileParams = $profilesList->NavNext(true, "f_"))
 	{
-		$actUrl = "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$f_PARENT_ID."&ID=".$f_ID.'&'.$tabControl->ActiveTabParam()."&back_url=".urlencode($APPLICATION->GetCurPageParam());
+		$actUrl = "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$f_PARENT_ID."&ID=".$f_ID.'&'.$tabControl->ActiveTabParam()."&back_url=".$backUrl;
 		$row =& $lAdminSubServices->AddRow($f_ID, $profileParams, $actUrl, Loc::getMessage("SALE_DSE_EDIT_DESCR"));
 
 		$row->AddField("NAME", '<a href="'.$actUrl.'" class="adm-list-table-icon-link">'.
@@ -485,8 +531,9 @@ if($canHasProfiles)
 		$row->AddField("CLASS_NAME", $f_CLASS_NAME);
 
 		$arActions = Array();
-		$arActions[] = array("ICON"=>"edit", "TEXT"=>Loc::getMessage("SALE_DSE_COPY"), "ACTION"=>$lAdminSubServices->ActionRedirect("sale_delivery_service_edit.php?lang=".LANG."&ID=".$f_ID."&action=copy&back_url=".urlencode($APPLICATION->GetCurPageParam())), "DEFAULT"=>true);
-		$arActions[] = array("ICON"=>"edit", "TEXT"=>Loc::getMessage("SALE_DSE_EDIT_DESCR"), "ACTION"=>$lAdminSubServices->ActionRedirect("sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$f_PARENT_ID."&ID=".$f_ID."&back_url=".urlencode($APPLICATION->GetCurPageParam())), "DEFAULT"=>true);
+		$arActions[] = array("ICON"=>"edit", "TEXT"=>Loc::getMessage("SALE_DSE_COPY"), "ACTION"=>$lAdminSubServices->ActionRedirect("sale_delivery_service_edit.php?lang=".LANG."&ID=".$f_ID."&action=copy&back_url=".$backUrl), "DEFAULT"=>true);
+		$arActions[] = array("ICON"=>"edit", "TEXT"=>Loc::getMessage("SALE_DSE_EDIT_DESCR"), "ACTION"=>$lAdminSubServices->ActionRedirect("sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$f_PARENT_ID."&ID=".$f_ID."&back_url=".$backUrl), "DEFAULT"=>true);
+
 		if ($saleModulePermissions >= "W")
 		{
 			$arActions[] = array("SEPARATOR" => true);
@@ -498,27 +545,29 @@ if($canHasProfiles)
 
 	if ($saleModulePermissions == "W")
 	{
-
-
 		foreach($service->getProfilesList() as $profileId => $profileName)
 		{
 			$menu[] = array(
 				"TEXT" => $profileName,
-				"LINK" => "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$ID."&PROFILE_ID=".$profileId."&back_url=".urlencode($APPLICATION->GetCurPageParam()),
+				"LINK" => "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$ID."&PROFILE_ID=".$profileId."&back_url=".$backUrl,
 			);
 		}
 
-		$aContext = array(
-			array(
-				"TEXT" => Loc::getMessage("SALE_DSE_ADD_NEW_PROFILE"),
-				"LINK" => "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$ID."&back_url=".urlencode($APPLICATION->GetCurPageParam()),
-				"TITLE" => Loc::getMessage("SALE_DSE_ADD_NEW_PROFILE_TITLE"),
-				"MENU" => $menu,
-				"ICON" => "btn_new"
-			)
-		);
+		if(!empty($menu))
+		{
+			$aContext = array(
+				array(
+					"TEXT" => Loc::getMessage("SALE_DSE_ADD_NEW_PROFILE"),
+					"LINK" => "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".$ID."&back_url=".$backUrl,
+					"TITLE" => Loc::getMessage("SALE_DSE_ADD_NEW_PROFILE_TITLE"),
+					"MENU" => $menu,
+					"ICON" => "btn_new"
+				)
+			);
 
-		$lAdminSubServices->AddAdminContextMenu($aContext, false);
+			$lAdminSubServices->AddAdminContextMenu($aContext, false);
+		}
+
 	}
 
 	if($_REQUEST["table_id"]==$sTableIDSubService)
@@ -628,7 +677,9 @@ require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_admin_aft
 </script>
 <?
 
-if($isGroup)
+if(!empty($backUrlReq))
+	$link = $backUrlReq;
+elseif($isGroup)
 	$link = "/bitrix/admin/sale_delivery_service_edit.php?lang=".LANGUAGE_ID."&filter_class_name=".urlencode('\Bitrix\Sale\Delivery\Services\Group');
 else
 	$link = "/bitrix/admin/sale_delivery_service_list.php?lang=".LANGUAGE_ID."&filter_group=".$fields["PARENT_ID"];
@@ -636,7 +687,7 @@ else
 $aMenu = array(
 	array(
 		"TEXT" => $isGroup ? Loc::getMessage("SALE_DSE_2GLIST") : Loc::getMessage("SALE_DSE_2DLIST"),
-		"LINK" => isset($_GET["back_url"]) ? $_GET["back_url"] : $link,
+		"LINK" => $link,
 		"ICON" => "btn_list"
 	)
 );
@@ -669,13 +720,24 @@ $context = new CAdminContextMenu($aMenu);
 $context->Show();
 
 if(strlen($srvStrError)>0)
-	CAdminMessage::ShowMessage(Array("DETAILS"=>$srvStrError, "TYPE"=>"ERROR", "MESSAGE"=>Loc::getMessage("SALE_DSE_ERROR"), "HTML"=>true));
+{
+	$m = Array("DETAILS"=>$srvStrError, "TYPE"=>"ERROR", "HTML"=>true);
+
+	if($isItSavingProcess)
+		$m["MESSAGE"] = Loc::getMessage("SALE_DSE_ERROR");
+
+	$adminMessage = new CAdminMessage($m);
+	echo $adminMessage->Show();
+}
 
 if($service)
 	$serviceMessage = $service->getAdminMessage();
 
 if(!empty($serviceMessage))
-	CAdminMessage::ShowMessage($serviceMessage);
+{
+	$adminMessage = new CAdminMessage($serviceMessage);
+	echo $adminMessage->Show();
+}
 
 ?>
 <form method="POST" action="<?=$APPLICATION->GetCurPageParam("",array("RESET_HANDLER_SETTINGS"))?>" name="form1" enctype="multipart/form-data">
@@ -685,11 +747,13 @@ if(!empty($serviceMessage))
 <input type="hidden" name="PARENT_ID" value="<?=(isset($fields["PARENT_ID"]) ? $fields["PARENT_ID"] : "0" )?>">
 <?=bitrix_sessid_post()?>
 
-<?foreach($fields as $fieldName => $fieldValue): /* if fields don't show let's make them hidden */?>
-	<?if(!is_array($fieldValue) && strlen($fieldValue) > 0 && !array_key_exists($fieldName, $showFieldsList)):?>
-		<input type="hidden" name="<?=$fieldName?>" value="<?=$fieldValue?>">
-	<?endif;?>
-<?endforeach;?>
+<?if(is_array($fields)):?>
+	<?foreach($fields as $fieldName => $fieldValue): /* if fields don't show let's make them hidden */?>
+		<?if(!is_array($fieldValue) && strlen($fieldValue) > 0 && !array_key_exists($fieldName, $showFieldsList)):?>
+			<input type="hidden" name="<?=$fieldName?>" value="<?=$fieldValue?>">
+		<?endif;?>
+	<?endforeach;?>
+<?endif;?>
 
 <?
 $tabControl->Begin();
@@ -721,7 +785,7 @@ $tabControl->BeginNextTab();
 						<?endforeach;?>
 					</select>
 				<?else:?>
-					<?=$fields["CLASS_NAME"]::getClassTitle()?>
+					<?=class_exists($fields["CLASS_NAME"]) ? $fields["CLASS_NAME"]::getClassTitle() : $fields["CLASS_NAME"]?>
 					<input type="hidden" name="CLASS_NAME" value="<?=$fields["CLASS_NAME"]?>">
 				<?endif;?>
 			</td>
@@ -744,7 +808,7 @@ $tabControl->BeginNextTab();
 
 	<?if(array_key_exists("DESCRIPTION", $showFieldsList)):?>
 		<tr>
-			<td width="40%"><?=Loc::getMessage("SALE_DSE_FORM_DESCRIPTION")?>:</td>
+			<td width="40%" class="adm-detail-valign-top"><?=Loc::getMessage("SALE_DSE_FORM_DESCRIPTION")?>:</td>
 			<td width="60%">
 				<?=wrapDescrLHE(
 					'DESCRIPTION',
@@ -787,7 +851,7 @@ $tabControl->BeginNextTab();
 
 	<?if(array_key_exists("LOGOTIP", $showFieldsList)):?>
 		<tr>
-			<td width="40%"><?=Loc::getMessage("SALE_DSE_FORM_LOGO")?>:</td>
+			<td width="40%" class="adm-detail-valign-top"><?=Loc::getMessage("SALE_DSE_FORM_LOGO")?>:</td>
 			<td width="60%">
 				<div><input type="file" name="LOGOTIP"><input type="hidden" name="LOGOTIP_FILE_ID" value="<?=$fields["LOGOTIP"]?>"></div>
 				<?if(isset($fields["LOGOTIP"]) && intval($fields["LOGOTIP"]) > 0):?>
@@ -857,8 +921,8 @@ $tabControl->BeginNextTab();
 						<?$hiddensConfigHtml .= \Bitrix\Sale\Internals\Input\Manager::getEditHtml("CONFIG[".$sectionKey."][".$name."]", $params)?>
 					<?else:?>
 						<tr>
-							<td width="40%"><?=$params["NAME"]?>:</td>
-							<td width="60%">
+							<td width="40%" class="adm-detail-valign-top"><?=$params["NAME"]?>:</td>
+							<td width="60%" class="adm-detail-valign-top">
 								<?=\Bitrix\Sale\Internals\Input\Manager::getEditHtml("CONFIG[".$sectionKey."][".$name."]", $params)?>
 							</td>
 						</tr>
@@ -909,12 +973,20 @@ $tabControl->BeginNextTab();
 					</tr>
 				<?endforeach;?>
 			<?endif;?>
+	<?endif;?>
+
+	<?if(is_array($additionalTabs) && !empty($additionalTabs) && $ID > 0):?>
+		<?foreach($additionalTabs as $addTab):?>
+			<?$tabControl->BeginNextTab();?>
+			<?if(!isset($addTab["CONTENT"])) throw new \Bitrix\Main\ArgumentNullException('additionalTabs["CONTENT"]');?>
+			<?=$addTab["CONTENT"]?>
+		<?endforeach;?>
 	<?endif;
 
 $tabControl->Buttons(
 	array(
-		"disabled" => ($saleModulePermissions < "W"),
-		"back_url" => isset($_REQUEST["back_url"]) ? $_REQUEST["back_url"] : ("/bitrix/admin/sale_delivery_service_list.php?lang=".LANGUAGE_ID)
+		"disabled" => ($disableButtonsFlag || $saleModulePermissions < "W"),
+		"back_url" => !empty($backUrlReq) ? $backUrlReq : ("/bitrix/admin/sale_delivery_service_list.php?lang=".LANGUAGE_ID)
 	)
 );
 
@@ -949,6 +1021,8 @@ function wrapDescrLHE($inputName, $content = '', $divId = false)
 
 	if($divId)
 		$ar['id'] = $divId;
+
+	\Bitrix\Main\Loader::includeModule('fileman');
 
 	$LHE = new CLightHTMLEditor;
 	$LHE->Show($ar);

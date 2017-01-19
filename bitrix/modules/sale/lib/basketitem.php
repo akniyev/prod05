@@ -23,10 +23,19 @@ Loc::loadMessages(__FILE__);
 class BasketItem
 	extends BasketItemBase
 {
+	/** @var null|BasketBundleCollection */
 	protected $bundleCollection = null;
+
+	/** @var null|BasketItem */
 	protected $parentBasketItem = null;
+
+	/** @var null|int */
 	protected $parentId = null;
 
+	/** @var bool|null */
+	private $isNew = null;
+
+	/** @var array */
 	protected static $mapFields = array();
 
 
@@ -131,7 +140,7 @@ class BasketItem
 		$result = new Result();
 		$id = $this->getId();
 		$changedFields = $this->fields->getChangedValues();
-		$isNew = ($id <= 0);
+		$this->isNew = ($id == 0);
 
 
 		if (!empty($changedFields))
@@ -142,7 +151,7 @@ class BasketItem
 			/** @var Event $event */
 			$event = new Event('sale', EventActions::EVENT_ON_BASKET_ITEM_BEFORE_SAVED, array(
 				'ENTITY' => $this,
-				'IS_NEW' => $isNew,
+				'IS_NEW' => $this->isNew(),
 				'VALUES' => $oldEntityValues,
 			));
 			$event->send();
@@ -211,6 +220,8 @@ class BasketItem
 				{
 					$fields['ORDER_ID'] = $orderId;
 					$includedOrderId = true;
+
+					$this->setFieldNoDemand('ORDER_ID', $orderId);
 				}
 			}
 
@@ -267,10 +278,12 @@ class BasketItem
 		{
 
 			$fields['ORDER_ID'] = $this->getParentOrderId();
-			$fields['DATE_INSERT'] = new DateTime();
-			$fields['DATE_UPDATE'] = new DateTime();
+			$this->setFieldNoDemand('ORDER_ID', $fields['ORDER_ID']);
 
+			$fields['DATE_INSERT'] = new DateTime();
 			$this->setFieldNoDemand('DATE_INSERT', $fields['DATE_INSERT']);
+
+			$fields['DATE_UPDATE'] = new DateTime();
 			$this->setFieldNoDemand('DATE_UPDATE', $fields['DATE_UPDATE']);
 
 			if (!$this->isBundleChild() && (!isset($fields["FUSER_ID"]) || intval($fields["FUSER_ID"]) <= 0))
@@ -314,7 +327,9 @@ class BasketItem
 				$fields['LID'] = $parentBasketItem->getField('LID');
 
 				if (!isset($fields["FUSER_ID"]) || intval($fields["FUSER_ID"]) <= 0)
+				{
 					$fields['FUSER_ID'] = intval($parentBasketItem->getField('FUSER_ID'));
+				}
 
 			}
 
@@ -380,7 +395,7 @@ class BasketItem
 			$result->setId($id);
 		}
 
-		if ($isNew || !empty($changedFields))
+		if ($this->isNew() || !empty($changedFields))
 		{
 			/** @var array $oldEntityValues */
 			$oldEntityValues = $this->fields->getOriginalValues();
@@ -388,7 +403,7 @@ class BasketItem
 			/** @var Event $event */
 			$event = new Event('sale', EventActions::EVENT_ON_BASKET_ITEM_SAVED, array(
 				'ENTITY' => $this,
-				'IS_NEW' => $isNew,
+				'IS_NEW' => $this->isNew(),
 				'VALUES' => $oldEntityValues,
 			));
 			$event->send();
@@ -421,24 +436,6 @@ class BasketItem
 			}
 		}
 
-		if ($eventName = static::getEntityEventName())
-		{
-			/** @var array $oldEntityValues */
-			$oldEntityValues = $this->fields->getOriginalValues();
-
-			if (!empty($oldEntityValues))
-			{
-				/** @var Event $event */
-				$event = new Event('sale', 'On'.$eventName.'EntitySaved', array(
-					'ENTITY' => $this,
-					'VALUES' => $oldEntityValues,
-				));
-				$event->send();
-			}
-		}
-
-		$this->fields->clearChanged();
-
 		// bundle
 
 		if ($this->isBundleParent())
@@ -458,7 +455,7 @@ class BasketItem
 
 				$itemsFromDb = array();
 
-				if (!$isNew)
+				if (!$this->isNew())
 				{
 					$itemsFromDbList = Internals\BasketTable::getList(
 						array(
@@ -501,6 +498,24 @@ class BasketItem
 		$r = $basketPropertyCollection->save();
 		if (!$r->isSuccess())
 			$result->addErrors($r->getErrors());
+
+		if ($eventName = static::getEntityEventName())
+		{
+			/** @var array $oldEntityValues */
+			$oldEntityValues = $this->fields->getOriginalValues();
+
+			if (!empty($oldEntityValues))
+			{
+				/** @var Event $event */
+				$event = new Event('sale', 'On'.$eventName.'EntitySaved', array(
+					'ENTITY' => $this,
+					'VALUES' => $oldEntityValues,
+				));
+				$event->send();
+			}
+		}
+
+		$this->fields->clearChanged();
 
 		return $result;
 	}
@@ -816,7 +831,8 @@ class BasketItem
 	public function isBundleChild()
 	{
 		$parentId = $this->getParentId();
-		if (strval($parentId) != '' && $parentId != $this->getBasketCode())
+		if ((strval($parentId) != '' && $parentId != $this->getBasketCode())
+			|| (intval($this->getField('SET_PARENT_ID')) > 0 && intval($this->getField('SET_PARENT_ID')) != $this->getId()) )
 		{
 			return true;
 		}
@@ -897,7 +913,7 @@ class BasketItem
 	}
 
 	/**
-	 * @return array
+	 * @return BasketBundleCollection
 	 */
 	public function getBundleCollection()
 	{
@@ -1099,6 +1115,135 @@ class BasketItem
 			static::$mapFields = parent::getAllFieldsByMap(Internals\BasketTable::getMap());
 		}
 		return static::$mapFields;
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return BasketItem
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$basketItemClone = clone $this;
+		$basketItemClone->isClone = true;
+
+		/** @var Internals\Fields $fields */
+		if ($fields = $this->fields)
+		{
+			$basketItemClone->fields = $fields->createClone($cloneEntity);
+		}
+
+		/** @var Internals\Fields $calculatedFields */
+		if ($calculatedFields = $this->calculatedFields)
+		{
+			$basketItemClone->calculatedFields = $calculatedFields->createClone($cloneEntity);
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $basketItemClone;
+		}
+
+		/** @var BasketItem $parentbasketItem */
+		if ($parentbasketItem = $this->parentBasketItem)
+		{
+			if (!$cloneEntity->contains($parentbasketItem))
+			{
+				$cloneEntity[$parentbasketItem] = $parentbasketItem->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($parentbasketItem))
+			{
+				$basketItemClone->parentBasketItem = $cloneEntity[$parentbasketItem];
+			}
+		}
+
+		/** @var BasketPropertiesCollection $propertyCollection */
+		if ($propertyCollection = $this->getPropertyCollection())
+		{
+			if (!$cloneEntity->contains($propertyCollection))
+			{
+				$cloneEntity[$propertyCollection] = $propertyCollection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($propertyCollection))
+			{
+				$basketItemClone->propertyCollection = $cloneEntity[$propertyCollection];
+			}
+		}
+
+		if ($collection = $this->getCollection())
+		{
+			if (!$cloneEntity->contains($collection))
+			{
+				$cloneEntity[$collection] = $collection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($collection))
+			{
+				$basketItemClone->collection = $cloneEntity[$collection];
+			}
+		}
+
+		/** @var BasketBundleCollection $bundleCollection */
+		if ($bundleCollection = $this->getBundleCollection())
+		{
+			if (!$cloneEntity->contains($bundleCollection))
+			{
+				$cloneEntity[$bundleCollection] = $bundleCollection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($bundleCollection))
+			{
+				$basketItemClone->bundleCollection = $cloneEntity[$bundleCollection];
+			}
+		}
+		
+		
+
+		return $basketItemClone;
+	}
+
+
+	/**
+	 * @internal
+	 * @return null|bool
+	 */
+	public function isNew()
+	{
+		return $this->isNew;
+	}
+
+	/**
+	 * @return Result
+	 */
+	public function verify()
+	{
+		$result = new Result();
+
+		if ($basketPropertyCollection = $this->getPropertyCollection())
+		{
+			$r = $basketPropertyCollection->verify();
+			if (!$r->isSuccess())
+			{
+				if ($r instanceof ResultWarning)
+				{
+					$result->addWarnings($r->getErrors());
+				}
+				else
+				{
+					$result->addErrors($r->getErrors());
+				}
+			}
+		}
+		
+		return $result;
 	}
 
 }

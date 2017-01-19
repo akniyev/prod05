@@ -5,6 +5,7 @@ use Bitrix\Main\Config\Option;
 use Bitrix\Main\Context;
 use Bitrix\Main\Data\AppCacheManifest;
 use Bitrix\Main\Data\StaticHtmlCache;
+use Bitrix\Main\Loader;
 
 \Bitrix\Main\Localization\Loc::loadMessages(__FILE__);
 
@@ -17,8 +18,8 @@ final class Frame
 	private static $onBeforeHandleKey = false;
 	private static $onRestartBufferHandleKey = false;
 	private static $onBeforeLocalRedirect = false;
-	private static $preventAutoUpdate = false;
-	private $injectedJS = false;
+	private static $autoUpdate = true;
+	private static $autoUpdateTTL = 0;
 	private $isCompositeInjected = false;
 	private $isRedirect = false;
 	private $isBufferRestarted = false;
@@ -83,6 +84,7 @@ final class Frame
 		if (count($dynamicAreas) > 0 && ($areas = self::getFrameIndexes($content)) !== false)
 		{
 			$offset = 0;
+			$pageBlocks = $this->getPageBlocks();
 			foreach ($areas as $area)
 			{
 				$dynamicArea = FrameStatic::getDynamicArea($area->id);
@@ -94,23 +96,46 @@ final class Frame
 				$realId = $dynamicArea->getContainerId() !== null ? $dynamicArea->getContainerId() : "bxdynamic_".$area->id;
 				$assets =  Asset::getInstance()->getAssetInfo($dynamicArea->getAssetId(), $dynamicArea->getAssetMode());
 				$areaContent = \CUtil::BinSubstr($content, $area->openTagEnd, $area->closingTagStart - $area->openTagEnd);
+				$areaContentMd5 = md5($areaContent);
 
-				$data["dynamic"][] = array(
-					"ID"                      => $realId,
-					"CONTENT"                 => $areaContent,
-					"HASH"                    => md5($areaContent),
-					"PROPS"=> array(
-						"USE_BROWSER_STORAGE" => $dynamicArea->getBrowserStorage(),
-						"AUTO_UPDATE"         => $dynamicArea->getAutoUpdate(),
-						"USE_ANIMATION"       => $dynamicArea->getAnimation(),
-						"CSS"                 => $assets["CSS"],
-						"JS"                  => $assets["JS"],
-						"STRINGS"             => $assets["STRINGS"],
-					),
-				);
+				$blockId = $dynamicArea->getId();
+				$hasSameContent =
+					isset($pageBlocks[$blockId]) &&
+					isset($pageBlocks[$blockId]["hash"]) &&
+					$pageBlocks[$blockId]["hash"] === $areaContentMd5;
+
+				if (!$hasSameContent)
+				{
+					$data["dynamic"][] = array(
+						"ID" => $realId,
+						"CONTENT" => $areaContent,
+						"HASH" => $areaContentMd5,
+						"PROPS"=> array(
+							"CONTAINER_ID" => $dynamicArea->getContainerId(),
+							"USE_BROWSER_STORAGE" => $dynamicArea->getBrowserStorage(),
+							"AUTO_UPDATE" => $dynamicArea->getAutoUpdate(),
+							"USE_ANIMATION" => $dynamicArea->getAnimation(),
+							"CSS" => $assets["CSS"],
+							"JS" => $assets["JS"],
+							"STRINGS" => $assets["STRINGS"],
+						),
+					);
+				}
 
 				$data["static"] .= \CUtil::BinSubstr($content, $offset, $area->openTagStart - $offset);
-				$data["static"] .= $dynamicArea->getContainerId() !== null ? $dynamicArea->getStub() : '<div id="bxdynamic_'.$area->id.'">'.$dynamicArea->getStub().'</div>';
+				
+				if ($dynamicArea->getContainerId() === null)
+				{
+					$data["static"] .= 
+						'<div id="bxdynamic_'.$area->id.'_start" style="display:none"></div>'.
+						$dynamicArea->getStub().
+						'<div id="bxdynamic_'.$area->id.'_end" style="display:none"></div>';
+				}
+				else
+				{
+					$data["static"] .= $dynamicArea->getStub();
+				}
+
 				$offset = $area->closingTagEnd;
 			}
 
@@ -127,6 +152,22 @@ final class Frame
 		$data["md5"] = md5($data["static"]);
 
 		return $data;
+	}
+
+	private function getPageBlocks()
+	{
+		$blocks = array();
+		$json = Context::getCurrent()->getServer()->get("HTTP_BX_CACHE_BLOCKS");
+		if ($json !== null && strlen($json) > 0)
+		{
+			$blocks = json_decode($json, true);
+			if ($blocks === null)
+			{
+				$blocks = array();
+			}
+		}
+
+		return $blocks;
 	}
 
 	/**
@@ -216,7 +257,7 @@ final class Frame
 			{
 				$params["CACHE_MODE"] = "HTMLCACHE";
 
-				if (Option::get("main", "~show_composite_banner", "Y") == "Y")
+				if (self::isBannerEnabled())
 				{
 					$options = \CHTMLPagesCache::getOptions();
 					$params["banner"] = array(
@@ -234,9 +275,14 @@ final class Frame
 		}
 
 		$params["storageBlocks"] = array();
+		$params["dynamicBlocks"] = array();
 		$dynamicAreas = FrameStatic::getDynamicAreas();
 		foreach ($dynamicAreas as $id => $dynamicArea)
 		{
+			$params["dynamicBlocks"][$dynamicArea->getId()] = array(
+				"hash" => md5($dynamicArea->getStub())
+			);
+
 			if ($dynamicArea->getBrowserStorage())
 			{
 				$realId = $dynamicArea->getContainerId() !== null ? $dynamicArea->getContainerId() : "bxdynamic_".$id;
@@ -244,14 +290,11 @@ final class Frame
 			}
 		}
 
-		$this->injectedJS = (
-			self::getPreventAutoUpdate()
-				? $this->getInjectedJsWORequest($params)
-				: $this->getInjectedJs($params)
-		);
+		$params["AUTO_UPDATE"] = self::getAutoUpdate();
+		$params["AUTO_UPDATE_TTL"] = self::getAutoUpdateTTL();
 
 		Asset::getInstance()->addString(
-			$this->injectedJS["start"],
+			$this->getInjectedJs($params),
 			false,
 			AssetLocation::BEFORE_CSS,
 			self::getUseHTMLCache() ? AssetMode::COMPOSITE : AssetMode::ALL
@@ -340,11 +383,6 @@ final class Frame
 			$originalContent = $compositeContent;
 			return true;
 		}
-		elseif (self::getUseHTMLCache())
-		{
-			$originalContent = $this->replaceInjections($originalContent);
-			return false;
-		}
 		elseif (self::getUseAppCache())
 		{
 			$originalContent = $compositeContent;
@@ -362,7 +400,7 @@ final class Frame
 	 *
 	 * The second one:
 	 * If it's simple hit the content will be modified also,
-	 * all dynamic blocks will be cutted out of the content - static part.
+	 * all dynamic blocks will be cut out of the content - static part.
 	 *
 	 * @param string $content Html page content.
 	 *
@@ -370,38 +408,43 @@ final class Frame
 	 */
 	public function processPageContent($content)
 	{
-		global $APPLICATION;
+		global $APPLICATION, $USER;
 
 		$dividedData = $this->getDividedPageData($content);
 		$htmlCacheChanged = false;
 
 		if (self::getUseHTMLCache())
 		{
-			$isLicenseExpired = self::isLicenseExpired();
 			$staticHTMLCache = StaticHtmlCache::getInstance();
 			if ($staticHTMLCache->isCacheable())
 			{
 				$cacheExists = $staticHTMLCache->exists();
-				if (!$cacheExists || $staticHTMLCache->getMd5() !== $dividedData["md5"])
+				$rewriteCache = $staticHTMLCache->getMd5() !== $dividedData["md5"];
+				if (self::getAutoUpdate() && self::getAutoUpdateTTL() > 0 && $cacheExists)
 				{
-					if ($cacheExists)
+					$mtime = $staticHTMLCache->getLastModified();
+					if ($mtime !== false && ($mtime + self::getAutoUpdateTTL()) > time())
 					{
-						$staticHTMLCache->delete();
+						$rewriteCache = false;
 					}
+				}
 
-					if (!$isLicenseExpired)
+				$invalidateCache = self::getAutoUpdate() === false && self::isInvalidationRequest();
+
+				if (!$cacheExists || $rewriteCache || $invalidateCache)
+				{
+					if ($invalidateCache || FrameLocker::lock($staticHTMLCache->getCacheKey()))
 					{
 						$success = $staticHTMLCache->write($dividedData["static"], $dividedData["md5"]);
+
 						if ($success)
 						{
 							$htmlCacheChanged = true;
 							$staticHTMLCache->setUserPrivateKey();
 						}
+
+						FrameLocker::unlock($staticHTMLCache->getCacheKey());
 					}
-				}
-				else if ($isLicenseExpired)
-				{
-					$staticHTMLCache->delete();
 				}
 			}
 			else
@@ -438,6 +481,14 @@ final class Frame
 				"spread"            => array_map(array("CUtil", "JSEscape"), $APPLICATION->GetSpreadCookieUrls()),
 			);
 
+			if($USER->IsAuthorized() && $this->getUseAppCache())
+			{
+				if(Loader::includeModule("pull") && \CPullOptions::CheckNeedRun())
+				{
+					$content["pull"] = \CPullChannel::GetConfig($USER->GetID());
+				}
+			}
+
 			$content = \CUtil::PhpToJSObject($content);
 		}
 		else
@@ -448,10 +499,14 @@ final class Frame
 		return $content;
 	}
 
-	private function getAjaxError()
+	private function getAjaxError($errorMsg = null)
 	{
 		$error = "unknown";
-		if ($this->isBufferRestarted)
+		if ($errorMsg !== null)
+		{
+			$error = $errorMsg;
+		}
+		elseif ($this->isBufferRestarted)
 		{
 			$error = "buffer_restarted";
 		}
@@ -483,36 +538,6 @@ final class Frame
 		return \CUtil::PhpToJSObject($response);
 	}
 
-	private function replaceInjections($content)
-	{
-		$ids = array();
-		$dynamicAreas = FrameStatic::getDynamicAreas();
-		foreach ($dynamicAreas as $dynamicArea)
-		{
-			if ($dynamicArea->getContainerId() === null)
-			{
-				$ids[] = $dynamicArea->getId();
-			}
-		}
-
-		if (count($ids) > 0)
-		{
-			$content = preg_replace(
-				array(
-					'/<!--\'start_frame_cache_('.implode("|", $ids).')\'-->/',
-					'/<!--\'end_frame_cache_('.implode("|", $ids).')\'-->/',
-				),
-				array(
-					'<div id="bxdynamic_\1">',
-					'</div>',
-				),
-				$content
-			);
-		}
-
-		return $content;
-	}
-
 	/**
 	 * OnBeforeRestartBuffer event handler.
 	 * Disables composite mode when called.
@@ -524,7 +549,7 @@ final class Frame
 		self::getInstance()->isBufferRestarted = true;
 		self::setEnable(false);
 
-		if (defined("BX_COMPOSITE_DEBUG"))
+		if (defined("BX_COMPOSITE_DEBUG") && BX_COMPOSITE_DEBUG === true)
 		{
 			AddMessage2Log(
 				"RestartBuffer method was invoked\n".
@@ -663,25 +688,64 @@ final class Frame
 	}
 
 	/**
+	 * Sets autoUpdate property
+	 * @param bool $flag
+	 * @return void
+	 */
+	public static function setAutoUpdate($flag)
+	{
+		self::$autoUpdate = $flag === false ? false : true;
+	}
+
+	/**
+	 * Gets autoUpdate property
+	 * @return bool
+	 */
+	public static  function getAutoUpdate()
+	{
+		return self::$autoUpdate;
+	}
+	/**
+	 * Sets auto update ttl
+	 * @param int $ttl - number of seconds
+	 * @return void
+	 */
+	public static function setAutoUpdateTTL($ttl)
+	{
+		self::$autoUpdateTTL = intval($ttl);
+	}
+
+	/**
+	 * Gets auto update ttl
+	 * @return int
+	 */
+	public static function getAutoUpdateTTL()
+	{
+		return self::$autoUpdateTTL;
+	}
+
+	/**
 	 * Sets useHTMLCache property.
 	 *
-	 * @param boolean preventAutoUpdate property.
+	 * @param boolean $preventAutoUpdate property.
 	 *
+	 * @deprecated use setAutoUpdate
 	 * @return void
 	 */
 	public static function setPreventAutoUpdate($preventAutoUpdate = true)
 	{
-		self::$preventAutoUpdate = $preventAutoUpdate;
+		self::$autoUpdate = !$preventAutoUpdate;
 	}
 
 	/**
 	 * Gets preventAutoUpdate property.
 	 *
 	 * @return boolean
+	 * @deprecated use getAutoUpdate
 	 */
 	public static function getPreventAutoUpdate()
 	{
-		return self::$preventAutoUpdate;
+		return !self::$autoUpdate;
 	}
 
 	/**
@@ -706,6 +770,13 @@ final class Frame
 		return self::$isAjaxRequest;
 	}
 
+	public static function isInvalidationRequest()
+	{
+		return
+			self::isAjaxRequest() &&
+			Context::getCurrent()->getServer()->get("HTTP_BX_INVALIDATE_CACHE") === "Y";
+	}
+
 	public static function sendRandHeader()
 	{
 		$bxRandom = \CHTMLPagesCache::getAjaxRandom();
@@ -727,9 +798,35 @@ final class Frame
 		$vars = \CUtil::PhpToJSObject($params);
 
 		$inlineJS = <<<JS
-			(function(w) {
+			(function(w, d) {
 
 			var v = w.frameCacheVars = $vars;
+			var inv = false;
+			if (v.AUTO_UPDATE === false)
+			{
+				if (v.AUTO_UPDATE_TTL && v.AUTO_UPDATE_TTL > 0)
+				{
+					var lm = Date.parse(d.lastModified);
+					if (!isNaN(lm))
+					{
+						var td = new Date().getTime();
+						if ((lm + v.AUTO_UPDATE_TTL * 1000) >= td)
+						{
+							w.frameRequestStart = false;
+							w.preventAutoUpdate = true;
+							return;
+						}
+						inv = true;
+					}
+				}
+				else
+				{
+					w.frameRequestStart = false;
+					w.preventAutoUpdate = true;
+					return;
+				}
+			}
+
 			var r = w.XMLHttpRequest ? new XMLHttpRequest() : (w.ActiveXObject ? new w.ActiveXObject("Microsoft.XMLHTTP") : null);
 			if (!r) { return; }
 
@@ -742,7 +839,13 @@ final class Frame
 			r.open("GET", u, true);
 			r.setRequestHeader("BX-ACTION-TYPE", "get_dynamic");
 			r.setRequestHeader("BX-CACHE-MODE", m);
-			try { r.setRequestHeader("BX-REF", document.referrer || "");} catch(e) {}
+			r.setRequestHeader("BX-CACHE-BLOCKS", v.dynamicBlocks ? JSON.stringify(v.dynamicBlocks) : "");
+			if (inv)
+			{
+				r.setRequestHeader("BX-INVALIDATE-CACHE", "Y");
+			}
+			
+			try { r.setRequestHeader("BX-REF", d.referrer || "");} catch(e) {}
 
 			if (m === "APPCACHE")
 			{
@@ -789,40 +892,24 @@ final class Frame
 
 			r.send();
 
-			})(window);
+			})(window, document);
 JS;
 
-		return array(
-			"start" => '<style type="text/css">'.str_replace(array("\n", "\t"), "", self::getInjectedCSS())."</style>\n".
-						'<script type="text/javascript" data-skip-moving="true">'.str_replace(array("\n", "\t"), "", $inlineJS)."</script>"
-		);
-	}
+		$html = "";
+		if (self::isBannerEnabled())
+		{
+			$html .=
+				'<style type="text/css">'.
+					str_replace(array("\n", "\t"), "", self::getInjectedCSS()).
+				"</style>\n";
+		}
 
-	/**
-	 * Returns JS minified code that will set global variables without doing a request
-	 * The code is returned in the 'start' key of the array.
-	 *
-	 * @param array $params
-	 * @return array[string]string
-	 */
-	protected function getInjectedJsWORequest($params = array())
-	{
-		$vars = \CUtil::PhpToJSObject($params);
+		$html .=
+			'<script type="text/javascript" data-skip-moving="true">'.
+				str_replace(array("\n", "\t"), "", $inlineJS).
+			"</script>";
 
-		$inlineJS = <<<JS
-			(function(w) {
-
-			w.frameCacheVars = $vars;
-			w.frameRequestStart = false;
-			w.preventAutoUpdate = true;
-
-			})(window);
-JS;
-
-		return array(
-			"start" => '<style type="text/css">'.str_replace(array("\n", "\t"), "", self::getInjectedCSS())."</style>\n".
-						'<script type="text/javascript" data-skip-moving="true">'.str_replace(array("\n", "\t"), "", $inlineJS)."</script>"
-		);
+		return $html;
 	}
 
 	/**
@@ -849,17 +936,15 @@ JS;
 				text-decoration: none !important;
 			}
 
-			@media
-			only screen and (-webkit-min-device-pixel-ratio: 2),
-			only screen and (min--moz-device-pixel-ratio: 2),
-			only screen and (-o-min-device-pixel-ratio: 2/1),
-			only screen and (min-device-pixel-ratio: 2),
-			only screen and (min-resolution: 192dpi),
-			only screen and (min-resolution: 2dppx) {
-				.bx-composite-btn {
-					background-image: url(/bitrix/images/main/composite/sprite-2x.png);
-					background-size: 42px 124px;
-				}
+			@media screen 
+  				and (min-device-width: 1200px) 
+  				and (max-device-width: 1600px) 
+  				and (-webkit-min-device-pixel-ratio: 2)
+  				and (min-resolution: 192dpi) {
+					.bx-composite-btn {
+						background-image: url(/bitrix/images/main/composite/sprite-2x.png);
+						background-size: 42px 124px;
+					}
 			}
 
 			.bx-composite-btn-fixed {
@@ -894,6 +979,13 @@ JS;
 				height: 29px !important;
 				line-height: 29px !important;
 			}
+
+			.bx-composite-loading {
+				display: block;
+				width: 40px;
+				height: 40px;
+				background: url(/bitrix/images/main/composite/loading.gif);
+			}
 CSS;
 	}
 
@@ -904,11 +996,40 @@ CSS;
 	 */
 	public static function shouldBeEnabled()
 	{
-		if(defined("USE_HTML_STATIC_CACHE") && USE_HTML_STATIC_CACHE === true)
+		if (defined("USE_HTML_STATIC_CACHE") && USE_HTML_STATIC_CACHE === true)
 		{
-			if(!defined("BX_SKIP_SESSION_EXPAND") && (!defined("ADMIN_SECTION") || (defined("ADMIN_SECTION") && ADMIN_SECTION != "Y")))
+			if (
+				!defined("BX_SKIP_SESSION_EXPAND") &&
+				(!defined("ADMIN_SECTION") || (defined("ADMIN_SECTION") && ADMIN_SECTION != "Y"))
+			)
 			{
+				if (self::isInvalidationRequest())
+				{
+					$cacheKey = \CHTMLPagesCache::convertUriToPath(
+						\CHTMLPagesCache::getRequestUri(),
+						\CHTMLPagesCache::getHttpHost(), 
+						\CHTMLPagesCache::getRealPrivateKey(StaticHtmlCache::getPrivateKey())
+					);
+
+					if (!FrameLocker::lock($cacheKey))
+					{
+						die(Frame::getInstance()->getAjaxError("invalidation_request_locked"));
+					}
+				}
+
 				self::setUseHTMLCache();
+
+				$options = \CHTMLPagesCache::getOptions();
+				if (isset($options["AUTO_UPDATE"]) && $options["AUTO_UPDATE"] === "N")
+				{
+					self::setAutoUpdate(false);
+				}
+
+				if (isset($options["AUTO_UPDATE_TTL"]))
+				{
+					self::setAutoUpdateTTL($options["AUTO_UPDATE_TTL"]);
+				}
+
 				define("BX_SKIP_SESSION_EXPAND", true);
 			}
 		}
@@ -939,23 +1060,13 @@ CSS;
 	}
 
 	/**
-	 * Returns true if composite mode is allowed by checking update system parameters.
-	 *
-	 * @return boolean
+	 * Returns true if we should inject banner into a page.
+	 * @return bool
 	 */
-	public static function isLicenseExpired()
+	public static function isBannerEnabled()
 	{
-		$finishDate = Option::get("main", "~support_finish_date", "");
-		$composite = Option::get("main", "~PARAM_COMPOSITE", "N");
-		if ($composite == "Y" || $finishDate == "")
-		{
-			return false;
-		}
-
-		$finishDate = new \Bitrix\Main\Type\Date($finishDate, "Y-m-d");
-		return $finishDate->getTimestamp() < time();
+		return Option::get("main", "~show_composite_banner", "Y") == "Y";
 	}
-
 
 	/* =========================Deprecated Methods ===============================*/
 

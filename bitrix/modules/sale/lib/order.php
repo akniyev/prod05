@@ -23,6 +23,7 @@ class Order
 {
 
 	private $isNew = null;
+
 	/** @var Discount $discount */
 	protected $discount = null;
 
@@ -34,6 +35,8 @@ class Order
 	protected $isStartField = null;
 	protected $isMeaningfulField = false;
 	protected $isOnlyMathAction = null;
+
+	protected $isClone = false;
 
 	/**
 	 * Modify shipment collection.
@@ -116,6 +119,8 @@ class Order
 					'ENTITY' =>$shipment
 				));
 				$event->send();
+
+				Notify::callNotify($shipment, EventActions::EVENT_ON_SHIPMENT_DELIVER);
 			}
 			else
 			{
@@ -165,45 +170,43 @@ class Order
 				}
 			}
 
+			/** @var ShipmentCollection $shipmentCollection */
+			if (!$shipmentCollection = $this->getShipmentCollection())
+			{
+				throw new Main\ObjectNotFoundException('Entity "ShipmentCollection" not found');
+			}
+			
+			$orderStatus = null;
+
 			if ($oldValue == "N")
 			{
-				$orderStatus = Config\Option::get('sale', 'status_on_allow_delivery', '');
+				if ($shipmentCollection->isAllowDelivery())
+				{
+					$orderStatus = Config\Option::get('sale', 'status_on_allow_delivery', '');
+				}
+				elseif ($shipmentCollection->hasAllowDelivery())
+				{
+					$orderStatus = Config\Option::get('sale', 'status_on_allow_delivery_one_of', '');
+				}
+			}
 
+			if ($orderStatus !== null && $this->getField('STATUS_ID') != OrderStatus::getFinalStatus())
+			{
 				if (strval($orderStatus) != '')
 				{
-					if ($USER && $USER->isAuthorized())
+					$r = $this->setStatus($orderStatus);
+					if (!$r->isSuccess())
 					{
-						$statusesList = OrderStatus::getAllowedUserStatuses($USER->getID(), $this->getField('STATUS_ID'));
-					}
-					else
-					{
-						$statusesList = OrderStatus::getAllStatuses();
-					}
-
-					if($this->getField('STATUS_ID') != $orderStatus && array_key_exists($orderStatus, $statusesList))
-					{
-						/** @var Result $r */
-						$r = $this->setField('STATUS_ID', $orderStatus);
-						if (!$r->isSuccess())
-						{
-							$result->addErrors($r->getErrors());
-							return $result;
-						}
+						$result->addErrors($r->getErrors());
+						return $result;
 					}
 				}
-
 			}
 
 			if (Configuration::needShipOnAllowDelivery() && $value == "Y")
 			{
 				if (!$shipment->isEmpty())
 					$shipment->setField("DEDUCTED", "Y");
-			}
-
-			/** @var ShipmentCollection $shipmentCollection */
-			if (!$shipmentCollection = $this->getShipmentCollection())
-			{
-				throw new Main\ObjectNotFoundException('Entity "ShipmentCollection" not found');
 			}
 
 			if ($shipmentCollection->isAllowDelivery() && $this->getField('ALLOW_DELIVERY') == 'N')
@@ -313,11 +316,38 @@ class Order
 					}
 				}
 			}
-
+			
 			/** @var ShipmentCollection $shipmentCollection */
 			if (!$shipmentCollection = $shipment->getCollection())
 			{
 				throw new Main\ObjectNotFoundException('Entity "ShipmentCollection" not found');
+			}
+
+			$orderStatus = null;
+
+			if ($oldValue == "N")
+			{
+				if ($shipmentCollection->isShipped())
+				{
+					$orderStatus = Config\Option::get('sale', 'status_on_shipped_shipment', '');
+				}
+				elseif ($shipmentCollection->hasShipped())
+				{
+					$orderStatus = Config\Option::get('sale', 'status_on_shipped_shipment_one_of', '');
+				}
+			}
+
+			if ($orderStatus !== null && $this->getField('STATUS_ID') != OrderStatus::getFinalStatus())
+			{
+				if (strval($orderStatus) != '')
+				{
+					$r = $this->setStatus($orderStatus);
+					if (!$r->isSuccess())
+					{
+						$result->addErrors($r->getErrors());
+						return $result;
+					}
+				}
 			}
 
 			$this->setFieldNoDemand('DEDUCTED', $shipmentCollection->isShipped() ? "Y" : "N");
@@ -434,6 +464,15 @@ class Order
 			}
 
 			$this->setFieldNoDemand('DELIVERY_ID', $shipment->getField('DELIVERY_ID'));
+		}
+		elseif ($name == "TRACKING_NUMBER")
+		{
+			if ($shipment->isSystem() || ($shipment->getField('TRACKING_NUMBER') == $this->getField('TRACKING_NUMBER')))
+			{
+				return $result;
+			}
+
+			$this->setFieldNoDemand('TRACKING_NUMBER', $shipment->getField('TRACKING_NUMBER'));
 		}
 
 
@@ -674,6 +713,20 @@ class Order
 		$id = $this->getId();
 		$this->isNew = ($id == 0);
 
+		if ($this->isNew)
+		{
+			$fields = $this->fields->getChangedValues();
+			if (empty($fields['STATUS_ID']))
+			{
+				/** @var Result $r */
+				$r = $this->setField("STATUS_ID", OrderStatus::getInitialStatus());
+				if (!$r->isSuccess())
+				{
+					$result->addErrors($r->getErrors());
+				}
+			}
+		}
+
 		/** @var array $oldEntityValues */
 		$oldEntityValues = $this->fields->getOriginalValues();
 
@@ -704,16 +757,17 @@ class Order
 					$result->addError($errorMsg);
 				}
 			}
+		}
 
-			if (!$result->isSuccess())
-			{
-				return $result;
-			}
+		if (!$result->isSuccess())
+		{
+			return $result;
 		}
 
 		$r = $this->verify();
 		if (!$r->isSuccess())
 		{
+			$oldErrorText = $this->getField('REASON_MARKED');
 			/** @var ResultError $error */
 			foreach ($r->getErrors() as $error)
 			{
@@ -721,10 +775,21 @@ class Order
 				{
 					continue;
 				}
+				elseif ($error instanceof ResultWarning)
+				{
+					$oldErrorText .= (strval($oldErrorText) != '' ? "\n" : ""). $error->getMessage();
+					continue;
+				}
 				else
 				{
 					$result->addError($error);
 				}
+			}
+
+			if (strval(trim($oldErrorText)) != '')
+			{
+				$this->setField('MARKED', "Y");
+				$this->setField('REASON_MARKED', $oldErrorText);
 			}
 
 			if (!$result->isSuccess())
@@ -748,10 +813,14 @@ class Order
 
 			if ($this->isChanged())
 			{
-				if (!isset($fields['DATE_UPDATE']) || strval($fields['DATE_UPDATE']) == '')
+				if (!array_key_exists('DATE_UPDATE', $fields) || (empty($fields['DATE_UPDATE']) && $fields['DATE_UPDATE'] !== null))
 				{
 					$fields['DATE_UPDATE'] = new Type\DateTime();
 					$this->setFieldNoDemand('DATE_UPDATE', $fields['DATE_UPDATE']);
+				}
+				elseif (array_key_exists('DATE_UPDATE', $fields) && $fields['DATE_UPDATE'] === null)
+				{
+					unset($fields['DATE_UPDATE']);
 				}
 
 				$fields['VERSION'] = intval($this->getField('VERSION')) + 1;
@@ -796,10 +865,14 @@ class Order
 				$this->setFieldNoDemand('DATE_INSERT', $fields['DATE_INSERT']);
 			}
 
-			if (!isset($fields['DATE_UPDATE']) || strval($fields['DATE_UPDATE']) == '')
+			if (!array_key_exists('DATE_UPDATE', $fields) || (empty($fields['DATE_UPDATE']) && $fields['DATE_UPDATE'] !== null))
 			{
 				$fields['DATE_UPDATE'] = new Type\DateTime();
 				$this->setFieldNoDemand('DATE_UPDATE', $fields['DATE_UPDATE']);
+			}
+			elseif (array_key_exists('DATE_UPDATE', $fields) && $fields['DATE_UPDATE'] === null)
+			{
+				unset($fields['DATE_UPDATE']);
 			}
 
 			if ($USER->isAuthorized())
@@ -1003,7 +1076,7 @@ class Order
 		$event->send();
 
 
-		if (($eventList = Internals\EventsPool::getEvents($this)) && !empty($eventList) && is_array($eventList))
+		if (($eventList = Internals\EventsPool::getEvents($this->getInternalId())) && !empty($eventList) && is_array($eventList))
 		{
 			foreach ($eventList as $eventName => $eventData)
 			{
@@ -1013,8 +1086,10 @@ class Order
 				Notify::callNotify($this, $eventName);
 			}
 
-			Internals\EventsPool::resetEvents($this);
+			Internals\EventsPool::resetEvents($this->getInternalId());
 		}
+
+		Notify::callNotify($this, EventActions::EVENT_ON_ORDER_SAVED);
 
 		if (!$result->isSuccess())
 		{
@@ -1065,6 +1140,8 @@ class Order
 			$result->addError(new ResultError(Loc::getMessage('SALE_ORDER_ENTITY_NOT_FOUND'), 'SALE_ORDER_ENTITY_NOT_FOUND'));
 			return $result;
 		}
+
+		Notify::setNotifyDisable(true);
 
 		/** @var Result $r */
 		$r = $order->setField('CANCELED', 'Y');
@@ -1154,6 +1231,8 @@ class Order
 			$result->addErrors($r->getErrors());
 		}
 
+		Notify::setNotifyDisable(false);
+
 		$event = new Main\Event('sale', EventActions::EVENT_ON_ORDER_DELETED, array(
 			'ENTITY' => $order,
 			'VALUE' => ((bool) $r->isSuccess())
@@ -1213,6 +1292,29 @@ class Order
 	{
 		$result = new Result();
 
+		if ($action == EventActions::DELETE)
+		{
+			if ($this->getField('PAY_SYSTEM_ID') == $payment->getPaymentSystemId())
+			{
+				/** @var PaymentCollection $paymentCollection */
+				if (!$paymentCollection = $payment->getCollection())
+				{
+					throw new Main\ObjectNotFoundException('Entity "PaymentCollection" not found');
+				}
+
+				/** @var Payment $entityPayment */
+				foreach ($paymentCollection as $entityPayment)
+				{
+					if (intval($entityPayment->getField('PAY_SYSTEM_ID')) > 0
+						&& intval($entityPayment->getField('PAY_SYSTEM_ID')) != $payment->getPaymentSystemId())
+					{
+						$this->setFieldNoDemand('PAY_SYSTEM_ID', $entityPayment->getField('PAY_SYSTEM_ID'));
+						break;
+					}
+				}
+			}
+		}
+
 		if ($action != EventActions::UPDATE)
 			return $result;
 
@@ -1269,12 +1371,17 @@ class Order
 				}
 
 				$creditSum = 0;
-				$paid = $paymentCollection->getPaidSum() - $this->getPrice();
+				$overPaid = $paymentCollection->getPaidSum() - $this->getPrice();
 
-				if ($paid < 0)
+				if ($overPaid <= 0)
+				{
 					$creditSum = $payment->getSum();
-				elseif ($payment->getSum() - $paid > 0)
-					$creditSum = $payment->getSum() - $paid;
+					$overPaid = 0;
+				}
+				elseif ($payment->getSum() - $overPaid > 0)
+				{
+					$creditSum = $payment->getSum() - $overPaid;
+				}
 
 				if ($value == Payment::RETURN_PS)
 				{
@@ -1296,40 +1403,29 @@ class Order
 				{
 					if ($creditSum)
 					{
-						if ($value == Payment::RETURN_INNER)
+						if ($value == Payment::RETURN_PS)
 						{
-							$refResult = $service->refund($payment, $creditSum);
-							if (!$refResult->isSuccess())
-							{
-								$result->addErrors($refResult->getErrors());
-								return $result;
-							}
-						}
-						elseif ($value == Payment::RETURN_PS)
-						{
-							$overPayment = $payment->getSum() - $this->getPrice();
-							if ($overPayment > 0)
+							if ($overPaid > 0)
 							{
 								$userBudget = Internals\UserBudgetPool::getUserBudgetByOrder($this);
-								if (Payment::roundByFormatCurrency($overPayment, $this->getCurrency()) <= Payment::roundByFormatCurrency($userBudget, $this->getCurrency()))
-								{
-									$refResult = $service->refund($payment, $payment->getSum());
-									if ($refResult->isSuccess())
-									{
-										Internals\UserBudgetPool::addPoolItem($this, -$overPayment, Internals\UserBudgetPool::BUDGET_TYPE_ORDER_PAY, $payment);
-									}
-									else
-									{
-										$result->addErrors($refResult->getErrors());
-										return $result;
-									}
-								}
-								else
+								if (PriceMaths::roundByFormatCurrency($overPaid, $this->getCurrency()) > PriceMaths::roundByFormatCurrency($userBudget, $this->getCurrency()))
 								{
 									$result->addError(new Entity\EntityError(Loc::getMessage('SALE_ORDER_PAYMENT_RETURN_PAID')));
 									return $result;
 								}
 							}
+						}
+
+						$refResult = $service->refund($payment);
+						if ($refResult->isSuccess())
+						{
+							if ($overPaid > 0)
+								Internals\UserBudgetPool::addPoolItem($this, -$overPaid, Internals\UserBudgetPool::BUDGET_TYPE_ORDER_PAY, $payment);
+						}
+						else
+						{
+							$result->addErrors($refResult->getErrors());
+							return $result;
 						}
 					}
 				}
@@ -1365,7 +1461,7 @@ class Order
 				}
 
 				$userBudget = Internals\UserBudgetPool::getUserBudgetByOrder($this);
-				if (Payment::roundByFormatCurrency($userBudget, $this->getCurrency()) < Payment::roundByFormatCurrency($payment->getSum(), $this->getCurrency()))
+				if (PriceMaths::roundByFormatCurrency($userBudget, $this->getCurrency()) < PriceMaths::roundByFormatCurrency($payment->getSum(), $this->getCurrency()))
 				{
 					$result->addError( new ResultError( Loc::getMessage('SALE_ORDER_PAYMENT_NOT_ENOUGH_USER_BUDGET'), "SALE_ORDER_PAYMENT_NOT_ENOUGH_USER_BUDGET") );
 					return $result;
@@ -1397,7 +1493,20 @@ class Order
 			{
 				$this->setFieldNoDemand('DATE_PAYED', $payment->getField('DATE_PAID'));
 			}
-
+		}
+		elseif ($name == "PAY_VOUCHER_NUM")
+		{
+			if ($payment->getField('PAY_VOUCHER_NUM') != $this->getField('PAY_VOUCHER_NUM'))
+			{
+				$this->setFieldNoDemand('PAY_VOUCHER_NUM', $payment->getField('PAY_VOUCHER_NUM'));
+			}
+		}
+		elseif ($name == "PAY_VOUCHER_DATE")
+		{
+			if ($payment->getField('PAY_VOUCHER_DATE') != $this->getField('PAY_VOUCHER_DATE'))
+			{
+				$this->setFieldNoDemand('PAY_VOUCHER_DATE', $payment->getField('PAY_VOUCHER_DATE'));
+			}
 		}
 
 		if ($value != $oldValue)
@@ -1521,11 +1630,11 @@ class Order
 			if ($USER->isAuthorized())
 				$this->setField('EMP_CANCELED_ID', $USER->getID());
 
-			Internals\EventsPool::addEvent($this, EventActions::EVENT_ON_ORDER_CANCELED, array(
+			Internals\EventsPool::addEvent($this->getInternalId(), EventActions::EVENT_ON_ORDER_CANCELED, array(
 				'ENTITY' => $this,
 			));
 
-			Internals\EventsPool::addEvent($this, EventActions::EVENT_ON_ORDER_CANCELED_SEND_MAIL, array(
+			Internals\EventsPool::addEvent($this->getInternalId(), EventActions::EVENT_ON_ORDER_CANCELED_SEND_MAIL, array(
 				'ENTITY' => $this,
 			));
 		}
@@ -1575,13 +1684,13 @@ class Order
 			if ($USER && $USER->isAuthorized())
 				$this->setField('EMP_STATUS_ID', $USER->GetID());
 
-			Internals\EventsPool::addEvent($this, EventActions::EVENT_ON_ORDER_STATUS_CHANGE, array(
+			Internals\EventsPool::addEvent($this->getInternalId(), EventActions::EVENT_ON_ORDER_STATUS_CHANGE, array(
 				'ENTITY' => $this,
 				'VALUE' => $value,
 				'OLD_VALUE' => $oldValue,
 			));
 
-			Internals\EventsPool::addEvent($this, EventActions::EVENT_ON_ORDER_STATUS_CHANGE_SEND_MAIL, array(
+			Internals\EventsPool::addEvent($this->getInternalId(), EventActions::EVENT_ON_ORDER_STATUS_CHANGE_SEND_MAIL, array(
 				'ENTITY' => $this,
 				'VALUE' => $value,
 				'OLD_VALUE' => $oldValue,
@@ -1648,7 +1757,7 @@ class Order
 
 				if ($tax = $this->getTax())
 				{
-					$tax->refreshData();
+					$tax->resetTaxList();
 				}
 			}
 
@@ -1800,7 +1909,13 @@ class Order
 			}
 		}
 
-		$paid = ($finalSumPaid > 0 && Payment::roundByFormatCurrency($this->getPrice(), $this->getCurrency()) <= Payment::roundByFormatCurrency($finalSumPaid, $this->getCurrency()));
+		$paid = false;
+
+		if ($finalSumPaid >= 0 && $paymentCollection->hasPaidPayment()
+			&& PriceMaths::roundByFormatCurrency($this->getPrice(), $this->getCurrency()) <= PriceMaths::roundByFormatCurrency($finalSumPaid, $this->getCurrency()))
+		{
+			$paid = true;
+		}
 
 		$this->setFieldNoDemand('PAYED', $paid ? "Y" : "N");
 
@@ -1880,7 +1995,7 @@ class Order
 
 		if ($debitSum > 0)
 		{
-			if (Payment::roundByFormatCurrency($debitSum, $this->getCurrency()) > Payment::roundByFormatCurrency($userBudget, $this->getCurrency()))
+			if (PriceMaths::roundByFormatCurrency($debitSum, $this->getCurrency()) > PriceMaths::roundByFormatCurrency($userBudget, $this->getCurrency()))
 			{
 				$result->addError( new ResultError(Loc::getMessage('SALE_ORDER_PAYMENT_CANCELLED_PAID'), 'SALE_ORDER_PAYMENT_NOT_ENOUGH_USER_BUDGET_SYNCPAID') );
 				return $result;
@@ -1966,26 +2081,29 @@ class Order
 		if ($oldPaid !== null)
 			$oldPaidBool = ($oldPaid == "Y");
 
-		if ($oldPaid == "N" && $this->isPaid() )
+		$orderStatus = null;
+
+		if ($oldPaid == "N")
 		{
+			if ($this->isPaid())
+			{
+				$orderStatus = Config\Option::get('sale', 'status_on_paid', '');
+			}
+			elseif ($paymentCollection->hasPaidPayment())
+			{
+				$orderStatus = Config\Option::get('sale', 'status_on_half_paid', '');
+			}
+		}
 
-			$orderStatus = Config\Option::get('sale', 'status_on_paid', '');
-
+		if ($orderStatus !== null && $this->getField('STATUS_ID') != OrderStatus::getFinalStatus())
+		{
 			if (strval($orderStatus) != '')
 			{
-				if ($USER && $USER->isAuthorized())
+				$r = $this->setStatus($orderStatus);
+				if (!$r->isSuccess())
 				{
-					$statusesList = OrderStatus::getAllowedUserStatuses($USER->getID(), $this->getField('STATUS_ID'));
-					$statusesList = array_keys($statusesList);
-				}
-				else
-				{
-					$statusesList = OrderStatus::getAllStatuses();
-				}
-
-				if($this->getField('STATUS_ID') != $orderStatus && in_array($orderStatus, $statusesList))
-				{
-					$this->setField('STATUS_ID', $orderStatus);
+					$result->addErrors($r->getErrors());
+					return $result;
 				}
 			}
 
@@ -1993,11 +2111,11 @@ class Order
 
 		if ($oldPaid !== null && $this->isPaid() != $oldPaidBool)
 		{
-			Internals\EventsPool::addEvent($this, EventActions::EVENT_ON_ORDER_PAID, array(
+			Internals\EventsPool::addEvent($this->getInternalId(), EventActions::EVENT_ON_ORDER_PAID, array(
 				'ENTITY' => $this,
 			));
 
-			Internals\EventsPool::addEvent($this, EventActions::EVENT_ON_ORDER_PAID_SEND_MAIL, array(
+			Internals\EventsPool::addEvent($this->getInternalId(), EventActions::EVENT_ON_ORDER_PAID_SEND_MAIL, array(
 				'ENTITY' => $this,
 			));
 		}
@@ -2009,7 +2127,29 @@ class Order
 				$r = $shipmentCollection->tryReserve();
 				if (!$r->isSuccess())
 				{
-					$result->addErrors($r->getErrors());
+					foreach ($r->getErrors() as $error)
+					{
+						if ($error instanceof ResultWarning)
+						{
+							$this->setField('MARKED', 'Y');
+							if (is_array($r->getErrorMessages()))
+							{
+								$oldErrorText = $this->getField('REASON_MARKED');
+
+								foreach($r->getErrorMessages() as $errorText)
+								{
+									$oldErrorText .= (strval($oldErrorText) != '' ? "\n" : ""). $errorText;
+								}
+
+								$this->setField('REASON_MARKED', $oldErrorText);
+							}
+							continue;
+						}
+						else
+						{
+							$result->addError($error);
+						}
+					}
 				}
 			}
 			else
@@ -2017,7 +2157,29 @@ class Order
 				$r = $shipmentCollection->tryUnreserve();
 				if (!$r->isSuccess())
 				{
-					$result->addErrors($r->getErrors());
+					foreach ($r->getErrors() as $error)
+					{
+						if ($error instanceof ResultWarning)
+						{
+							$this->setField('MARKED', 'Y');
+							if (is_array($r->getErrorMessages()))
+							{
+								$oldErrorText = $this->getField('REASON_MARKED');
+
+								foreach($r->getErrorMessages() as $errorText)
+								{
+									$oldErrorText .= (strval($oldErrorText) != '' ? "\n" : ""). $errorText;
+								}
+
+								$this->setField('REASON_MARKED', $oldErrorText);
+							}
+							continue;
+						}
+						else
+						{
+							$result->addError($error);
+						}
+					}
 				}
 			}
 		}
@@ -2028,7 +2190,29 @@ class Order
 				$r = $shipmentCollection->tryReserve();
 				if (!$r->isSuccess())
 				{
-					$result->addErrors($r->getErrors());
+					foreach ($r->getErrors() as $error)
+					{
+						if ($error instanceof ResultWarning)
+						{
+							$this->setField('MARKED', 'Y');
+							if (is_array($r->getErrorMessages()))
+							{
+								$oldErrorText = $this->getField('REASON_MARKED');
+
+								foreach($r->getErrorMessages() as $errorText)
+								{
+									$oldErrorText .= (strval($oldErrorText) != '' ? "\n" : ""). $errorText;
+								}
+
+								$this->setField('REASON_MARKED', $oldErrorText);
+							}
+							continue;
+						}
+						else
+						{
+							$result->addError($error);
+						}
+					}
 				}
 			}
 			elseif ($oldPaid == "Y" && !$this->isPaid())
@@ -2036,14 +2220,61 @@ class Order
 				$r = $shipmentCollection->tryUnreserve();
 				if (!$r->isSuccess())
 				{
-					$result->addErrors($r->getErrors());
+					foreach ($r->getErrors() as $error)
+					{
+						if ($error instanceof ResultWarning)
+						{
+							$this->setField('MARKED', 'Y');
+							if (is_array($r->getErrorMessages()))
+							{
+								$oldErrorText = $this->getField('REASON_MARKED');
+
+								foreach($r->getErrorMessages() as $errorText)
+								{
+									$oldErrorText .= (strval($oldErrorText) != '' ? "\n" : ""). $errorText;
+								}
+
+								$this->setField('REASON_MARKED', $oldErrorText);
+							}
+							continue;
+						}
+						else
+						{
+							$result->addError($error);
+						}
+					}
 				}
 			}
 		}
 
-		if (Configuration::needAllowDeliveryOnPay())
+		$allowDelivery = null;
+
+		if (Configuration::getAllowDeliveryOnPayCondition() === Configuration::ALLOW_DELIVERY_ON_PAY)
+		{
+			if ($oldPaid == "N" && $paymentCollection->hasPaidPayment())
+			{
+				$allowDelivery = true;
+			}
+			elseif ($oldPaid == "Y" && !$paymentCollection->hasPaidPayment())
+			{
+				$allowDelivery = false;
+			}
+		}
+		elseif(Configuration::getAllowDeliveryOnPayCondition() === Configuration::ALLOW_DELIVERY_ON_FULL_PAY)
 		{
 			if ($oldPaid == "N" && $this->isPaid())
+			{
+				$allowDelivery = true;
+			}
+			elseif ($oldPaid == "Y" && !$this->isPaid())
+			{
+				$allowDelivery = false;
+			}
+		}
+
+		if ($allowDelivery !== null)
+		{
+			if ($allowDelivery)
 			{
 				$r = $shipmentCollection->allowDelivery();
 				if (!$r->isSuccess())
@@ -2051,7 +2282,7 @@ class Order
 					$result->addErrors($r->getErrors());
 				}
 			}
-			elseif ($oldPaid == "Y" && !$this->isPaid())
+			elseif (!$allowDelivery)
 			{
 				$r = $shipmentCollection->disallowDelivery();
 				if (!$r->isSuccess())
@@ -2060,6 +2291,7 @@ class Order
 				}
 			}
 		}
+
 
 		return $result;
 	}
@@ -2141,11 +2373,6 @@ class Order
 			}
 		}
 
-		/** @var Tax $tax */
-		if ($tax = $this->getTax())
-		{
-			$tax->resetTaxList();
-		}
 
 		if ($isStartField)
 		{
@@ -2309,8 +2536,8 @@ class Order
 							$basketItemData['PRICE'] = (float)$basketItemData['PRICE'];
 							if ($basketItemData['PRICE'] >= 0 && $basketItem->getPrice() != $basketItemData['PRICE'])
 							{
-								$basketItemData['PRICE'] = roundEx($basketItemData['PRICE'], SALE_VALUE_PRECISION);
-								$basketItemData['DISCOUNT_PRICE'] = roundEx($basketItemData['DISCOUNT_PRICE'], SALE_VALUE_PRECISION);
+								$basketItemData['PRICE'] = PriceMaths::roundPrecision($basketItemData['PRICE']);
+								$basketItemData['DISCOUNT_PRICE'] = PriceMaths::roundPrecision($basketItemData['DISCOUNT_PRICE']);
 								$basketItem->setField('PRICE', $basketItemData['PRICE']);
 								$basketItem->setField('DISCOUNT_PRICE', $basketItemData['DISCOUNT_PRICE']);
 							}
@@ -2331,9 +2558,9 @@ class Order
 				/** @var Shipment $shipment */
 				if ($shipment = $shipmentCollection->getItemByShipmentCode($data['SHIPMENT']))
 				{
-					if (floatval($data['PRICE_DELIVERY']) >= 0)
+					if (floatval($data['PRICE_DELIVERY']) >= 0 && !$shipment->isCustomPrice())
 					{
-						$data['PRICE_DELIVERY'] = roundEx(floatval($data['PRICE_DELIVERY']), SALE_VALUE_PRECISION);
+						$data['PRICE_DELIVERY'] = PriceMaths::roundPrecision(floatval($data['PRICE_DELIVERY']));
 						$shipment->setField('PRICE_DELIVERY', $data['PRICE_DELIVERY']);
 					}
 
@@ -2345,7 +2572,7 @@ class Order
 
 		if (isset($data['DISCOUNT_PRICE']) && floatval($data['DISCOUNT_PRICE']) >= 0)
 		{
-			$data['DISCOUNT_PRICE'] = roundEx(floatval($data['DISCOUNT_PRICE']), SALE_VALUE_PRECISION);
+			$data['DISCOUNT_PRICE'] = PriceMaths::roundPrecision(floatval($data['DISCOUNT_PRICE']));
 			$this->setField('DISCOUNT_PRICE', $data['DISCOUNT_PRICE']);
 		}
 
@@ -2655,6 +2882,8 @@ class Order
 				return $result;
 			}
 
+			$taxResult = $r->getData();
+
 			$r = $tax->calculateDelivery();
 			if (!$r->isSuccess())
 			{
@@ -2663,7 +2892,7 @@ class Order
 			}
 
 			$taxChanged = false;
-			$taxResult = $r->getData();
+			$taxResult = array_merge($taxResult, $r->getData());
 			if (isset($taxResult['TAX_PRICE']) && floatval($taxResult['TAX_PRICE']) >= 0)
 			{
 				if (!$this->isUsedVat())
@@ -2816,7 +3045,14 @@ class Order
 			$r = $basket->verify();
 			if (!$r->isSuccess())
 			{
-				$result->addErrors($r->getErrors());
+				if ($result instanceof ResultWarning)
+				{
+					$result->addWarnings($r->getErrors());
+				}
+				else
+				{
+					$result->addErrors($r->getErrors());
+				}
 			}
 		}
 
@@ -2859,6 +3095,122 @@ class Order
 		}
 
 		return $providerInstance;
+	}
+
+	/**
+	 * @param array $filter
+	 *
+	 * @return Main\DB\Result
+	 * @throws Main\ArgumentException
+	 */
+	public static function getList(array $filter = array())
+	{
+		return Internals\OrderTable::getList($filter);
+	}
+
+	/**
+	 * @return OrderBase
+	 */
+	public function createClone()
+	{
+		$cloneEntity = new \SplObjectStorage();
+
+		/** @var Order $orderClone */
+		$orderClone = clone $this;
+		$orderClone->isClone = true;
+
+		/** @var Internals\Fields $fields */
+		if ($fields = $this->fields)
+		{
+			$orderClone->fields = $fields->createClone($cloneEntity);
+		}
+
+		/** @var Internals\Fields $calculatedFields */
+		if ($calculatedFields = $this->calculatedFields)
+		{
+			$orderClone->calculatedFields = $calculatedFields->createClone($cloneEntity);
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $orderClone;
+		}
+
+		/** @var Basket $basket */
+		if ($basket = $this->getBasket())
+		{
+			$orderClone->basketCollection = $basket->createClone($cloneEntity);
+		}
+
+		/** @var ShipmentCollection $shipmentCollection */
+		if ($shipmentCollection = $this->getShipmentCollection())
+		{
+			$orderClone->shipmentCollection = $shipmentCollection->createClone($cloneEntity);
+		}
+
+		/** @var PaymentCollection $paymentCollection */
+		if ($paymentCollection = $this->getPaymentCollection())
+		{
+			$orderClone->paymentCollection = $paymentCollection->createClone($cloneEntity);
+		}
+
+		/** @var PropertyValueCollection $propertyCollection */
+		if ($propertyCollection = $this->getPropertyCollection())
+		{
+			$orderClone->propertyCollection = $propertyCollection->createClone($cloneEntity);
+		}
+
+		if ($tax = $this->getTax())
+		{
+			$orderClone->tax = $tax->createClone($cloneEntity);
+		}
+
+		if ($discount = $this->getDiscount())
+		{
+			$orderClone->discount = $discount->createClone($cloneEntity);
+		}
+
+		return $orderClone;
+	}
+
+
+	public function isClone()
+	{
+		return $this->isClone;
+	}
+
+	/**
+	 * @param $status
+	 *
+	 * @return Result
+	 */
+	protected function setStatus($status)
+	{
+		global $USER;
+
+		$result = new Result();
+
+		if ($USER && $USER->isAuthorized())
+		{
+			$statusesList = OrderStatus::getAllowedUserStatuses($USER->getID(), $this->getField('STATUS_ID'));
+		}
+		else
+		{
+			$statusesList = OrderStatus::getAllStatusesNames();
+		}
+
+		if($this->getField('STATUS_ID') != $status && array_key_exists($status, $statusesList))
+		{
+			/** @var Result $r */
+			$r = $this->setField('STATUS_ID', $status);
+			if (!$r->isSuccess())
+			{
+				$result->addErrors($r->getErrors());
+				return $result;
+			}
+		}
+
+		return $result;
 	}
 
 }

@@ -12,6 +12,7 @@ use Bitrix\Main\Localization\Loc;
 use Bitrix\Main;
 use Bitrix\Sale;
 use Bitrix\Sale\Internals;
+use Bitrix\Sale\Services\Company;
 
 Loc::loadMessages(__FILE__);
 
@@ -83,7 +84,7 @@ class Payment
 	 */
 	public static function getMeaningfulFields()
 	{
-		return array();
+		return array('PAY_SYSTEM_ID');
 	}
 
 	/**
@@ -343,13 +344,19 @@ class Payment
 		else
 		{
 			$fields['ORDER_ID'] = $this->getParentOrderId();
+			$this->setFieldNoDemand('ORDER_ID', $fields['ORDER_ID']);
 
 			if (!isset($fields['CURRENCY']) || strval($fields['CURRENCY']) == "" )
 			{
 				$fields['CURRENCY'] = $order->getCurrency();
-
+				$this->setFieldNoDemand('CURRENCY', $fields['CURRENCY']);
 			}
-			//$fields['DATE_INSERT'] = new Main\Type\DateTime();
+
+			if (!isset($fields['DATE_BILL']) || strval($fields['DATE_BILL']) == "" )
+			{
+				$fields['DATE_BILL'] = new Main\Type\DateTime();
+				$this->setFieldNoDemand('DATE_BILL', $fields['DATE_BILL']);
+			}
 
 			$r = Internals\PaymentTable::add($fields);
 			if (!$r->isSuccess())
@@ -552,19 +559,24 @@ class Payment
 				$innerPsId = Sale\PaySystem\Manager::getInnerPaySystemId();
 
 				$service = Sale\PaySystem\Manager::getObjectById($innerPsId);
-				$operationResult = $service->creditNoDemand($this);
-
-				if (!$operationResult->isSuccess())
-					$result->addErrors($operationResult->getErrors());
-				else
-					$this->setFieldNoDemand('IS_RETURN', self::RETURN_NONE);
+				if ($service)
+				{
+					$operationResult = $service->creditNoDemand($this);
+					if (!$operationResult->isSuccess())
+						$result->addErrors($operationResult->getErrors());
+					else
+						$this->setFieldNoDemand('IS_RETURN', self::RETURN_NONE);
+				}
 			}
 			else
 			{
 				$service = Sale\PaySystem\Manager::getObjectById($this->getPaymentSystemId());
-				$operationResult = $service->creditNoDemand($this);
-				if (!$operationResult->isSuccess())
-					$result->addErrors($operationResult->getErrors());
+				if ($service)
+				{
+					$operationResult = $service->creditNoDemand($this);
+					if (!$operationResult->isSuccess())
+						$result->addErrors($operationResult->getErrors());
+				}
 			}
 		}
 		elseif($value == "N")
@@ -768,7 +780,6 @@ class Payment
 	public function setAccountNumber($id)
 	{
 		$result = new Sale\Result();
-		$accountNumber = null;
 		$id = intval($id);
 		if ($id <= 0)
 		{
@@ -791,7 +802,7 @@ class Payment
 
 		if ($res)
 		{
-			$r = $this->setField('ACCOUNT_NUMBER', $accountNumber);
+			$r = $this->setField('ACCOUNT_NUMBER', $value);
 			if (!$r->isSuccess())
 			{
 				$result->addErrors($r->getErrors());
@@ -829,14 +840,91 @@ class Payment
 			: null;
 	}
 
+
+	/**
+	 * @param array $filter
+	 *
+	 * @return Main\DB\Result
+	 * @throws Main\ArgumentException
+	 */
+	public static function getList(array $filter)
+	{
+		return Internals\PaymentTable::getList($filter);
+	}
+
+
 	/**
 	 * @internal
-	 * @param $price
-	 * @param $currency
-	 * @return float
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return Payment
 	 */
-	public static function roundByFormatCurrency($price, $currency)
+	public function createClone(\SplObjectStorage $cloneEntity)
 	{
-		return floatval(SaleFormatCurrency($price, $currency, false, true));
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$paymentClone = clone $this;
+		$paymentClone->isClone = true;
+
+		/** @var Internals\Fields $fields */
+		if ($fields = $this->fields)
+		{
+			$paymentClone->fields = $fields->createClone($cloneEntity);
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $paymentClone;
+		}
+
+		if ($collection = $this->getCollection())
+		{
+			if (!$cloneEntity->contains($collection))
+			{
+				$cloneEntity[$collection] = $collection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($collection))
+			{
+				$paymentClone->collection = $cloneEntity[$collection];
+			}
+		}
+
+		/** @var Sale\PaySystem\Service $paySystem */
+		if ($paySystem = $this->getPaySystem())
+		{
+			if (!$cloneEntity->contains($paySystem))
+			{
+				$cloneEntity[$paySystem] = $paySystem->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($paySystem))
+			{
+				$paymentClone->paySystem = $cloneEntity[$paySystem];
+			}
+		}
+
+		return $paymentClone;
+	}
+
+	/**
+	 * @return mixed
+	 */
+	public function getHash()
+	{
+		/** @var \Bitrix\Sale\PaymentCollection $paymentCollection */
+		$paymentCollection = $this->getCollection();
+
+		/** @var \Bitrix\Sale\Order $order */
+		$order = $paymentCollection->getOrder();
+
+		return md5(
+			$this->getId().
+			PriceMaths::roundByFormatCurrency($this->getSum(), $this->getField('CURRENCY')).
+			$order->getId()
+		);
 	}
 }

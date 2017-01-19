@@ -338,6 +338,18 @@ abstract class MysqlCommonSqlHelper extends SqlHelper
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @param string $fieldName
+	 *
+	 * return string
+	 */
+	public function softCastTextToChar($fieldName)
+	{
+		return $fieldName;
+	}
+
+	/**
 	 * Returns a column type according to ScalarField object.
 	 *
 	 * @param Entity\ScalarField $field Type "source".

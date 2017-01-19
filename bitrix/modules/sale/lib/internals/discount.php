@@ -195,6 +195,12 @@ class DiscountTable extends Main\Entity\DataManager
 				'Bitrix\Sale\Internals\DiscountCoupon',
 				array('=this.ID' => 'ref.DISCOUNT_ID'),
 				array('join_type' => 'LEFT')
+			),
+			'DISCOUNT_ENTITY' => new Main\Entity\ReferenceField(
+				'DISCOUNT_ENTITY',
+				'Bitrix\Sale\Internals\DiscountEntities',
+				array('=this.ID' => 'ref.DISCOUNT_ID'),
+				array('join_type' => 'LEFT')
 			)
 		);
 	}
@@ -298,7 +304,7 @@ class DiscountTable extends Main\Entity\DataManager
 	}
 
 	/**
-	 * Default onBeforeAdd handler. Absolutely necessary.
+	 * Default onAfterAdd handler. Absolutely necessary.
 	 *
 	 * @param Main\Entity\Event $event		Event object.
 	 * @return void

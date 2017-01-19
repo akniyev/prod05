@@ -6,9 +6,9 @@ if(!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true)
  * Bitrix vars
  * @global CUser $USER
  * @global CMain $APPLICATION
- * @param array $arParams
- * @param array $arResult
- * @param CBitrixComponent $this
+ * @var array $arParams
+ * @var array $arResult
+ * @var CBitrixComponent $this
  */
 
 if(!$USER->CanDoOperation('view_event_log'))
@@ -195,9 +195,9 @@ if (is_array($arResult["ActiveFeatures"]) && count($arResult["ActiveFeatures"]) 
 		if ($arFilter["MODULE_ITEM"] != "")
 			$arEventFilter["=MODULE_ITEM"] = $arFilter["MODULE_ITEM"];
 		if ($arParams["LOG_DATE_FROM"] != "")
-			$arEventFilter["TIMESTAMP_X_1"] = $arParams["LOG_DATE_FROM"]." 00.00.00";
+			$arEventFilter["TIMESTAMP_X_1"] = $arParams["LOG_DATE_FROM"]." 00:00:00";
 		if ($arParams["LOG_DATE_TO"] != "")
-			$arEventFilter["TIMESTAMP_X_2"] = $arParams["LOG_DATE_TO"]." 23.59.59";
+			$arEventFilter["TIMESTAMP_X_2"] = $arParams["LOG_DATE_TO"]." 23:59:59";
 		$arEventFilter["USER_ID"] =  ($find != '' && $find_type == "user_id" ? $find : $find_user_id);
 
 		$nameFormat = CSite::GetNameFormat(false);
@@ -205,7 +205,6 @@ if (is_array($arResult["ActiveFeatures"]) && count($arResult["ActiveFeatures"]) 
 		$timeFormat = CSite::GetTimeFormat();
 
 		$arUsersTmp = array();
-
 		$arNavParams = array("nPageSize"=>$arParams["PAGE_NUM"], "bShowAll"=>false);
 		$results = CEventLog::GetList(array('TIMESTAMP_X' => 'DESC'), $arEventFilter, $arNavParams);
 		$results->NavStart($arNavParams);  //page navigation

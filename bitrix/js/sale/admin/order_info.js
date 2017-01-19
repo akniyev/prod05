@@ -33,8 +33,20 @@ BX.Sale.Admin.OrderInfo =
 	{
 		var span = BX("order_info_buyer_phone");
 
+		if(!phone)
+		{
+			phone = "";
+		}
+		else
+		{ 
+			phone = phone.replace(/'/g, "");
+			phone = BX.util.htmlspecialchars(phone);
+		}
+		
 		if(span)
-			span.innerHTML = BX.util.htmlspecialchars(phone);
+			span.innerHTML = '<a href="javascript:void(0)" onclick="BX.Sale.Admin.OrderEditPage.desktopMakeCall(\''+phone+'\');">'+
+				phone+
+				'</a>';
 	},
 
 	setBuyerEmail: function(email)
@@ -42,7 +54,10 @@ BX.Sale.Admin.OrderInfo =
 		var span = BX("order_info_buyer_email");
 
 		if(span)
-			span.innerHTML = email;
+		{
+			email = BX.util.htmlspecialchars(email);
+			span.innerHTML = '<a href="mailto:'+email+'">'+email+'</a>';
+		}
 	},
 
 	setOrderStatus: function(statusId)

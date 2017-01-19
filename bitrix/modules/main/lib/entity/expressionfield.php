@@ -315,6 +315,14 @@ class ExpressionField extends Field
 		return $this->valueField->getDataType();
 	}
 
+	/**
+	 * @return ScalarField
+	 */
+	public function getValueField()
+	{
+		return $this->valueField;
+	}
+
 	public function __clone()
 	{
 		$this->buildFromChains = null;

@@ -565,6 +565,7 @@
 		{
 			var _this = this;
 			this.editor.skipPasteHandler = true;
+			this.editor.skipPasteControl = true;
 			setTimeout(function()
 			{
 				var dd = _this.editor.GetIframeElement(node.id);
@@ -578,7 +579,8 @@
 				}
 				_this.editor.synchro.FullSyncFromIframe();
 				_this.editor.skipPasteHandler = false;
-			}, 10);
+				_this.editor.skipPasteControl = false;
+			}, 20);
 		},
 
 		OnElementMouseDownEx: function(e)
@@ -3714,15 +3716,51 @@
 	}
 
 	PasteControl.prototype = {
+		CheckAndShow: function ()
+		{
+			var
+				isOpened = this.isOpened,
+				_this = this;
+			this.savedRange = this.editor.selection.GetBookmark();
+			this.isOpened = true;
+			this.lastPreviewMode = false;
+			if (this.checkTimeout)
+				this.checkTimeout = clearTimeout(this.checkTimeout);
+
+			this.checkTimeout = setTimeout(function()
+			{
+				var skipPasteHandler = _this.editor.skipPasteHandler;
+				_this.editor.skipPasteHandler = true;
+				_this.PreviewContent({mode: 'rich', doTimeout: false});
+				var richContent = _this.editor.iframeView.GetValue();
+				// Clear images before comparision
+				richContent = richContent.replace(/<img((?:\s|\S)*?)>/ig, '');
+
+				_this.PreviewContent({mode: 'text', doTimeout: false});
+				var textContent = _this.editor.iframeView.GetValue();
+				// Clear images before comparision
+				textContent = textContent.replace(/<img((?:\s|\S)*?)>/ig, '');
+
+				if (richContent != textContent)
+				{
+					_this.isOpened = isOpened;
+					_this.editor.SetCursorNode(_this.savedRange);
+					_this.Show();
+				}
+
+				_this.editor.skipPasteHandler = skipPasteHandler;
+			}, 200);
+		},
+
 		Show: function ()
 		{
+			var _this = this;
 			this.lastPreviewMode = false;
-			this.savedRange = this.editor.selection.GetBookmark();
 			this.Hide();
 
 			this.pOverlay = this.editor.overlay.Show();
 			BX.bind(this.pOverlay, 'click', BX.proxy(this.Hide, this));
-			BX.bind(this.pOverlay, 'mousemove', BX.proxy(this.PreviewContent, this));
+			BX.bind(this.pOverlay, 'mousemove', BX.proxy(function(){this.PreviewContent({mode: 'default'});}, this));
 
 			if (!this.dummyTarget)
 			{
@@ -3730,7 +3768,6 @@
 			}
 
 			var
-				_this = this,
 				cursorNode = this.editor.GetIframeElement('bx-cursor-node'),
 				top = 0, left = 0, node;
 
@@ -3876,9 +3913,9 @@
 
 					this.editor.pasteHandleMode = true;
 					this.editor.bbParseContentMode = true;
+					this.editor.synchro.lastIframeValue = false;
 
 					this.editor.iframeView.SetValue(this.pastedContent, false);
-
 					this.editor.synchro.FromIframeToTextarea(true, true);
 
 					this.editor.pasteHandleMode = false;
@@ -3912,7 +3949,7 @@
 
 			this.pastedContent = content;
 		}
-	}
+	};
 
 	function __run()
 	{

@@ -85,7 +85,7 @@ if (empty($arRunErrors))
 {
 	try
 	{
-		$offers = \Bitrix\Catalog\ExportOfferCreator::getOfferObject(
+		$offers = \Bitrix\Catalog\Ebay\ExportOfferCreator::getOfferObject(
 			array(
 				"IBLOCK_ID" => $IBLOCK_ID,
 				"PRODUCT_GROUPS" => $V,
@@ -145,4 +145,3 @@ if ($bTmpUserCreated)
 }
 
 die();
-?>

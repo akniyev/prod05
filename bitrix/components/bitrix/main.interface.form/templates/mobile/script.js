@@ -16,15 +16,25 @@
 				select : null,
 				eventNode : null,
 				container : null,
+				titles : [],
+				values : [],
+				defaultTitles : [],
 				init : function(select, eventNode, container) {
-					if (BX(select) && select.options.length > 0 &&
-						BX(eventNode) && BX(container)/* && !select.hasAttribute("bx-bound")*/)
+					if (BX(select) && BX(eventNode) && BX(container))
 					{
-						select.setAttribute("bx-bound", "Y");
 						this.select = select;
 						this.eventNode = eventNode;
 						this.container = container;
-						BX.bind(this.eventNode, "click", this.click);
+
+						if (!this.select.hasAttribute("bx-bound"))
+						{
+							this.select.setAttribute("bx-bound", "Y");
+							BX.addCustomEvent(select, "onChange", BX.delegate(function() {
+								this.multiple = this.select.hasAttribute("multiple");
+								this.initValues();
+							}, this));
+							BX.bind(this.eventNode, "click", this.click);
+						}
 						this.multiple = select.hasAttribute("multiple");
 						this.initValues();
 					}
@@ -47,12 +57,15 @@
 					return BX.PreventDefault(e);
 				},
 				show : function() {
-					BXMobileApp.UI.SelectPicker.show({
-						callback: this.callback,
-						values: this.titles,
-						multiselect: this.multiple,
-						default_value : this.defaultTitles
-					});
+					if (this.titles.length > 0)
+					{
+						BXMobileApp.UI.SelectPicker.show({
+							callback: this.callback,
+							values: this.titles,
+							multiselect: this.multiple,
+							default_value : this.defaultTitles
+						});
+					}
 				},
 				callback : function(data) {
 					this.defaultTitles = [];
@@ -147,13 +160,15 @@
 					BXMobileApp.UI.DatePicker.show();
 				},
 				callback : function(data) {
-					this.node.value = data;
-					/*var d = this.makeDate(data);
+					var d = this.makeDate(data);
 					this.node.value = BX.date.format(this.format.bitrix[this.type], d);
-					var text = BX.date.format(this.format.visible[this.type], d);
+
+					var text = BX.date.format(BX.clone(this.format.visible[this.type]), d);
 					if (!BX.type.isNotEmptyString(text))
-						text = this.container.getAttribute("placeholder") || ' ';*/
-					this.container.innerHTML = data;
+						text = this.container.getAttribute("placeholder") || ' ';
+
+					this.container.innerHTML = text;
+
 					this.delButton.style.display = "inline-block";
 					BX.onCustomEvent(this, "onChange", [this, this.node]);
 				},
@@ -164,7 +179,7 @@
 					if (BX.type.isNotEmptyString(str))
 					{
 						var dateR = new RegExp("(\\d{2}).(\\d{2}).(\\d{4})"),
-							timeR = new RegExp("(\\d{2}):(\\d{2})"),
+							timeR = new RegExp("(\\d{1,2}):(\\d{1,2})"),
 							m;
 						if (dateR.test(str) && (m = dateR.exec(str)) && m)
 						{
@@ -188,7 +203,7 @@
 						if (this.type == 'date' || this.type == 'datetime')
 						{
 							res = BX.util.str_pad_left(d.getDate().toString(), 2, "0") + '.' +
-								BX.util.str_pad_left(d.getMonth().toString(), 2, "0") + '.' +
+								BX.util.str_pad_left((d.getMonth() + 1).toString(), 2, "0") + '.' +
 								d.getFullYear().toString();
 						}
 						if (this.type == 'datetime')
@@ -244,6 +259,7 @@
 					this.node.value = "";
 					this.container.innerHTML = this.container.getAttribute("placeholder");
 					this.delButton.style.display = "none";
+					BX.onCustomEvent(this, "onChange", [this, this.node]);
 					return false;
 				}
 			};
@@ -265,6 +281,14 @@
 				"profile" : BX.message("interface_form_user_url")
 			};
 			this.actualizeNodes();
+			this.expand = BX("expand_" + this.select.getAttribute("id"));
+			this.visCount = BX("count_" + this.select.getAttribute("id"));
+
+			if (!this.container.parentNode.hasAttribute("bx-fastclick-bound"))
+			{
+				this.container.parentNode.setAttribute("bx-fastclick-bound", "Y");
+				FastClick.attach(this.container.parentNode.parentNode);
+			}
 		};
 			d.prototype = {
 				multiple : false,
@@ -305,11 +329,19 @@
 							BX.remove(this.select.options[ii]);
 						}
 					}
-					if (this.select.options.length <= 0)
+					if (this.select.options.length <= 0 && !this.multiple)
 						this.eventNode.innerHTML = BX.message('interface_form_select');
+					if (this.expand)
+						this.expand.value = this.select.options.length;
+					if (this.visCount)
+						this.visCount.innerHTML = this.select.options.length-3;
 					BX.onCustomEvent(this, "onChange", [this, this.select]);
 				},
 				actualizeNodes : function() {
+					if (this.expand)
+						this.expand.value = this.select.options.length;
+					if (this.visCount)
+						this.visCount.innerHTML = this.select.options.length-3;
 					for (var ii = 0;  ii < this.select.options.length; ii++)
 					{
 						if (BX(this.select.id + '_del_' + this.select.options[ii].value))
@@ -321,18 +353,18 @@
 				buildNodes : function(items) {
 					var options = '',
 						html = '',
-						ii,
+						ii, c = 0,
 						user, existedUsers = [];
 					for (ii = 0; ii < this.select.options.length; ii++)
 					{
 						existedUsers.push(this.select.options[ii].value.toString());
+						c++;
 					}
 					for (ii = 0; ii < Math.min((this.multiple ? items.length : 1), items.length); ii++)
 					{
 						user = items[ii];
 						if (BX.util.in_array(user["ID"], existedUsers))
 							continue;
-
 						options += '<option value="' + user["ID"] + '" selected>' + user["NAME"] + '</option>';
 						html += ([
 							'<div class="mobile-grid-field-select-user-item-outer">',
@@ -343,13 +375,17 @@
 								'</div>',
 							'</div>'
 						].join('').replace(' style="background-image:url(\'\')"', ''));
+						c++;
 					}
-
+					if (this.expand)
+						this.expand.value = c;
+					if (this.visCount)
+						this.visCount.innerHTML = c-3;
 					if (html != '')
 					{
 						this.select.innerHTML = (this.multiple ? this.select.innerHTML : '') + options;
 						this.container.innerHTML = (this.multiple ? this.container.innerHTML : '') + html;
-						if (this.select.innerHTML != '')
+						if (this.select.innerHTML != '' && !this.multiple)
 							this.eventNode.innerHTML = BX.message('interface_form_change');
 
 						BX.onCustomEvent(this, "onChange", [this, this.select]);
@@ -450,6 +486,282 @@
 				}
 			};
 			return d;
+		})(),
+		initFile = (function () {
+			var d = function (node) {
+				this.dialogName = "FileDialog";
+				this.node = node;
+
+				this.id = this.node.getAttribute("id");
+
+				this.controlName = this.node.getAttribute("data-bx-name");
+				this.container = BX('file-placeholder-' + this.id);
+				this.uploadParams = {
+					uploadMethod : BX.type.isNotEmptyString(this.node.getAttribute("data-bx-url")) ? "immediate" : "deferred",
+					uploadFileUrl : this.node.getAttribute("data-bx-url"),
+					allowUpload : this.node.getAttribute("data-bx-type") == "image" ? "I" : "A",
+					allowUploadExt : this.node.getAttribute("data-bx-extension"),
+					maxCount : this.node.getAttribute("data-bx-max")
+				};
+
+				this.button = BX('file-eventnode-' + this.id);
+				if (this.button)
+					BX.bind(this.button, "click", BX.proxy(this.click, this));
+
+				this.agent = BX.Uploader.getInstance({
+					id : this.id,
+					streams : 1,
+					allowUpload : this.uploadParams["allowUpload"], //("I" || "A")
+					allowUploadExt : this.uploadParams["allowUploadExt"],
+					uploadFormData : "N",
+					uploadMethod : this.uploadParams["uploadMethod"],
+					uploadFileUrl : this.uploadParams["uploadFileUrl"],
+					showImage : true,
+					sortItems : false,
+					input : BX(this.id + "_file"),
+					dropZone : null,
+					placeHolder : this.container,
+					queueFields : {
+						thumb : {
+							tagName : "DIV",
+							className : "mobile-grid-field-file-item mobile-grid-field-file-file"
+						}
+					},
+					fields : {
+						thumb : {
+							tagName : "",
+							template : BX.message('FILE_NODE')
+						},
+						preview : {
+							params : {
+								width: 212,
+								height: 119
+							}
+						}
+					}
+				});
+				this.init();
+				return this;
+			};
+
+			d.prototype = {
+				click : function(e) {
+					if (BX.hasClass(this.button, "disabled"))
+						BX.DoNothing();
+					else if (!window["BXMobileAppContext"])
+						return true;
+					else
+						this.show();
+					return BX.PreventDefault(e);
+				},
+				show : function() {
+					var buttons = [
+						{
+							title: BX.message("MPF_PHOTO_CAMERA"),
+							callback: BX.delegate(function()
+							{
+								window.app.takePhoto({
+									quality: 80,
+									source: 1,
+									correctOrientation: true,
+									targetWidth: 1024,
+									targetHeight: 1024,
+									destinationType: window["Camera"]["DestinationType"]["DATA_URL"],
+									callback: this.handleAppFile
+								});
+							}, this)
+						},
+						{
+							title: BX.message("MPF_PHOTO_GALLERY"),
+							callback: BX.delegate(function()
+							{
+								window.app.takePhoto({
+									quality: 80,
+									targetWidth: 1024,
+									targetHeight: 1024,
+									destinationType: window["Camera"]["DestinationType"]["DATA_URL"],
+									callback: this.handleAppFile
+								});
+							}, this)
+						}
+					];
+					(new window.BXMobileApp.UI.ActionSheet( { buttons: buttons }, "textPanelSheet" )).show();
+				},
+				handleAppFile : function(image) {
+					var dataBlob = BX.UploaderUtils.dataURLToBlob("data:image/jpg;base64,"+image);
+					dataBlob.name = 'mobile_'+BX.date.format("Ymd_His")+'.jpg';
+					(this.agent && this.agent.onChange([dataBlob]));
+				},
+
+				init : function() {
+					this.handleAppFile = BX.delegate(this.handleAppFile, this);
+
+					this._onFileIsBound = BX.delegate(this.onFileIsBound, this);
+					this._onFileIsAppended = BX.delegate(this.onFileIsAppended, this);
+					this._onUploadStart = BX.delegate(this.onUploadStart, this);
+					this._onUploadProgress = BX.delegate(this.onUploadProgress, this);
+					this._onUploadDone = BX.delegate(this.onUploadDone, this);
+					this._onUploadError = BX.delegate(this.onUploadError, this);
+
+					BX.addCustomEvent(this.agent, "onFileIsCreated", BX.delegate(this.onFileIsCreated, this));
+
+					var values = BX.findChildren(this.container, {tagName : "DIV"}, false);
+					if (values.length > 0)
+					{
+						var ar1 = [], ar2 = [], name;
+						for (var ii = 0; ii < values.length; ii++)
+						{
+							name = BX.findChild(values[ii], {'className' : 'mobile-grid-field-file-name'}, true);
+							if (BX(name))
+							{
+								ar1.push({
+									name : name.innerHTML,
+									id : values[ii].getAttribute("id").replace("file-", "")
+								});
+								ar2.push(values[ii]);
+							}
+						}
+						this.agent.onAttach(ar1, ar2);
+					}
+					if (this.uploadParams['maxCount'] > 0)
+					{
+						BX.addCustomEvent(this.agent, "onAttachFiles", BX.delegate(this.onAttachFiles, this));
+						BX.addCustomEvent(this.agent, "onQueueIsChanged", BX.delegate(this.onQueueIsChanged, this));
+						this.onQueueIsChanged();
+					}
+				},
+				onQueueIsChanged : function()
+				{
+					if (1 < this.uploadParams["maxCount"] && this.uploadParams["maxCount"] <= this.agent.getItems().length ||
+						1 == this.uploadParams["maxCount"] && this.uploadParams["maxCount"] < this.agent.getItems().length)
+					{
+						BX.addClass(this.button, "disabled");
+					}
+					else
+					{
+						BX.removeClass(this.button, "disabled");
+					}
+				},
+				onAttachFiles : function(files)
+				{
+					var error = false;
+					if(files)
+					{
+						if (this.uploadParams["maxCount"] == 1 && files.length > 0)
+						{
+							while (this.agent.getItems().length > 0)
+								this.deleteFile(this.agent.getItems().getFirst(), true);
+							while (files.length > 1)
+								files.pop();
+						}
+						var acceptableL = this.uploadParams['maxCount'] - this.agent.getItems().length;
+						acceptableL = (acceptableL > 0 ? acceptableL : 0);
+						while (files.length > acceptableL)
+						{
+							files.pop();
+							error = true;
+						}
+					}
+					if (error)
+					{
+						BX.addClass(this.button, "disabled");
+						// TODO more appropriate error hint
+					}
+					return files;
+				},
+				onFileIsCreated : function(id, file) {
+					if (file["file"] && file["file"]["size"])
+						file.size = BX.UploaderUtils.getFormattedSize(file.file.size, 2);
+					BX.addCustomEvent(file, 'onFileIsBound', this._onFileIsBound);
+					BX.addCustomEvent(file, 'onFileIsAppended', this._onFileIsAppended);
+					BX.addCustomEvent(file, 'onUploadStart', this._onUploadStart);
+					BX.addCustomEvent(file, 'onUploadProgress', this._onUploadProgress);
+					BX.addCustomEvent(file, 'onUploadDone', this._onUploadDone);
+					BX.addCustomEvent(file, 'onUploadError', this._onUploadError);
+				},
+				onFileIsBound : function(id, item) {
+					this.bindFile(item);
+				},
+				onFileIsAppended : function(id, item) {
+					this.bindFile(item);
+					if (this.agent.params["uploadMethod"] != "immediate")
+					{
+						var node = this.agent.getItem(item.id);
+						node = (node ? node.node : node);
+						BX.onCustomEvent(this, "onChange", [this, this.node, {
+							action: "add",
+							file: item.file,
+							node: node,
+							item: item
+						}]);
+					}
+				},
+				onUploadStart : function(item) {
+					var node = this.agent.getItem(item.id);
+					if (node && (node = node.node) && node)
+						BX.addClass(node, "mobile-grid-field-file-wait");
+				},
+				onUploadProgress : function(item, progress) { },
+				onUploadDone : function(item, result) {
+					var node = this.agent.getItem(item.id);
+					if (!node || !((node = node.node) && node))
+						return;
+					BX.removeClass(node, "mobile-grid-field-file-wait");
+					var file = result["file"];
+					item.file = { id : file["id"], name : file["name"] };
+					var n = BX.findChildByClassName(node, 'mobile-grid-field-file-name', true);
+					if (n)
+						n.innerHTML = file["name"];
+
+					var inp = BX.create('INPUT', {attrs : {type : "hidden", name : this.controlName, value : file["id"]}});
+					node.appendChild(inp);
+					BX.onCustomEvent(this, "onChange", [this, this.node, {
+						action : "delete",
+						file : item.file,
+						node : node,
+						item : item
+					}]);
+					this.bindFile(item)
+				},
+				onUploadError : function(item) {
+					var node = this.agent.getItem(item.id);
+					if (!node || !((node = node.node) && node))
+						return;
+					BX.removeClass(node, "mobile-grid-field-file-wait");
+					BX.addClass(node, "mobile-grid-field-file-error");
+				},
+				bindFile : function(item) {
+					var node = this.agent.getItem(item.id);
+					if (!node || !((node = node.node) && node))
+						return;
+					if (item.dialogName == "BX.UploaderImage")
+					{
+						if (!BX.hasClass(node, "mobile-grid-field-file-image"))
+							BX.addClass(node, "mobile-grid-field-file-image");
+						BX.removeClass(node, "mobile-grid-field-file-file");
+					}
+					var del = BX.findChild(node, {tagName : 'DEL'}, true);
+					if (del && !del.hasAttribute("bx-bound"))
+					{
+						del.setAttribute("bx-bound", "Y");
+						BX.bind(del, "click", BX.delegate(function() { this.deleteFile(item); }, this));
+					}
+				},
+				deleteFile : function(item)
+				{
+					var node = this.agent.getItem(item.id);
+					if (node && (node = node.node) && node)
+						BX.hide(node);
+					BX.onCustomEvent(this, "onChange", [this, this.node, {
+						action : "delete",
+						file : item.file,
+						node : null,
+						item : item
+					}]);
+					item.deleteFile();
+				}
+			};
+			return d;
 		})();
 	window.app.exec("enableCaptureKeyboard", true);
 	BX.Mobile.Grid.Form = function(params) {
@@ -464,7 +776,12 @@
 				repo["formId"][this.formId] = this;
 			this.formats = params["formats"] || null;
 			var nodes = params["customElements"] || [], node, obj, ff = BX.proxy(function(o, node) {
-				BX.onCustomEvent(this, "onChange", [this, node, o]);
+				var res = [this, node, o];
+				for (var i = 2; i < arguments.length; i++)
+				{
+					res.push(arguments[i]);
+				}
+				BX.onCustomEvent(this, "onChange", res);
 			}, this);
 			this.apply = BX.delegate(this.apply, this);
 			this.restrictedMode = params["restrictedMode"];
@@ -509,6 +826,7 @@
 				BX.addCustomEvent("onKeyboardWillShow", function() { BX.addClass(BX('buttons_' + formId), "mobile-grid-button-panel-regular"); });
 				BX.addCustomEvent("onKeyboardDidHide", function() { BX.removeClass(BX('buttons_' + formId), "mobile-grid-button-panel-regular"); });
 			}
+			BX.onCustomEvent(window, "onInitialized", [this.formId, this.gridId, this]);
 		}
 	};
 	BX.Mobile.Grid.Form.prototype = {
@@ -518,13 +836,13 @@
 			if (BX(node))
 			{
 				var tag = node.tagName.toLowerCase(),
-					type = (node.hasAttribute("bx-type") ? node.getAttribute("bx-type").toLowerCase() : "");
+					type = (node.hasAttribute("data-bx-type") ? node.getAttribute("data-bx-type").toLowerCase() : "");
 
-				if (tag == 'select' && node.getAttribute("bx-type") == 'select-user')
+				if (tag == 'select' && node.getAttribute("data-bx-type") == 'select-user')
 				{
 					result = new initSelectUser(node, BX(node.id + '_select'), BX(node.id + '_target'));
 				}
-				else if (tag == 'select' && node.getAttribute("bx-type") == 'select-group')
+				else if (tag == 'select' && node.getAttribute("data-bx-type") == 'select-group')
 				{
 					result = new initSelectGroup(node, BX(node.id + '_select'), BX(node.id + '_target'));
 				}
@@ -571,27 +889,6 @@
 				{
 					result = new initDatetime(node, type, BX(node.id + '_container'), this.format);
 				}
-				else if (type == 'section')
-				{
-					BX.bind(node, "click", function(e){
-						BX.PreventDefault(e);
-						if (BX.hasClass(node, "mobile-grid-field-expanded-head"))
-						{
-							BX.removeClass(node, "mobile-grid-field-expanded-head");
-							BX.removeClass(node.nextSibling, "mobile-grid-field-expanded-body");
-							BX.addClass(node, "mobile-grid-field-collapsed-head");
-							BX.addClass(node.nextSibling, "mobile-grid-field-collapsed-body");
-						}
-						else
-						{
-							BX.removeClass(node, "mobile-grid-field-collapsed-head");
-							BX.removeClass(node.nextSibling, "mobile-grid-field-collapsed-body");
-							BX.addClass(node, "mobile-grid-field-expanded-head");
-							BX.addClass(node.nextSibling, "mobile-grid-field-expanded-body");
-						}
-						return false;
-					});
-				}
 				else if (type == 'disk_file')
 				{
 					result = BX.Disk.UFMobile.getByName(node.value);
@@ -599,6 +896,10 @@
 				else if (type == 'diskview_file')
 				{
 					result = BX.Disk.UFMobile.getByName(node.value);
+				}
+				else if (type == "file" || type == "image")
+				{
+					result = new initFile(node);
 				}
 			}
 			return result;

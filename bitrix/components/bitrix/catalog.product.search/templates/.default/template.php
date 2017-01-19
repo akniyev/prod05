@@ -10,7 +10,8 @@
 /** @var string $templateFolder */
 /** @var string $componentPath */
 /** @var CBitrixComponent $component */
-use Bitrix\Main;
+use Bitrix\Main,
+	Bitrix\Iblock;
 
 if (!$arResult['IS_ADMIN_SECTION'])
 	return;
@@ -40,7 +41,7 @@ function renderTree($sections, $level = 0, $tableId)
 	$content = '';
 	$level = (int)$level;
 
-	foreach ($sections AS $section)
+	foreach ($sections as $section)
 	{
 		$bSubmenu = $section["dynamic"];
 		$bSectionActive = $section["open"];
@@ -68,6 +69,7 @@ function renderTree($sections, $level = 0, $tableId)
 		$content .= '<div class="adm-sub-submenu-block-children">' . ($bSubmenu ? renderTree($section["items"], $level + 1, $tableId) : '') . '</div>';
 		$content .= '</div>';
 	}
+	unset($section);
 	return $content;
 }
 
@@ -106,33 +108,6 @@ function _ShowGroupPropertyFieldList($name, $property_fields, $values)
 	return $result;
 }
 
-function addPropsCell(CAdminListRow &$row, &$arSelectedProps, &$arItems)
-{
-	$arProperties = $arItems['PROPERTIES'];
-	foreach ($arSelectedProps as $aProp)
-	{
-
-		if (empty($arProperties[$aProp['ID']])) continue;
-		$v = '';
-		foreach ($arProperties[$aProp['ID']] as $property_value_id => $property_value)
-		{
-			if ($aProp['PROPERTY_TYPE'] == 'F')
-				$res = getImageField($property_value_id, $property_value);
-			elseif ($aProp['PROPERTY_TYPE'] == 'G')
-				$res = ProductSearchComponent::getSectionName($property_value);
-			elseif ($aProp['PROPERTY_TYPE'] == 'E')
-				$res = ProductSearchComponent::getElementName($property_value);
-			else
-				$res = htmlspecialcharsex($property_value);
-
-			if ($res != "")
-				$v .= ($v != '' ? ' / ' : '') . $res;
-		}
-		if ($v != "")
-			$row->AddViewField("PROPERTY_" . $aProp['ID'], $v);
-	}
-}
-
 function getImageField($property_value_id,$property_value)
 {
 	global $viewFileParams;
@@ -159,9 +134,6 @@ else
 	$arSKUProps = $arResult['SKU_PROPS'];
 	$arFilter = $arResult['FILTER'];
 
-	$arHeaders = $arResult['HEADERS'];
-	$arPrices = $arResult['PRICES'];
-
 	$tableId = CUtil::JSEscape($arResult['TABLE_ID']);
 
 	// START TEMPLATE
@@ -173,7 +145,7 @@ else
 	$_REQUEST['admin_history'] = 1;
 	$lAdmin->NavText($arResult['DB_RESULT_LIST']->GetNavPrint(GetMessage("SPS_NAV_LABEL")));
 
-	$lAdmin->AddHeaders($arHeaders);
+	$lAdmin->AddHeaders($arResult['HEADERS']);
 
 	$arSelectedFields = $lAdmin->GetVisibleHeaderColumns();
 	$arSelectedProps = array();
@@ -257,12 +229,6 @@ else
 				$skuProperty = '';
 				if ($showSkuName)
 					$skuProperty .= '<b>'.$val['NAME'].'</b>';
-				foreach ($val['PROPERTIES_SHOW'] as $name => $value)
-				{
-					if ($skuProperty != '')
-						$skuProperty .= '<br>';
-					$skuProperty .= '<span style="color: grey;">'.$name.'</span>: '.$value;
-				}
 
 				$arSkuActions = array();
 				$rowSku->AddField("NAME", '<div class="sku-item-name">' . $skuProperty . '</div>' . '<input type="hidden" name="prd" id="' . $tableId . '_sku-' . $val["ID"] . '">');
@@ -271,9 +237,9 @@ else
 				$rowSku->AddViewFileField('PREVIEW_PICTURE', $viewFileParams);
 
 				$rowSku->AddField("ID", $arItems["ID"] . "-" . $val["ID"]);
-				if (!empty($arPrices))
+				if (!empty($arResult['PRICES']))
 				{
-					foreach ($arPrices as &$price)
+					foreach ($arResult['PRICES'] as $price)
 						$rowSku->AddViewField("PRICE".$price['ID'], CCurrencyLang::CurrencyFormat($arResult['SKU_PRICES'][$price['ID']][$val["ID"]]['PRICE'], $arResult['SKU_PRICES'][$price['ID']][$val["ID"]]['CURRENCY'], true));
 					unset($price);
 				}
@@ -308,7 +274,18 @@ else
 				$rowSku->AddField("ACTIVE", $active);
 				$rowSku->AddField("ACTION", '<a class="select-sku">' . GetMessage('SPS_SELECT') . '</a>');
 
-				addPropsCell($rowSku, $arSelectedProps, $val);
+				if (!empty($val['PROPERTIES']))
+				{
+					foreach ($arSelectedProps as $property)
+					{
+						if (empty($val['PROPERTIES'][$property['ID']]))
+							continue;
+						$separator = ($property['PROPERTY_TYPE'] == Iblock\PropertyTable::TYPE_FILE ? '' : '/ ');
+						$rowSku->AddViewField('PROPERTY_'.$property['ID'], implode($separator, $val['PROPERTIES'][$property['ID']]));
+						unset($separator);
+					}
+					unset($property);
+				}
 			}
 		}
 		else
@@ -353,16 +330,28 @@ else
 					"ACTION" => $tableId . '_helper.onSectionClick(' . $arItems["ID"] . ',\'' . CUtil::JSEscape($arItems['NAME']) . '\');'
 				);
 			}
-			if (!empty($arPrices))
+			if (!empty($arResult['PRICES']))
 			{
-				foreach ($arPrices as &$price)
+				foreach ($arResult['PRICES'] as $price)
 					$row->AddViewField("PRICE".$price['ID'], CCurrencyLang::CurrencyFormat($arItems['PRICES'][$price['ID']]['PRICE'], $arItems['PRICES'][$price['ID']]['CURRENCY'], true));
 				unset($price);
 			}
 		}
-		addPropsCell($row, $arSelectedProps, $arItems);
 
-		$row->AddViewField('NAME', '<a class="adm-list-table-link"><span class="bx-s-iconset ' . $icon . '"></span>' . htmlspecialcharsex($arItems['NAME']) . '</a>');
+		if (!empty($arItems['PROPERTIES']))
+		{
+			foreach ($arSelectedProps as $property)
+			{
+				if (empty($arItems['PROPERTIES'][$property['ID']]))
+					continue;
+				$separator = ($property['PROPERTY_TYPE'] == Iblock\PropertyTable::TYPE_FILE ? '' : '/ ');
+				$row->AddViewField('PROPERTY_'.$property['ID'], implode($separator, $arItems['PROPERTIES'][$property['ID']]));
+				unset($separator);
+			}
+			unset($property);
+		}
+
+		$row->AddViewField('NAME', '<a class="adm-list-table-link"><span class="bx-s-iconset ' . $icon . '"></span>' . htmlspecialcharsEx($arItems['NAME']) . '</a>');
 		$row->AddActions($arActions);
 	}
 
@@ -527,7 +516,7 @@ else
 				<tr>
 					<td nowrap><?= GetMessage("SPS_CODE") ?>:</td>
 					<td nowrap>
-						<input type="text" name="filter_code" size="50" value="<? echo htmlspecialcharsex($_REQUEST["filter_code"]) ?>">
+						<input type="text" name="filter_code" size="50" value="<? echo htmlspecialcharsbx($_REQUEST["filter_code"]) ?>">
 					</td>
 				</tr>
 				<tr>
@@ -695,7 +684,6 @@ else
 	</script>
 <? endif ?>
 	<script type="text/javascript">
-
 		<?
 		if (sizeof($arResult['IBLOCKS']) > 1):
 			$iblockMenu = array(array(

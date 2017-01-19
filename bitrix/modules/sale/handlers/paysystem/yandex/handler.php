@@ -2,19 +2,22 @@
 
 namespace Sale\Handlers\PaySystem;
 
+use Bitrix\Main\Config;
 use Bitrix\Main\Error;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Request;
 use Bitrix\Main\Result;
+use Bitrix\Main\Text\Encoding;
 use Bitrix\Main\Type\DateTime;
 use Bitrix\Main\Web\HttpClient;
-use Bitrix\Sale\BusinessValue;
+use Bitrix\Sale\Order;
 use Bitrix\Sale\PaySystem;
 use Bitrix\Sale\Payment;
+use Bitrix\Sale\PriceMaths;
 
 Loc::loadMessages(__FILE__);
 
-class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefund, PaySystem\IHold
+class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefundExtended, PaySystem\IHold
 {
 	/**
 	 * @param Payment $payment
@@ -26,7 +29,7 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 		$params = array(
 			'URL' => $this->getUrl($payment, 'pay'),
 			'PS_MODE' => $this->service->getField('PS_MODE'),
-			'BX_PAYSYSTEM_CODE' => $payment->getPaymentSystemId()
+			'BX_PAYSYSTEM_CODE' => $this->service->getField('ID')
 		);
 
 		$this->setExtraParams($params);
@@ -58,10 +61,13 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 	 * @param int $refundableSum
 	 * @return PaySystem\ServiceResult
 	 */
-	public function refund(Payment $payment, $refundableSum = 0)
+	public function refund(Payment $payment, $refundableSum)
 	{
 		$result = new PaySystem\ServiceResult();
-		$requestDT = new DateTime();
+		$error = '';
+		$requestDT = date('c');
+		$currency = $this->isTestMode($payment) ? 10643 : 643;
+		$cause = Loc::getMessage('SALE_HPS_YANDEX_CUSTOMER_REJECTION');
 
 		$request = '
 			<returnPaymentRequest
@@ -69,12 +75,11 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 				requestDT=\''.$requestDT.'\'
 				invoiceId=\''.$payment->getField('PS_INVOICE_ID').'\'
 				shopId=\''.$this->getBusinessValue($payment, 'YANDEX_SHOP_ID').'\'
-				amount=\''.$refundableSum.'\'
-				currency=\'643\'
-				cause=\'\'
+				amount=\''.number_format($refundableSum, 2).'\'
+				currency=\''.$currency.'\'
+				cause=\''.Encoding::convertEncoding($cause, LANG_CHARSET, 'UTF-8').'\'
 	        />';
 
-		$httpClient = new HttpClient();
 		$url = $this->getUrl($payment, 'return');
 
 		$signResult = $this->signRequest($payment, $request);
@@ -83,28 +88,59 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 			$data = $signResult->getData();
 			$pkcs7 = $data['PKCS7'];
 
-			$responseString = $httpClient->post($url, $pkcs7);
-			if ($responseString !== false)
+			/** @var \Bitrix\Sale\PaymentCollection $collection */
+			$collection = $payment->getCollection();
+
+			/** @var Order $order */
+			$order = $collection->getOrder();
+
+			$CertPem = PaySystem\YandexCert::getValue('CERT', $this->service->getField('ID'), $order->getPersonTypeId());
+			$PkeyPem = PaySystem\YandexCert::getValue('PKEY', $this->service->getField('ID'), $order->getPersonTypeId());
+
+			$cert = self::createTmpFile($CertPem);
+			$pkey = self::createTmpFile($PkeyPem);
+
+			$ch = curl_init($url);
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_HEADER, 0);
+			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+			curl_setopt($ch, CURLOPT_ENCODING, "");
+			curl_setopt($ch, CURLOPT_USERAGENT, "1C-Bitrix");
+			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);
+			curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+			curl_setopt($ch, CURLOPT_POST, 1);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $pkcs7);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+			curl_setopt($ch, CURLOPT_SSLCERT, $cert);
+			curl_setopt($ch, CURLOPT_SSLKEY, $pkey);
+			$content = curl_exec($ch);
+			$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			$curlError = curl_error($ch);
+			curl_close($ch);
+
+			if ($content !== false)
 			{
-				$element = $this->parseXmlResponse('returnPaymentResponse ', $responseString);
+				$element = $this->parseXmlResponse('returnPaymentResponse', $content);
 				$status = (int)$element->getAttribute('status');
 				if ($status == 0)
 					$result->setOperationType(PaySystem\ServiceResult::MONEY_LEAVING);
 				else
-					$result->addError(new Error('Error on try return money for payment. Status='.$status));
+					$error .= Loc::getMessage('SALE_HPS_YANDEX_REFUND_ERROR').' '.Loc::getMessage('SALE_HPS_YANDEX_REFUND_ERROR_INFO', array('#STATUS#' => $status, '#ERROR#' => $element->getAttribute('error')));
 			}
 			else
 			{
-				$result->addError(new Error('Error sending request. URL='.$url.' PARAMS='.join(' ', $request)));
+				$error .= Loc::getMessage('SALE_HPS_YANDEX_REFUND_CONNECTION_ERROR', array('#URL#' => $url, '#ERROR#' => $curlError, '#CODE#' => $httpCode));
 			}
 		}
 		else
 		{
-			$result->addErrors($signResult->getErrors());
+			$error .= implode("\n", $signResult->getErrorMessages());
 		}
 
-		if (!$result->isSuccess())
+		if ($error !== '')
 		{
+			$result->addError(new Error($error));
 			PaySystem\ErrorLog::add(array(
 				'ACTION' => 'returnPaymentRequest',
 				'MESSAGE' => join("\n", $result->getErrorMessages())
@@ -148,7 +184,7 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 		$sum = $request->get('orderSumAmount');
 		$paymentSum = $this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY');
 
-		return Payment::roundByFormatCurrency($paymentSum, $payment->getField('CURRENCY')) == Payment::roundByFormatCurrency($sum, $payment->getField('CURRENCY'));
+		return PriceMaths::roundByFormatCurrency($paymentSum, $payment->getField('CURRENCY')) == PriceMaths::roundByFormatCurrency($sum, $payment->getField('CURRENCY'));
 	}
 
 	/**
@@ -163,10 +199,8 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 
 		$data = $result->getData();
 
-		if ($result->isResultApplied())
-			$data['CODE'] = 0;
-		else
-			$data['CODE'] = 1000;
+		if (!$result->isResultApplied() && $data['CODE'] === 0)
+			$data['CODE'] = 200;
 
 		$dateISO = date("Y-m-d\TH:i:s").substr(date("O"), 0, 3).":".substr(date("O"), -2, 2);
 		header("Content-Type: text/xml");
@@ -257,19 +291,18 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 			"PS_INVOICE_ID" => $request->get('invoiceId')
 		);
 
-		if ($this->isCorrectSum($payment, $request) &&
-			$this->getBusinessValue($payment, 'PS_CHANGE_STATUS_PAY') == 'Y'
-		)
+		if ($this->isCorrectSum($payment, $request))
 		{
 			$data['CODE'] = 0;
 			$fields["PS_STATUS"] = "Y";
-			$result->setOperationType(PaySystem\ServiceResult::MONEY_COMING);
+			if ($this->getBusinessValue($payment, 'PS_CHANGE_STATUS_PAY') == 'Y')
+				$result->setOperationType(PaySystem\ServiceResult::MONEY_COMING);
 		}
 		else
 		{
 			$data['CODE'] = 200;
 			$fields["PS_STATUS"] = "N";
-			$errorMessage = 'Incorrect payment sum or payment flag';
+			$errorMessage = 'Incorrect payment sum';
 
 			$result->addError(new Error($errorMessage));
 			PaySystem\ErrorLog::add(array(
@@ -334,7 +367,8 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 				self::ACTIVE_URL => 'https://server:port/webservice/mws/api/cancelPayment'
 			),
 			'return' => array(
-				self::ACTIVE_URL => 'https://server:port/webservice/mws/api/refund'
+				self::ACTIVE_URL => 'https://penelope.yamoney.ru/webservice/mws/api/returnPayment',
+				self::TEST_URL => 'https://penelope-demo.yamoney.ru:8083/webservice/mws/api/returnPayment',
 			)
 		);
 	}
@@ -375,6 +409,8 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 		{
 			$data = $this->extractDataFromRequest($request);
 			$data['TECH_MESSAGE'] = 'Incorrect hash sum';
+			$data['CODE'] = 1;
+
 			$result->setData($data);
 			$result->addError(new Error('Incorrect hash sum'));
 		}
@@ -503,49 +539,60 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 
 	/**
 	 * @param Payment $payment
-	 * @param $data
-	 * @return \Bitrix\Sale\Result
+	 * @param $xml
+	 * @return PaySystem\ServiceResult
+	 * @throws \Bitrix\Main\ArgumentNullException
 	 */
-	private function signRequest(Payment $payment, $data)
+	private function signRequest(Payment $payment, $xml)
 	{
-		/** @var \Bitrix\Sale\Result $result */
-		$result = new Result();
+		$result = new PaySystem\ServiceResult();
 
-		$descriptorSpec = array(
-			0 => array("pipe", "r"),
-			1 => array("pipe", "w"),
-			2 => array("pipe", "w"),
-			3 => array("pipe", "r"),
-		);
+		/** @var \Bitrix\Sale\PaymentCollection $paymentCollection */
+		$paymentCollection = $payment->getCollection();
 
-		$opensslCommand = 'openssl smime -sign -signer '.escapeshellarg($this->getBusinessValue($payment, 'YANDEX_CERT')).' -inkey '.escapeshellarg($this->getBusinessValue($payment, 'YANDEX_PRIVATE_KEY')).' -nochain -nocerts -outform PEM -nodetach -passin fd:3';
+		/** @var \Bitrix\Sale\Order $order */
+		$order = $paymentCollection->getOrder();
 
-		$process = proc_open($opensslCommand, $descriptorSpec, $pipes);
-		if (is_resource($process))
+		$dataFile = self::createTmpFile($xml);
+		$signedFile = self::createTmpFile();
+
+		$CertPem = PaySystem\YandexCert::getValue('CERT', $this->service->getField('ID'), $order->getPersonTypeId());
+		$PkeyPem = PaySystem\YandexCert::getValue('PKEY', $this->service->getField('ID'), $order->getPersonTypeId());
+
+		if ($PkeyPem && $CertPem)
 		{
-			fwrite($pipes[0], $data);
-			fclose($pipes[0]);
-
-			fwrite($pipes[3], $this->getBusinessValue($payment, 'YANDEX_CERT_PASSWORD'));
-			fflush($pipes[3]);
-			fclose($pipes[3]);
-
-			$pkcs7 = stream_get_contents($pipes[1]);
-			$result->setData(array('PKCS7' => $pkcs7));
-
-			fclose($pipes[1]);
-			$resCode = proc_close($process);
-
-			if ($resCode != 0)
-				$result->addError(new Error('OpenSSL call failed:' . $resCode . '\n' . $pkcs7));
+			if (openssl_pkcs7_sign($dataFile, $signedFile, $CertPem, $PkeyPem, array(), PKCS7_NOCHAIN + PKCS7_NOCERTS))
+			{
+				$signedData = explode("\n\n", file_get_contents($signedFile));
+				$pkcs7 = "-----BEGIN PKCS7-----\n".$signedData[1]."\n-----END PKCS7-----";
+				$result->setData(array('PKCS7' => $pkcs7));
+			}
+			else
+			{
+				$result->addError(new Error(Loc::getMessage('SALE_HPS_YANDEX_REFUND_ERROR')));
+			}
 		}
 		else
 		{
-			$result->addError(new Error('Error command execute'));
+			$result->addError(new Error(Loc::getMessage('SALE_HPS_YANDEX_REFUND_ERROR')));
 		}
 
 		return $result;
 	}
+
+	/**
+	 * @param null $data
+	 * @return mixed
+	 */
+	private static function createTmpFile($data = null)
+	{
+		$filePath = tempnam(sys_get_temp_dir(), 'YaMWS');
+		if ($data !== null)
+			file_put_contents($filePath, $data);
+
+		return $filePath;
+	}
+
 
 	/**
 	 * @return array
@@ -567,12 +614,23 @@ class YandexHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 			"MC" => Loc::getMessage("SALE_HPS_YANDEX_Mobile"),
 			"WM" => "WebMoney",
 			"SB" => Loc::getMessage("SALE_HPS_YANDEX_Sberbank"),
+			"MP" => Loc::getMessage("SALE_HPS_YANDEX_mPOS"),
 			"AB" => Loc::getMessage("SALE_HPS_YANDEX_AlphaClick"),
 			"MA" => Loc::getMessage("SALE_HPS_YANDEX_MasterPass"),
 			"PB" => Loc::getMessage("SALE_HPS_YANDEX_Promsvyazbank"),
 			"QW" => Loc::getMessage("SALE_HPS_YANDEX_Qiwi"),
 //			"KV" => Loc::getMessage("SALE_HPS_YANDEX_TinkoffBank"),
-			"QP" => Loc::getMessage("SALE_HPS_YANDEX_KuppiRu")
+			"QP" => Loc::getMessage("SALE_HPS_YANDEX_YKuppiRu"),
+			"" => Loc::getMessage("SALE_HPS_YANDEX_Smart")
 		);
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isRefundableExtended()
+	{
+		$whiteList = array('PC', 'AC', 'MC', 'WM', 'MP', 'AB', 'MA', 'QW', 'KV', 'QP');
+		return in_array($this->service->getField('PS_MODE'), $whiteList);
 	}
 }

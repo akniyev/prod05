@@ -14,7 +14,7 @@
 	}
 
 	var BX = window.BX,
-	_revision = 12, // api revision - check include.php
+	_revision = 14, // api revision - check include.php
 	_updateStateVeryFastCount = 0,
 	_updateStateFastCount = 0,
 	_updateStateStep = 60,
@@ -26,6 +26,8 @@
 	_pullPath = null,
 	_pullMethod = 'PULL',
 	_pullWithHeaders = true,
+	_pullCapturePullEvent = false,
+	_pullCapturePullEventStatus = false,
 	_pullTimeConfig = 0,
 	_pullTimeConfigShared = 0,
 	_pullTimeConst = (new Date(2022, 2, 19)).toUTCString(),
@@ -420,6 +422,7 @@
 		var _wsServer = wsPath+(_pullTag != null? "&tag="+_pullTag:"")+(_pullTime != null? "&time="+_pullTime:"")+(_pullMid !== null ? "&mid="+_pullMid : "");
 		try
 		{
+			BX.onCustomEvent(window, 'onPullStatus', ['connect']);
 			_WS = new WebSocket(_wsServer);
 		}
 		catch(e)
@@ -629,7 +632,7 @@
 
 	BX.PULL.connectPull = function(force)
 	{
-		force = force == true? true: false;
+		force = force == true;
 		clearTimeout(_updateStateTimeout);
 		_updateStateTimeout = setTimeout(function(){
 			if (!_pullPath || typeof(_pullPath) != "string" || _pullPath.length <= 32)
@@ -659,11 +662,13 @@
 				];
 			}
 
+			BX.onCustomEvent(window, 'onPullStatus', ['connect']);
+
 			var pullPath = _pullPath.replace('#DOMAIN#', location.hostname);
 			var _ajax = BX.ajax({
 				url: _pullMethod=='PULL'? pullPath: (pullPath+(_pullTag != null? "&tag="+_pullTag:"")+(_pullTime != null? "&time="+_pullTime:"")+(_pullMid !== null ? "&mid="+_pullMid : ""))+"&rnd="+(+new Date),
 				skipAuthCheck: true,
-				skipBxHeader: _pullMethod=='PULL'? false: true,
+				skipBxHeader: _pullMethod != 'PULL',
 				method: _pullMethod=='PULL'?'POST':'GET',
 				dataType: _pullMethod=='PULL'?'json':'html',
 				timeout: _pullTimeout,
@@ -938,7 +943,7 @@
 						_channelID = null;
 						clearTimeout(_updateStateTimeout);
 						_updateStateTimeout = setTimeout(function(){
-							BX.PULL.getChannelID('7-'+_ajax.status, _ajax.status == 403? true: false)
+							BX.PULL.getChannelID('7-'+_ajax.status, _ajax.status == 403)
 						}, (_sendAjaxTry < 2? 50: BX.PULL.tryConnectTimeout()));
 					}
 					else if (_ajax && (_ajax.status == 500 || _ajax.status == 502))
@@ -999,7 +1004,7 @@
 		if (!_pullTryConnect)
 			return false;
 
-		force = force == true? true: false;
+		force = force == true;
 		clearTimeout(_watchTimeout);
 		_watchTimeout = setTimeout(function()
 		{
@@ -1043,7 +1048,7 @@
 	BX.PULL.executeMessages = function(message, time, pull)
 	{
 		time = time === null? {'SERVER_TIME': (new Date()).toUTCString(), 'SERVER_TIME_WEB': Math.round((+new Date())/1000)}: time;
-		pull = pull === false? false: true;
+		pull = pull !== false;
 		for (var i = 0; i < message.length; i++)
 		{
 			message[i].module_id = message[i].module_id.toLowerCase();
@@ -1139,7 +1144,7 @@
 
 	BX.PULL.setUpdateStateStep = function(send)
 	{
-		var send = send == false? false: true;
+		var send = send != false;
 		var step = 60;
 
 		if (_updateStateVeryFastCount > 0)
@@ -1288,15 +1293,39 @@
 
 	BX.PULL.getPullServerStatus = function()
 	{
-		return _pullMethod == 'PULL'? false: true;
+		return _pullMethod != 'PULL';
 	}
 
-	BX.PULL.capturePullEvent = function()
+	BX.PULL.capturePullEvent = function(status)
 	{
-		BX.addCustomEvent("onPullOnlineEvent", function(command,params) { console.log('onPullOnlineEvent',command,params); });
-		BX.addCustomEvent("onPullEvent", function(module_id,command,params) { console.log('onPullEvent',module_id,command,params); });
-		return 'Capture "Pull Event" started.';
+		status = typeof(status) == 'boolean'? status: true;
+
+		if (!_pullCapturePullEvent && status)
+		{
+			_pullCapturePullEventStatus = true;
+			_pullCapturePullEvent = true;
+			BX.addCustomEvent("onPullOnlineEvent", function(command,params) {
+				if (_pullCapturePullEventStatus)
+				{
+					console.log('onPullOnlineEvent',command,params);
+				}
+			});
+			BX.addCustomEvent("onPullEvent", function(module_id,command,params) {
+				if (_pullCapturePullEventStatus)
+				{
+					console.log('onPullEvent',module_id,command,params);
+				}
+			});
+			return 'Capture "Pull Event" started.';
+		}
+		else
+		{
+			_pullCapturePullEventStatus = status;
+			return 'Capture "Pull Event" is '+(status? 'ON': 'OFF');
+		}
 	}
+
+
 	BX.PULL.getDebugInfo = function()
 	{
 		if (!console || !console.log || !JSON || !JSON.stringify)
@@ -1330,7 +1359,7 @@
 
 	BX.PULL.clearChannelId = function(send)
 	{
-		send = send == false? false: true;
+		send = send != false;
 
 		_channelClearReason = 15;
 		_channelID = null;
@@ -1346,6 +1375,11 @@
 			BX.PULL.updateState('30');
 	}
 
+	BX.PULL.isWebSoketConnected = function()
+	{
+		return _wsConnected === true;
+	}
+
 	BX.PULL.supportWebSocket = function()
 	{
 		var result = false;
@@ -1357,10 +1391,10 @@
 					result = true;
 				else if (BX.browser.IsChrome() && navigator.appVersion.substr(navigator.appVersion.indexOf('Chrome/')+7, 2) >= 28)
 					result = true;
-				else if (!BX.browser.IsChrome() && BX.browser.IsSafari() && navigator.appVersion.substr(navigator.appVersion.indexOf('Version/')+8, 1) >= 6)
+				else if (!BX.browser.IsChrome() && BX.browser.IsSafari())
 					result = true;
 			}
-			else if (BX.browser.DetectIeVersion() >= 10)
+			else if (BX.browser.DetectIeVersion() >= 10 && !BX.browser.IsAndroid())
 			{
 				result = true;
 			}

@@ -4,10 +4,11 @@ MobileWebrtc = function ()
 	this.signalingLink = this.siteDir+'mobile/ajax.php?mobile_action=calls&';
 	this.initiator = false;
 	this.callUserId = 0;
+	this.debug = false;
 	this.eventTimeRange = 30;
 	this.incomingCallTimeOut = 2;
 	this.delayedIncomingCall = {};
-	this.incomingCallTimeOutId = false;
+	this.incomingCallTimeOutId = null;
 	this.callBackUserId = 0;
 	this.callChatId = 0;
 	this.callToGroup = false;
@@ -24,24 +25,28 @@ MobileWebrtc = function ()
 	this.iceCandidatesToSend = [];
 	this.iceCandidateTimeout = 0;
 	this.peerConnectionInited = false;
-	this.userId = BX.message('USER_ID');
-	this.utcOffest = ((BX.localStorage.get("bxUtcOffset") != null)? BX.localStorage.get("bxUtcOffset"):0);
-	BX.ajax({
-		url: this.siteDir +"mobile/?mobile_action=service&service_id=server_utc",
-		method: 'GET',
-		dataType: 'json',
-		timeout: 30,
-		async: true,
-		onsuccess: BX.proxy(function(json){
-			if(json)
-			{
-				var localUtcTimeStamp = Math.round((new Date).getTime() / 1000);
-				this.utcOffest = json.server_utc_time - localUtcTimeStamp;
-				BX.localStorage.set("bxUtcOffset", this.utcOffest);
-			}
-		},this),
-		onfailure: function(){}
-	});
+	this.utcOffest = BX.localStorage.get("bxUTCOffset");
+	if(this.utcOffest == null)
+	{
+		this.utcOffest = 0;
+		BX.ajax({
+			url: this.siteDir +"mobile/?mobile_action=service&service_id=server_utc",
+			method: 'GET',
+			dataType: 'json',
+			timeout: 30,
+			async: true,
+			onsuccess: BX.proxy(function(json){
+				if(json)
+				{
+					var localUtcTimeStamp = Math.round((new Date).getTime() / 1000);
+					this.utcOffest = json.server_utc_time - localUtcTimeStamp;
+					BX.localStorage.set("bxUTCOffset", this.utcOffest,43200);
+				}
+			},this),
+			onfailure: BX.proxy(function(){
+			},this)
+		});
+	}
 
 	webrtc.setEventListeners(
 		{
@@ -64,16 +69,47 @@ MobileWebrtc = function ()
 	);
 };
 
+MobileWebrtc.prototype.attachListeners = function ()
+{
+	webrtc.setEventListeners(
+		{
+			//UI callbacks
+			"onAnswer": BX.proxy(this.onAnswer, this),
+			"onDecline": BX.proxy(this.onDecline, this),
+			"onCallback": BX.proxy(this.onCallback, this),
+			"onClose": BX.proxy(this.onClose, this),
+			//WebRTC callbacks
+			"onUserMediaSuccess": BX.proxy(this.onUserMediaSuccess, this),
+			"onDisconnect": BX.proxy(this.onDisconnect, this),
+			"onPeerConnectionCreated": BX.proxy(this.onPeerConnectionCreated, this),
+			"onIceCandidateDiscovered": BX.proxy(this.onIceCandidateDiscovered, this),
+			"onLocalSessionDescriptionCreated": BX.proxy(this.onLocalSessionDescriptionCreated, this),
+			"onIceConnectionStateChanged": BX.proxy(this.onIceConnectionStateChanged, this),
+			"onIceGatheringStateChanged": BX.proxy(this.onIceGatheringStateChanged, this),
+			"onSignalingStateChanged": BX.proxy(this.onSignalingStateChanged, this),
+			"onError": BX.proxy(this.onError, this)
+		}
+	);
+};
+
+/**
+ * Returns identifier of the current user
+ */
+MobileWebrtc.prototype.getUserId = function()
+{
+	return BX.message('USER_ID');
+};
 
 /**
  * Invites user
  * @param userId
  * @param video
+ * @param repeat
  */
 MobileWebrtc.prototype.callInvite = function (userId, video, repeat)
 {
 
-	if (userId == this.userId || this.callInit)
+	if (userId == this.getUserId() || this.callInit)
 		return;
 
 	if (this.delayedIncomingCall.chatId && this.delayedIncomingCall.senderId == userId)
@@ -85,11 +121,13 @@ MobileWebrtc.prototype.callInvite = function (userId, video, repeat)
 	var isRepeatCall = (repeat === true);
 	this.callInit = true;
 	this.video = callVideo;
+	this.initiator = true;
+	this.isConversationUIReady = false;
 	this.ajaxCall("CALL_INVITE", {
 			'COMMAND': 'invite',
 			'CHAT_ID': userId,
 			'CHAT': 'N',
-			'VIDEO': (callVideo?"Y":"N")
+			'VIDEO': (callVideo ? "Y":"N")
 		},
 		BX.delegate(function (params)
 		{
@@ -120,10 +158,12 @@ MobileWebrtc.prototype.callInvite = function (userId, video, repeat)
 				}
 				return;
 			}
+			this.isConversationUIReady = true;
 			this.initiator = true;
 			this.callChatId = params.CHAT_ID;
 			this.callToGroup = params.CALL_TO_GROUP;
 			this.callUserId = userId;
+			this.attachListeners();
 			webrtc.UI.show(
 				webrtc.UI.state.OUTGOING_CALL,
 				{
@@ -135,13 +175,13 @@ MobileWebrtc.prototype.callInvite = function (userId, video, repeat)
 					},
 					"caller":
 					{
-						"avatar": params["HR_PHOTO"][this.userId],
-						"name": params["USERS"][this.userId]["name"]
+						"avatar": params["HR_PHOTO"][this.getUserId()],
+						"name": params["USERS"][this.getUserId()]["name"]
 					}
 				}
 			);
 
-
+			BX.onCustomEvent("onMobileRTCReadyToConversation");
 		}, this),
 		BX.delegate(function (params)
 		{
@@ -156,7 +196,7 @@ MobileWebrtc.prototype.callInvite = function (userId, video, repeat)
 };
 
 /**
- * Shows incomming call screen
+ * Shows incoming call screen
  * @param params
  */
 MobileWebrtc.prototype.showIncomingCall = function (params)
@@ -167,6 +207,7 @@ MobileWebrtc.prototype.showIncomingCall = function (params)
 	this.initiator = false;
 	this.callInit = true;
 	this.callCommand(this.callChatId, 'wait');
+	this.attachListeners();
 	webrtc.UI.show(
 		webrtc.UI.state.INCOMING_CALL,
 		{
@@ -186,7 +227,7 @@ MobileWebrtc.prototype.showIncomingCall = function (params)
 MobileWebrtc.prototype.clearDelayedCallData = function ()
 {
 	clearTimeout(this.incomingCallTimeOutId);
-	this.incomingCallTimeOutId = false;
+	this.incomingCallTimeOutId = null;
 	this.delayedIncomingCall = {};
 };
 
@@ -206,6 +247,7 @@ MobileWebrtc.prototype.resetState = function ()
 	this.peerConnectionInited = false;
 	this.iceCandidates = [];
 	this.iceCandidatesToSend = [];
+	this.isConversationUIReady = false;
 };
 
 /**
@@ -247,7 +289,6 @@ MobileWebrtc.prototype.callCommand = function (chatId, command, params, async)
 
 	if (chatId > 0)
 	{
-
 		this.ajaxCall(
 			"CALL_SHARED",
 			{'COMMAND': command,'CHAT_ID': chatId ,'RECIPIENT_ID': this.callUserId ,'PARAMS': JSON.stringify(params)}
@@ -326,11 +367,10 @@ MobileWebrtc.prototype.ajaxCall = function (reqParam, reqData, onsuccess, onfail
 };
 
 /**
- * Returns absolute diff between incoming date (in UTC) an
- * @param utcDate
+ * Returns absolute diff between incoming date (in UTC) and local date
  * @returns {number}
  */
-MobileWebrtc.prototype.getUTCoffset = function ()
+MobileWebrtc.prototype.getUTCOffset = function ()
 {
 	return this.utcOffest*1000;
 };
@@ -338,7 +378,7 @@ MobileWebrtc.prototype.getUTCoffset = function ()
 MobileWebrtc.prototype.getTimeDiff = function (utcDate)
 {
 
-	var localTimestamp = (new Date).getTime() + this.getUTCoffset();
+	var localTimestamp = (new Date).getTime() + this.getUTCOffset();
 	var incomingTimestamp = Date.parse(utcDate);
 
 	return Math.abs((localTimestamp - incomingTimestamp) / 1000);
@@ -346,7 +386,7 @@ MobileWebrtc.prototype.getTimeDiff = function (utcDate)
 
 MobileWebrtc.prototype.timesUp = function (utcDate)
 {
-	return ((Math.abs((new Date).getTime()+this.getUTCoffset() - utcDate) / 1000) >= this.eventTimeRange);
+	return ((Math.abs((new Date).getTime()+this.getUTCOffset() - utcDate) / 1000) >= this.eventTimeRange);
 };
 
 
@@ -398,6 +438,7 @@ MobileWebrtc.prototype.onClose = function ()
 MobileWebrtc.prototype.onDisconnect = function ()
 {
 	this.peerConnectionInited = false;
+	//send reconnect
 };
 
 MobileWebrtc.prototype.onIceCandidateDiscovered = function (params)
@@ -470,7 +511,7 @@ MobileWebrtc.prototype.onLocalSessionDescriptionCreated = function (params)
 MobileWebrtc.prototype.onUserMediaSuccess = function (params)
 {
 	webrtc.UI.showLocalVideo();
-	this.connected[this.userId] = true;
+	this.connected[this.getUserId()] = true;
 	this.callCommand(this.callChatId, "ready");
 	if (this.connected[this.callUserId] && this.initiator)
 	{
@@ -489,16 +530,20 @@ window.mwebrtc = new MobileWebrtc();
 
 BX.addCustomEvent("onPullEvent-im", BX.proxy(function (command, params)
 {
-
+	/**
+	 * If the call ringing was started 30 sec ago
+	 * it too late to pick up the phone
+	 * @type {boolean}
+	 */
 	var isTooLate = this.getTimeDiff(params.SERVER_TIME) >= this.eventTimeRange;
 
 	if (command == 'call')
 	{
 		if (params.command == 'ready')
 		{
-			this.connected[this.callUserId] = true;
+			this.connected[params.senderId] = true;
 
-			if (this.connected[this.userId] && this.initiator == true)
+			if (this.connected[this.getUserId()] && this.initiator == true)
 			{
 				webrtc.createPeerConnection();
 			}
@@ -540,7 +585,7 @@ BX.addCustomEvent("onPullEvent-im", BX.proxy(function (command, params)
 				if (this.delayedIncomingCall.chatId == params.chatId)
 				{
 					clearTimeout(this.incomingCallTimeOutId);
-					this.incomingCallTimeOutId = false;
+					this.incomingCallTimeOutId = null;
 					this.delayedIncomingCall = {};
 				}
 			}
@@ -556,16 +601,22 @@ BX.addCustomEvent("onPullEvent-im", BX.proxy(function (command, params)
 		}
 		else if (!isTooLate && (params.command == 'invite' || params.command == 'invite_join'))
 		{
+			if(params.callToGroup)
+			{
+				console.log("Call to group");
+				return;
+			}
+
 			if (!this.callInit)
 			{
-				if (this.incomingCallTimeOutId == false)
+				if (this.incomingCallTimeOutId == null)
 				{
 					this.delayedIncomingCall = params;
 					this.incomingCallTimeOutId = setTimeout(BX.proxy(function ()
 					{
 						this.showIncomingCall(this.delayedIncomingCall);
 						this.delayedIncomingCall = {};
-						this.incomingCallTimeOutId = false;
+						this.incomingCallTimeOutId = null;
 					}, this), this.incomingCallTimeOut * 1000);
 				}
 			}
@@ -592,6 +643,19 @@ BX.addCustomEvent("onPullEvent-im", BX.proxy(function (command, params)
 		}
 		else if (params.command == 'answer' && this.initiator == true)
 		{
+			if(!this.isConversationUIReady)
+			{
+				var handler = function(){
+					BX.onCustomEvent("onPullEvent-im",[command,params]);
+					BX.removeCustomEvent("onMobileRTCReadyToConversation",handler);
+				};
+
+				BX.addCustomEvent("onMobileRTCReadyToConversation",handler);
+
+				return;
+			}
+
+
 			if (this.callInit)
 			{
 				this.initiator = true;
@@ -605,7 +669,6 @@ BX.addCustomEvent("onPullEvent-im", BX.proxy(function (command, params)
 				}
 				webrtc.getUserMedia({video: params.video});
 			}
-
 		}
 		else if (params.command == 'decline_self' && this.callChatId == params.chatId || params.command == 'answer_self' && !this.callActive)
 		{
@@ -619,7 +682,7 @@ BX.addCustomEvent("onPullEvent-im", BX.proxy(function (command, params)
 		}
 		else if (this.callInit && this.callChatId == params.chatId)
 		{
-			if (params.command == 'signaling' && this.connected[this.userId])
+			if (params.command == 'signaling' && this.connected[this.getUserId()])
 			{
 				if (this.callInit && this.callChatId == params.chatId)
 					this.signalingPeerData(params.senderId, params.peer);

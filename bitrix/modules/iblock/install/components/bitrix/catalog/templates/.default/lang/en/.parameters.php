@@ -23,6 +23,7 @@ $MESS["CPT_BC_FILTER_VIEW_MODE"] = "Smart filter layout";
 $MESS["CPT_BC_TPL_TOP_VIEW_MODE"] = "Show top rated items";
 $MESS["CPT_BC_FILTER_VIEW_MODE_VERTICAL"] = "Vertical";
 $MESS["CPT_BC_FILTER_VIEW_MODE_HORIZONTAL"] = "Horizontal";
+$MESS["CPT_BC_INSTANT_RELOAD"] = "Instant filter using AJAX";
 $MESS["CPT_BC_SECTIONS_SHOW_PARENT_NAME"] = "Show section name";
 $MESS["CPT_BC_SECTIONS_HIDE_SECTION_NAME"] = "Hide subsection names";
 $MESS["CP_BC_TPL_PROP_EMPTY"] = "not selected";

@@ -714,18 +714,19 @@ class CAllCatalogProduct
 	 * @param int|float $quantity
 	 * @param array $arUserGroups
 	 * @param string $renewal
-	 * @param array $arPrices
+	 * @param array $priceList
 	 * @param bool|string $siteID
 	 * @param bool|array $arDiscountCoupons
 	 * @return array|bool
 	 */
-	public static function GetOptimalPrice($intProductID, $quantity = 1, $arUserGroups = array(), $renewal = "N", $arPrices = array(), $siteID = false, $arDiscountCoupons = false)
+	public static function GetOptimalPrice($intProductID, $quantity = 1, $arUserGroups = array(), $renewal = "N", $priceList = array(), $siteID = false, $arDiscountCoupons = false)
 	{
 		static $eventOnGetExists = null;
 		static $eventOnResultExists = null;
 
 		static $priceTypeCache = array();
 
+		/** @global CMain $APPLICATION */
 		global $APPLICATION;
 
 		if ($eventOnGetExists === true || $eventOnGetExists === null)
@@ -733,7 +734,7 @@ class CAllCatalogProduct
 			foreach (GetModuleEvents('catalog', 'OnGetOptimalPrice', true) as $arEvent)
 			{
 				$eventOnGetExists = true;
-				$mxResult = ExecuteModuleEventEx($arEvent, array($intProductID, $quantity, $arUserGroups, $renewal, $arPrices, $siteID, $arDiscountCoupons));
+				$mxResult = ExecuteModuleEventEx($arEvent, array($intProductID, $quantity, $arUserGroups, $renewal, $priceList, $siteID, $arDiscountCoupons));
 				if ($mxResult !== true)
 				{
 					self::updateUserHandlerOptimalPrice($mxResult);
@@ -775,7 +776,7 @@ class CAllCatalogProduct
 		if ($siteID === false)
 			$siteID = SITE_ID;
 
-		$resultCurrency = CCurrency::GetBaseCurrency();
+		$resultCurrency = Currency\CurrencyManager::getBaseCurrency();
 		if (empty($resultCurrency))
 		{
 			$APPLICATION->ThrowException(Loc::getMessage("BT_MOD_CATALOG_PROD_ERR_NO_BASE_CURRENCY"), "NO_BASE_CURRENCY");
@@ -797,10 +798,10 @@ class CAllCatalogProduct
 			return false;
 		}
 
-		if (!isset($arPrices) || !is_array($arPrices))
-			$arPrices = array();
+		if (!isset($priceList) || !is_array($priceList))
+			$priceList = array();
 
-		if (empty($arPrices))
+		if (empty($priceList))
 		{
 			$cacheKey = 'U'.implode('_', $arUserGroups);
 			if (!isset($priceTypeCache[$cacheKey]))
@@ -818,42 +819,47 @@ class CAllCatalogProduct
 			if (empty($priceTypeCache[$cacheKey]))
 				return false;
 
-			$dbPriceList = CPrice::GetListEx(
-				array(),
-				array(
-					"PRODUCT_ID" => $intProductID,
-					"@CATALOG_GROUP_ID" => $priceTypeCache[$cacheKey],
-					"+<=QUANTITY_FROM" => $quantity,
-					"+>=QUANTITY_TO" => $quantity
-				),
-				false,
-				false,
-				array("ID", "CATALOG_GROUP_ID", "PRICE", "CURRENCY")
-			);
-			while ($arPriceList = $dbPriceList->Fetch())
+			$iterator = Catalog\PriceTable::getList(array(
+				'select' => array('ID', 'CATALOG_GROUP_ID', 'PRICE', 'CURRENCY'),
+				'filter' => array(
+					'=PRODUCT_ID' => $intProductID,
+					'@CATALOG_GROUP_ID' => $priceTypeCache[$cacheKey],
+					array(
+						'LOGIC' => 'OR',
+						'<=QUANTITY_FROM' => $quantity,
+						'=QUANTITY_FROM' => null
+					),
+					array(
+						'LOGIC' => 'OR',
+						'>=QUANTITY_TO' => $quantity,
+						'=QUANTITY_TO' => null
+					)
+				)
+			));
+			while ($row = $iterator->fetch())
 			{
-				$arPriceList['ELEMENT_IBLOCK_ID'] = $intIBlockID;
-				$arPrices[] = $arPriceList;
+				$row['ELEMENT_IBLOCK_ID'] = $intIBlockID;
+				$priceList[] = $row;
 			}
-			unset($arPriceList, $dbPriceList);
+			unset($row, $iterator);
 			unset($cacheKey);
 		}
 		else
 		{
-			foreach ($arPrices as &$arOnePrice)
-				$arOnePrice['ELEMENT_IBLOCK_ID'] = $intIBlockID;
-			unset($arOnePrice);
+			foreach (array_keys($priceList) as $priceIndex)
+				$priceList[$priceIndex]['ELEMENT_IBLOCK_ID'] = $intIBlockID;
+			unset($priceIndex);
 		}
 
-		if (empty($arPrices))
+		if (empty($priceList))
 			return false;
 
-		$rsVAT = CCatalogProduct::GetVATInfo($intProductID);
-		if ($arVAT = $rsVAT->Fetch())
-			$arVAT['RATE'] = (float)$arVAT['RATE'] * 0.01;
+		$iterator = CCatalogProduct::GetVATInfo($intProductID);
+		if ($vat = $iterator->Fetch())
+			$vat['RATE'] = (float)$vat['RATE'] * 0.01;
 		else
-			$arVAT = array('RATE' => 0.0, 'VAT_INCLUDED' => 'N');
-		unset($rsVAT);
+			$vat = array('RATE' => 0.0, 'VAT_INCLUDED' => 'N');
+		unset($iterator);
 
 		if (self::getUseDiscount())
 		{
@@ -864,83 +870,106 @@ class CAllCatalogProduct
 //		$boolDiscountVat = ('N' != COption::GetOptionString('catalog', 'discount_vat', 'Y'));
 		$boolDiscountVat = true;
 
-		$minPrice = false;
 		$basePrice = false;
-		$arMinPrice = array();
-		$arMinDiscounts = array();
+		$unroundPrice = false;
+		$minPrice = false;
+		$minPriceData = array();
+		$minPriceDiscountList = array();
 
-		foreach ($arPrices as &$arPriceList)
+		foreach ($priceList as $priceData)
 		{
-			$arPriceList['VAT_RATE'] = $arVAT['RATE'];
-			$arPriceList['VAT_INCLUDED'] = $arVAT['VAT_INCLUDED'];
+			$priceData['VAT_RATE'] = $vat['RATE'];
+			$priceData['VAT_INCLUDED'] = $vat['VAT_INCLUDED'];
 
-			$currentPrice = $arPriceList['PRICE'];
+			$currentPrice = $priceData['PRICE'];
 			if ($boolDiscountVat)
 			{
-				if ('N' == $arPriceList['VAT_INCLUDED'])
-					$currentPrice *= (1 + $arPriceList['VAT_RATE']);
+				if ($priceData['VAT_INCLUDED'] == 'N')
+					$currentPrice *= (1 + $priceData['VAT_RATE']);
 			}
 			else
 			{
-				if ('Y' == $arPriceList['VAT_INCLUDED'])
-					$currentPrice /= (1 + $arPriceList['VAT_RATE']);
+				if ($priceData['VAT_INCLUDED'] == 'Y')
+					$currentPrice /= (1 + $priceData['VAT_RATE']);
 			}
 
-			if ($arPriceList['CURRENCY'] != $resultCurrency)
-				$currentPrice = CCurrencyRates::ConvertCurrency($currentPrice, $arPriceList['CURRENCY'], $resultCurrency);
+			if ($priceData['CURRENCY'] != $resultCurrency)
+				$currentPrice = CCurrencyRates::ConvertCurrency($currentPrice, $priceData['CURRENCY'], $resultCurrency);
 			$currentPrice = roundEx($currentPrice, CATALOG_VALUE_PRECISION);
 
 			$arDiscounts = array();
 			if (self::getUseDiscount())
-				$arDiscounts = CCatalogDiscount::GetDiscount($intProductID, $intIBlockID, $arPriceList["CATALOG_GROUP_ID"], $arUserGroups, $renewal, $siteID, $arDiscountCoupons);
+				$arDiscounts = CCatalogDiscount::GetDiscount(
+					$intProductID,
+					$intIBlockID,
+					$priceData['CATALOG_GROUP_ID'],
+					$arUserGroups,
+					$renewal,
+					$siteID,
+					$arDiscountCoupons
+				);
 
 			$result = CCatalogDiscount::applyDiscountList($currentPrice, $resultCurrency, $arDiscounts);
 			if ($result === false)
 				return false;
 
+			if ($boolDiscountVat)
+			{
+				if (!self::$optimalPriceWithVat)
+				{
+					$result['PRICE'] /= (1 + $minPriceData['VAT_RATE']);
+					$currentPrice /= (1 + $minPriceData['VAT_RATE']);
+				}
+			}
+			else
+			{
+				if (self::$optimalPriceWithVat)
+				{
+					$result['PRICE'] *= (1 + $minPriceData['VAT_RATE']);
+					$currentPrice *= (1 + $minPriceData['VAT_RATE']);
+				}
+			}
+			$result['UNROUND_PRICE'] = $result['PRICE'];
+			$result['PRICE'] = Catalog\Product\Price::roundPrice(
+				$priceData['CATALOG_GROUP_ID'],
+				$result['PRICE'],
+				$resultCurrency
+			);
+
 			if ($minPrice === false || $minPrice > $result['PRICE'])
 			{
 				$basePrice = $currentPrice;
 				$minPrice = $result['PRICE'];
-				$arMinPrice = $arPriceList;
-				$arMinDiscounts = $result['DISCOUNT_LIST'];
+				$unroundPrice = $result['UNROUND_PRICE'];
+				$minPriceData = $priceData;
+				$minPriceDiscountList = $result['DISCOUNT_LIST'];
 			}
-			unset($currentPrice);
+			unset($currentPrice, $result);
 		}
-		unset($arPriceList);
+		unset($priceData);
+		unset($vat);
 
-		if ($boolDiscountVat)
+		if ((roundEx($basePrice, 2) - roundEx($unroundPrice, 2)) < 0.01)
 		{
-			if (!self::$optimalPriceWithVat)
-			{
-				$minPrice /= (1 + $arMinPrice['VAT_RATE']);
-				$basePrice /= (1 + $arMinPrice['VAT_RATE']);
-
-				$minPrice = roundEx($minPrice, CATALOG_VALUE_PRECISION);
-				$basePrice = roundEx($basePrice, CATALOG_VALUE_PRECISION);
-			}
+			$basePrice = $minPrice;
 		}
-		else
-		{
-			if (self::$optimalPriceWithVat)
-			{
-				$minPrice *= (1 + $arMinPrice['VAT_RATE']);
-				$basePrice *= (1 + $arMinPrice['VAT_RATE']);
 
-				$minPrice = roundEx($minPrice, CATALOG_VALUE_PRECISION);
-				$basePrice = roundEx($basePrice, CATALOG_VALUE_PRECISION);
-			}
-		}
+		$discountValue = ($basePrice > $minPrice ? $basePrice - $minPrice : 0);
 
 		$arResult = array(
-			'PRICE' => $arMinPrice,
+			'PRICE' => $minPriceData,
 			'RESULT_PRICE' => array(
 				'BASE_PRICE' => $basePrice,
 				'DISCOUNT_PRICE' => $minPrice,
-				'DISCOUNT' => $basePrice - $minPrice,
-				'PERCENT' => ($basePrice > 0 ? roundEx((100*($basePrice - $minPrice))/$basePrice, CATALOG_VALUE_PRECISION) : 0),
+				'UNROUND_DISCOUNT_PRICE' => $unroundPrice,
 				'CURRENCY' => $resultCurrency,
-				'VAT_RATE' => $arMinPrice['VAT_RATE'],
+				'DISCOUNT' => $discountValue,
+				'PERCENT' => (
+					$basePrice > 0 && $discountValue > 0
+					? roundEx((100*$discountValue)/$basePrice, CATALOG_VALUE_PRECISION)
+					: 0
+				),
+				'VAT_RATE' => $minPriceData['VAT_RATE'],
 				'VAT_INCLUDED' => (self::$optimalPriceWithVat ? 'Y' : 'N')
 			),
 			'DISCOUNT_PRICE' => $minPrice,
@@ -948,11 +977,12 @@ class CAllCatalogProduct
 			'DISCOUNT_LIST' => array(),
 			'PRODUCT_ID' => $intProductID
 		);
-		if (!empty($arMinDiscounts))
+		unset($minPriceData);
+		if (!empty($minPriceDiscountList))
 		{
-			reset($arMinDiscounts);
-			$arResult['DISCOUNT'] = current($arMinDiscounts);
-			$arResult['DISCOUNT_LIST'] = $arMinDiscounts;
+			reset($minPriceDiscountList);
+			$arResult['DISCOUNT'] = current($minPriceDiscountList);
+			$arResult['DISCOUNT_LIST'] = $minPriceDiscountList;
 		}
 
 		if ($eventOnResultExists === true || $eventOnResultExists === null)
@@ -973,10 +1003,10 @@ class CAllCatalogProduct
 	/**
 	 * @param float $price
 	 * @param string $currency
-	 * @param array $arDiscounts
+	 * @param array $discounts
 	 * @return bool|float
 	 */
-	public static function CountPriceWithDiscount($price, $currency, $arDiscounts)
+	public static function CountPriceWithDiscount($price, $currency, $discounts)
 	{
 		static $eventOnGetExists = null;
 		static $eventOnResultExists = null;
@@ -986,7 +1016,7 @@ class CAllCatalogProduct
 			foreach (GetModuleEvents('catalog', 'OnCountPriceWithDiscount', true) as $arEvent)
 			{
 				$eventOnGetExists = true;
-				$mxResult = ExecuteModuleEventEx($arEvent, array($price, $currency, $arDiscounts));
+				$mxResult = ExecuteModuleEventEx($arEvent, array($price, $currency, $discounts));
 				if ($mxResult !== true)
 					return $mxResult;
 			}
@@ -1002,14 +1032,15 @@ class CAllCatalogProduct
 		if ($price <= 0)
 			return $price;
 
-		if (empty($arDiscounts) || !is_array($arDiscounts))
-			return $price;
+		$currentMinPrice = $price;
+		if (!empty($discounts) && is_array($discounts))
+		{
+			$result = CCatalogDiscount::applyDiscountList($price, $currency, $discounts);
+			if ($result === false)
+				return false;
 
-		$result = CCatalogDiscount::applyDiscountList($price, $currency, $arDiscounts);
-		if ($result === false)
-			return false;
-
-		$currentMinPrice = $result['PRICE'];
+			$currentMinPrice = $result['PRICE'];
+		}
 
 		if ($eventOnResultExists === true || $eventOnResultExists === null)
 		{
@@ -1026,7 +1057,7 @@ class CAllCatalogProduct
 		return $currentMinPrice;
 	}
 
-	public function GetProductSections($ID)
+	public static function GetProductSections($ID)
 	{
 		/** @global CStackCacheManager $stackCacheManager */
 		global $stackCacheManager;
@@ -1089,13 +1120,16 @@ class CAllCatalogProduct
 						$arSectionTree["ID"] = intval($arSectionTree["ID"]);
 						$arSectionsTmp[] = $arSectionTree["ID"];
 					}
+					unset($arSectionTree, $dbSectionTree);
 				}
+				unset($arSection, $dbSection);
 
 				$stackCacheManager->Set("catalog_group_parents", $strCacheKey, $arSectionsTmp);
 			}
 
 			$arProductSections = array_merge($arProductSections, $arSectionsTmp);
 		}
+		unset($arElementSections, $dbElementSections);
 
 		$arProductSections = array_unique($arProductSections);
 
@@ -1186,6 +1220,7 @@ class CAllCatalogProduct
 	 */
 	public static function updateUserHandlerOptimalPrice(&$userResult)
 	{
+		/** @global CMain $APPLICATION */
 		global $APPLICATION;
 		if (empty($userResult) || !is_array($userResult))
 		{
@@ -1199,7 +1234,7 @@ class CAllCatalogProduct
 		}
 		if (empty($userResult['RESULT_PRICE']) || !is_array($userResult['RESULT_PRICE']))
 		{
-			$resultCurrency = CCurrency::GetBaseCurrency();
+			$resultCurrency = Currency\CurrencyManager::getBaseCurrency();
 			if (empty($resultCurrency))
 			{
 				$APPLICATION->ThrowException(Loc::getMessage('BT_MOD_CATALOG_PROD_ERR_NO_BASE_CURRENCY'), 'NO_BASE_CURRENCY');
@@ -1239,9 +1274,33 @@ class CAllCatalogProduct
 		}
 		else
 		{
-			$userResult['RESULT_PRICE']['BASE_PRICE'] = roundEx($userResult['RESULT_PRICE']['BASE_PRICE'], CATALOG_VALUE_PRECISION);
-			$userResult['RESULT_PRICE']['DISCOUNT'] = roundEx($userResult['RESULT_PRICE']['DISCOUNT'], CATALOG_VALUE_PRECISION);
-			$userResult['RESULT_PRICE']['DISCOUNT_PRICE'] = $userResult['RESULT_PRICE']['BASE_PRICE'] - $userResult['RESULT_PRICE']['DISCOUNT'];
+			if (!isset($userResult['RESULT_PRICE']['UNROUND_DISCOUNT_PRICE']))
+			{
+				$userResult['RESULT_PRICE']['UNROUND_DISCOUNT_PRICE'] = $userResult['RESULT_PRICE']['DISCOUNT_PRICE'];
+				$userResult['RESULT_PRICE']['DISCOUNT_PRICE'] = Catalog\Product\Price::roundPrice(
+					$userResult['PRICE']['CATALOG_GROUP_ID'],
+					$userResult['RESULT_PRICE']['DISCOUNT_PRICE'],
+					$userResult['RESULT_PRICE']['CURRENCY']
+				);
+			}
+
+			if ((roundEx($userResult['RESULT_PRICE']['BASE_PRICE'], 2) - roundEx($userResult['RESULT_PRICE']['UNROUND_DISCOUNT_PRICE'], 2)) < 0.01)
+			{
+				$userResult['RESULT_PRICE']['BASE_PRICE'] = $userResult['RESULT_PRICE']['DISCOUNT_PRICE'];
+			}
+
+			$userResult['DISCOUNT_PRICE'] = $userResult['RESULT_PRICE']['DISCOUNT_PRICE'];
+			$discountValue = (
+				$userResult['RESULT_PRICE']['BASE_PRICE'] > $userResult['RESULT_PRICE']['DISCOUNT_PRICE']
+				? $userResult['RESULT_PRICE']['BASE_PRICE'] - $userResult['RESULT_PRICE']['DISCOUNT_PRICE']
+				: 0
+			);
+			$userResult['RESULT_PRICE']['DISCOUNT'] = $discountValue;
+			$userResult['RESULT_PRICE']['PERCENT'] = (
+				$userResult['RESULT_PRICE']['BASE_PRICE'] > 0 && $discountValue > 0
+				? roundEx((100*$discountValue)/$userResult['RESULT_PRICE']['BASE_PRICE'], CATALOG_VALUE_PRECISION)
+				: 0
+			);
 			$userResult['RESULT_PRICE']['VAT_RATE'] = $userResult['PRICE']['VAT_RATE'];
 		}
 	}

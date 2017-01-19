@@ -349,6 +349,7 @@
 		},
 		onChange : function(fileInput)
 		{
+			BX.onCustomEvent(this, "onFileinputWillBeChanged", [fileInput, this]);
 			BX.PreventDefault(fileInput);
 
 			var files = fileInput;
@@ -363,6 +364,7 @@
 			}
 			else
 			{
+				BX.onCustomEvent(this, "onFileinputIsChanged", [fileInput, this]);
 				this.init(fileInput);
 				this.onAttach(files);
 			}
@@ -393,7 +395,7 @@
 		{
 			if (prepareForm === true && this.params["uploadFormData"] == "Y" && !this.post)
 			{
-				var post2 = {"AJAX_POST" : "Y", "data": {}};
+				var post2 = {data : {"AJAX_POST" : "Y", SITE_ID : BX.message("SITE_ID"), USER_ID : BX.message("USER_ID")}, filesCount : 0, size : 10};
 				post2 = (this.form ? BX.UploaderUtils.FormToArray(this.form, post2) : post2);
 				if (!!post2.data[this.params["filesInputName"]])
 				{
@@ -419,7 +421,7 @@
 				post2.size = BX.UploaderUtils.sizeof(post2.data);
 				this.post = post2;
 			}
-			var post = (prepareForm === true && this.params["uploadFormData"] == "Y" ? this.post : {data : {"AJAX_POST" : "Y"}, filesCount : 0, size : 10}), size = 0;
+			var post = (prepareForm === true && this.params["uploadFormData"] == "Y" ? this.post : {data : {"AJAX_POST" : "Y", SITE_ID : BX.message("SITE_ID"), USER_ID : BX.message("USER_ID")}, filesCount : 0, size : 10}), size = 0;
 			post.data["sessid"] = BX.bitrix_sessid();
 			post.size += (6 + BX.bitrix_sessid().length);
 			if (data)
@@ -1671,6 +1673,7 @@
 					'start': false,
 					'preparePost':false,
 					'processData':true,
+					'skipAuthCheck': true,
 					'timeout' : settings.maxTimeForUploadFile
 				});
 				this.xhr.upload.addEventListener('progress', this._onprogress, false);

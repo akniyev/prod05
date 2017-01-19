@@ -100,10 +100,10 @@ if (!empty($arResult["SHOW_FIELDS"]))
 	foreach ($arResult["SHOW_FIELDS"] as $code => $arProp)
 	{
 		$showRow = true;
-		if (!isset($arResult['FIELDS_REQUIRED'][$code]) || $arResult['DIFFERENT'])
+		if ((!isset($arResult['FIELDS_REQUIRED'][$code]) || $arResult['DIFFERENT']) && count($arResult["ITEMS"]) > 1)
 		{
 			$arCompare = array();
-			foreach($arResult["ITEMS"] as &$arElement)
+			foreach($arResult["ITEMS"] as $arElement)
 			{
 				$arPropertyValue = $arElement["FIELDS"][$code];
 				if (is_array($arPropertyValue))
@@ -119,7 +119,7 @@ if (!empty($arResult["SHOW_FIELDS"]))
 		if ($showRow)
 		{
 			?><tr><td><?=GetMessage("IBLOCK_FIELD_".$code)?></td><?
-			foreach($arResult["ITEMS"] as &$arElement)
+			foreach($arResult["ITEMS"] as $arElement)
 			{
 		?>
 				<td valign="top">
@@ -171,7 +171,7 @@ if (!empty($arResult["SHOW_OFFER_FIELDS"]))
 		if ($arResult['DIFFERENT'])
 		{
 			$arCompare = array();
-			foreach($arResult["ITEMS"] as &$arElement)
+			foreach($arResult["ITEMS"] as $arElement)
 			{
 				$Value = $arElement["OFFER_FIELDS"][$code];
 				if(is_array($Value))
@@ -189,7 +189,7 @@ if (!empty($arResult["SHOW_OFFER_FIELDS"]))
 		?>
 		<tr>
 			<td><?=GetMessage("IBLOCK_OFFER_FIELD_".$code)?></td>
-			<?foreach($arResult["ITEMS"] as &$arElement)
+			<?foreach($arResult["ITEMS"] as $arElement)
 			{
 			?>
 			<td>
@@ -208,7 +208,7 @@ if (!empty($arResult["SHOW_OFFER_FIELDS"]))
 <tr>
 	<td><?=GetMessage('CATALOG_COMPARE_PRICE');?></td>
 	<?
-	foreach ($arResult["ITEMS"] as &$arElement)
+	foreach ($arResult["ITEMS"] as $arElement)
 	{
 		if (isset($arElement['MIN_PRICE']) && is_array($arElement['MIN_PRICE']))
 		{
@@ -231,7 +231,7 @@ if (!empty($arResult["SHOW_PROPERTIES"]))
 		if ($arResult['DIFFERENT'])
 		{
 			$arCompare = array();
-			foreach($arResult["ITEMS"] as &$arElement)
+			foreach($arResult["ITEMS"] as $arElement)
 			{
 				$arPropertyValue = $arElement["DISPLAY_PROPERTIES"][$code]["VALUE"];
 				if (is_array($arPropertyValue))
@@ -250,7 +250,7 @@ if (!empty($arResult["SHOW_PROPERTIES"]))
 			?>
 			<tr>
 				<td><?=$arProperty["NAME"]?></td>
-				<?foreach($arResult["ITEMS"] as &$arElement)
+				<?foreach($arResult["ITEMS"] as $arElement)
 				{
 					?>
 					<td>
@@ -274,7 +274,7 @@ if (!empty($arResult["SHOW_OFFER_PROPERTIES"]))
 		if ($arResult['DIFFERENT'])
 		{
 			$arCompare = array();
-			foreach($arResult["ITEMS"] as &$arElement)
+			foreach($arResult["ITEMS"] as $arElement)
 			{
 				$arPropertyValue = $arElement["OFFER_DISPLAY_PROPERTIES"][$code]["VALUE"];
 				if(is_array($arPropertyValue))
@@ -292,7 +292,7 @@ if (!empty($arResult["SHOW_OFFER_PROPERTIES"]))
 		?>
 		<tr>
 			<td><?=$arProperty["NAME"]?></td>
-			<?foreach($arResult["ITEMS"] as &$arElement)
+			<?foreach($arResult["ITEMS"] as $arElement)
 			{
 			?>
 			<td>
@@ -310,7 +310,7 @@ if (!empty($arResult["SHOW_OFFER_PROPERTIES"]))
 	?>
 	<tr>
 		<td></td>
-		<?foreach($arResult["ITEMS"] as &$arElement)
+		<?foreach($arResult["ITEMS"] as $arElement)
 		{
 		?>
 		<td>

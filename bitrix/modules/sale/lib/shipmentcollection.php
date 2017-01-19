@@ -130,10 +130,10 @@ class ShipmentCollection
 	/**
 	 * Adding shipping to the collection
 	 *
-	 * @param Shipment $shipment
+	 * @param Internals\CollectableEntity $shipment
 	 * @return Internals\CollectableEntity|void
 	 */
-	protected function addItem(Shipment $shipment)
+	protected function addItem(Internals\CollectableEntity $shipment)
 	{
 		/** @var Shipment $shipment */
 		$shipment = parent::addItem($shipment);
@@ -179,13 +179,13 @@ class ShipmentCollection
 	/**
 	 * Processing changes the essence of the shipment fields
 	 *
-	 * @param Shipment $item
+	 * @param Internals\CollectableEntity $item
 	 * @param null $name
 	 * @param null $oldValue
 	 * @param null $value
 	 * @return Result
 	 */
-	public function onItemModify(Shipment $item, $name = null, $oldValue = null, $value = null)
+	public function onItemModify(Internals\CollectableEntity $item, $name = null, $oldValue = null, $value = null)
 	{
 		/** @var Order $order */
 		$order = $this->getOrder();
@@ -371,15 +371,15 @@ class ShipmentCollection
 					if ($isChanged)
 					{
 						OrderHistory::addLog('SHIPMENT', $order->getId(), $isNew ? 'SHIPMENT_ADD' : 'SHIPMENT_UPDATE', $shipment->getId(), $shipment, $logFields , OrderHistory::SALE_ORDER_HISTORY_LOG_LEVEL_1);
+						
+						OrderHistory::addAction(
+							'SHIPMENT',
+							$order->getId(),
+							"SHIPMENT_SAVED",
+							$shipment->getId(),
+							$shipment
+						);
 					}
-
-					OrderHistory::addAction(
-						'SHIPMENT',
-						$order->getId(),
-						"SHIPMENT_SAVED",
-						$shipment->getId(),
-						$shipment
-					);
 				}
 
 			}
@@ -515,6 +515,39 @@ class ShipmentCollection
 	}
 
 	/**
+	 * Is the entire collection shipped
+	 *
+	 * @return bool
+	 */
+	public function hasShipped()
+	{
+		$emptyShipment = true;
+		if (!empty($this->collection) && is_array($this->collection))
+		{
+			/** @var Shipment $shipment */
+			foreach ($this->collection as $shipment)
+			{
+				if ($shipment->isSystem())
+					continue;
+
+				if ($shipment->isShipped() && !$shipment->isEmpty())
+					return true;
+
+				if (!$shipment->isEmpty())
+					$emptyShipment = false;
+			}
+
+			if ($this->isExistsSystemShipment() && $this->isEmptySystemShipment())
+				return true;
+
+			if ($emptyShipment)
+				return false;
+		}
+
+		return false;
+	}
+
+	/**
 	 * Is the entire collection of marked
 	 *
 	 * @return bool
@@ -589,6 +622,27 @@ class ShipmentCollection
 			}
 
 			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function hasAllowDelivery()
+	{
+		if (!empty($this->collection) && is_array($this->collection))
+		{
+			/** @var Shipment $shipment */
+			foreach ($this->collection as $shipment)
+			{
+				if ($shipment->isSystem())
+					continue;
+				
+				if ($shipment->isAllowDelivery())
+					return true;
+			}
 		}
 
 		return false;
@@ -791,7 +845,7 @@ class ShipmentCollection
 
 				if ($allowQuantityChange && $currentShipment)
 				{
-					$allowQuantityChange = (bool)(!$currentShipment->isAllowDelivery() && !$currentShipment->isCanceled() && !$currentShipment->isShipped() && !$currentShipment->isCustomPrice());
+					$allowQuantityChange = (bool)(!$currentShipment->isAllowDelivery() && !$currentShipment->isCanceled() && !$currentShipment->isShipped());
 
 					if ($allowQuantityChange)
 					{
@@ -1206,6 +1260,53 @@ class ShipmentCollection
 			}
 		}
 		return $result;
+	}
+
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return ShipmentCollection
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+		
+		$shipmentCollectionClone = clone $this;
+		$shipmentCollectionClone->isClone = true;
+
+		if ($this->order)
+		{
+			if ($cloneEntity->contains($this->order))
+			{
+				$shipmentCollectionClone->order = $cloneEntity[$this->order];
+			}
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $shipmentCollectionClone;
+		}
+
+		/**
+		 * @var int key
+		 * @var Shipment $shipment
+		 */
+		foreach ($shipmentCollectionClone->collection as $key => $shipment)
+		{
+			if (!$cloneEntity->contains($shipment))
+			{
+				$cloneEntity[$shipment] = $shipment->createClone($cloneEntity);
+			}
+
+			$shipmentCollectionClone->collection[$key] = $cloneEntity[$shipment];
+		}
+
+		return $shipmentCollectionClone;
 	}
 
 }

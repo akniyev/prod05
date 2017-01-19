@@ -109,7 +109,11 @@ class PaySystemActionTable extends \Bitrix\Main\Entity\DataManager
 			),
 			'IS_CASH' => array(
 				'data_type' => 'string'
-			)
+			),
+			'AUTO_CHANGE_1C' => array(
+				'data_type' => 'boolean',
+				'values' => array('N', 'Y')
+			),
 		);
 	}
 

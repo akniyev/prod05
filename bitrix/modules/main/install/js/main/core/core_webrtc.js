@@ -24,29 +24,26 @@
 		this.lastUserMediaParams = {};
 		this.pcConstraints = {};
 		this.sdpConstraints = {'mandatory': { 'OfferToReceiveAudio':true, 'OfferToReceiveVideo':true }};
+		this.defaultMicrophone = null;
+		this.defaultCamera = null;
+		this.enableMicAutoParameters = true;
 
 		this.configVideo = {
-			maxWidth: 1920,
-			maxHeight: 1080,
-			minWidth: 1280,
-			minHeight: 720
+			width: {min: 1280, max: 1920},
+			height: {min: 720, max: 1080}
 		};
 		this.configVideoGroup = {
-			maxWidth: 1280,
-			maxHeight: 720,
-			minWidth: 1280,
-			minHeight: 720
+			width: {min: 1280, max: 1280},
+			height: {min: 720, max: 720}
 		};
 		this.configVideoMobile = {
-			maxWidth: 1280,
-			maxHeight: 720,
-			minWidth: 1280,
-			minHeight: 720
+			width: {min: 1280, max: 1280},
+			height: {min: 720, max: 720}
 		};
 
 		this.configVideoAfterError = {
-			maxWidth: 1920,
-			maxHeight: 1080
+			width: {max: 1920},
+			height: {max: 1080}
 		};
 
 		this.callStreamSelf = null;
@@ -115,7 +112,73 @@
 
 			RTCPeerConnection = webkitRTCPeerConnection;
 
-			getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
+			var constraintsToChrome_ = function(c)
+			{
+				if (typeof c !== 'object' || c.mandatory || c.optional) {
+					return c;
+				}
+				var cc = {};
+				Object.keys(c).forEach(function(key) {
+					if (key === 'require' || key === 'advanced' || key === 'mediaSource') {
+						return;
+					}
+					var r = (typeof c[key] === 'object') ? c[key] : {ideal: c[key]};
+					if (r.exact !== undefined && typeof r.exact === 'number') {
+						r.min = r.max = r.exact;
+					}
+					var oldname_ = function(prefix, name) {
+						if (prefix) {
+							return prefix + name.charAt(0).toUpperCase() + name.slice(1);
+						}
+						return (name === 'deviceId') ? 'sourceId' : name;
+					};
+					if (r.ideal !== undefined) {
+						cc.optional = cc.optional || [];
+						var oc = {};
+						if (typeof r.ideal === 'number') {
+							oc[oldname_('min', key)] = r.ideal;
+							cc.optional.push(oc);
+							oc = {};
+							oc[oldname_('max', key)] = r.ideal;
+							cc.optional.push(oc);
+						} else {
+							oc[oldname_('', key)] = r.ideal;
+							cc.optional.push(oc);
+						}
+					}
+					if (r.exact !== undefined && typeof r.exact !== 'number') {
+						cc.mandatory = cc.mandatory || {};
+						cc.mandatory[oldname_('', key)] = r.exact;
+					} else {
+						['min', 'max'].forEach(function(mix) {
+							if (r[mix] !== undefined) {
+								cc.mandatory = cc.mandatory || {};
+								cc.mandatory[oldname_(mix, key)] = r[mix];
+							}
+						});
+					}
+				});
+				if (c.advanced) {
+					cc.optional = (cc.optional || []).concat(c.advanced);
+				}
+				return cc;
+			};
+
+			var getUserMedia_ = function(constraints, onSuccess, onError) {
+				constraints = JSON.parse(JSON.stringify(constraints));
+				if (constraints.audio) {
+					constraints.audio = constraintsToChrome_(constraints.audio);
+				}
+				if (constraints.video) {
+					constraints.video = constraintsToChrome_(constraints.video);
+				}
+
+				return navigator.webkitGetUserMedia(constraints, onSuccess, onError);
+			};
+
+			navigator.getUserMedia = getUserMedia_;
+
+			getUserMedia = navigator.getUserMedia.bind(navigator);
 
 			this.attachMediaStream = function(element, stream)
 			{
@@ -150,6 +213,47 @@
 				};
 			}
 		}
+
+		if (!navigator.mediaDevices)
+		{
+			navigator.mediaDevices = { };
+		}
+
+		if(!navigator.mediaDevices.getUserMedia)
+		{
+			navigator.mediaDevices.getUserMedia = function(constraints)
+			{
+				return new Promise(function(resolve, reject)
+				{
+					getUserMedia(constraints, resolve, reject);
+				});
+			};
+		}
+
+		if(!navigator.mediaDevices.enumerateDevices)
+		{
+			navigator.mediaDevices.enumerateDevices = function()
+			{
+				return new Promise(function(resolve)
+				{
+					var kinds = {audio: 'audioinput', video: 'videoinput'};
+					return MediaStreamTrack.getSources(function(devices)
+					{
+						resolve(devices.map(function(device)
+						{
+							return {
+								label: device.label,
+								kind: kinds[device.kind],
+								deviceId: device.id,
+								groupId: ''
+							};
+						}));
+					});
+				});
+			};
+		}
+
+		window.MediaStream = window.MediaStream || window.webkitMediaStream;
 
 		return true;
 	};
@@ -267,10 +371,34 @@
 			return false;
 
 		video = typeof(video) != 'undefined' && video !== true ? video: this.callToGroup? this.configVideoGroup: this.configVideo;
-		audio = typeof(audio) != 'undefined' && audio !== true? audio: true;
-		if (video && !BX.browser.IsFirefox())
+		if(video && this.defaultCamera)
 		{
-			video = {"mandatory": video, "optional": []};
+			video.deviceId = {ideal: this.defaultCamera};
+		}
+
+		audio = typeof(audio) != 'undefined' && audio !== true? audio: {};
+		if(audio && this.defaultMicrophone)
+		{
+			audio.deviceId = {ideal: this.defaultMicrophone};
+		}
+
+		/* for unknown reason, these constraints do not work in chrome, when paired with video resolution constraints */
+		if(false && this.enableMicAutoParameters === false)
+		{
+			audio.optional = [
+				{echoCancellation:false},
+				{googEchoCancellation:false},
+				{googEchoCancellation2:false},
+				{googDAEchoCancellation:false},
+				{googAutoGainControl: false},
+				{googAutoGainControl2: false},
+				{mozAutoGainControl: false},
+				{googNoiseSuppression: false},
+				{googNoiseSuppression2: false},
+				{googHighpassFilter: false},
+				{googTypingNoiseDetection: false},
+				{googAudioMirroring: false}
+			];
 		}
 
 		var constraints = {
@@ -294,6 +422,15 @@
 	// this is protected function, you must inherit
 	BX.webrtc.prototype.onUserMediaSuccess = function(stream)
 	{
+		this.log('Media stream received');
+		if(stream && stream.getTracks)
+		{
+			stream.getTracks().forEach(function(track)
+			{
+				this.log(BX.webrtc.mediaStreamTrackToString(track));
+			}.bind(this));
+		}
+
 		if (!this.oneway || this.initiator)
 		{
 			this.callRequestUserMedia[this.callVideo? 'video': 'audio'] = false;
@@ -302,7 +439,7 @@
 
 			if (!this.callActive && stream)
 			{
-				stream.stop();
+				BX.webrtc.stopMediaStream(stream);
 				return false;
 			}
 
@@ -565,22 +702,20 @@
 
 		if (this.callStreamSelf)
 		{
-			if (this.callStreamSelf.stop)
-				this.callStreamSelf.stop();
+			BX.webrtc.stopMediaStream(this.callStreamSelf);
 			this.callStreamSelf = null;
 		}
 		if (this.callStreamMain)
 		{
-			if (this.callStreamMain.stop)
-				this.callStreamMain.stop();
+			BX.webrtc.stopMediaStream(this.callStreamMain);
 			this.callStreamMain = null;
 		}
 		for (i in this.callStreamUsers)
 		{
 			if (this.callStreamUsers.hasOwnProperty(i))
 			{
-				if (this.callStreamUsers[i] && this.callStreamUsers[i].stop)
-					this.callStreamUsers[i].stop();
+				if (this.callStreamUsers[i])
+					BX.webrtc.stopMediaStream(this.callStreamUsers[i]);
 				delete this.callStreamUsers[i];
 			}
 		}
@@ -819,6 +954,48 @@
 
 		return true;
 	}
+
+	BX.webrtc.prototype.setDefaultCamera = function(defaultCamera)
+	{
+		this.defaultCamera = defaultCamera;
+	};
+
+	BX.webrtc.prototype.setDefaultMicrophone = function(defaultMicrophone)
+	{
+		this.defaultMicrophone = defaultMicrophone;
+	};
+
+	BX.webrtc.mediaStreamTrackToString = function(track)
+	{
+		var result = '';
+		for(key in track)
+		{
+			if(!BX.type.isFunction(track[key]))
+			{
+				result = result + ' ' + key + ': ' + track[key] + ';';
+			}
+		}
+		return result;
+	};
+
+	BX.webrtc.stopMediaStream = function(mediaStream)
+	{
+		if(!(mediaStream instanceof MediaStream))
+			return;
+
+		if (typeof mediaStream.getTracks === 'undefined')
+		{
+			// Support for legacy browsers
+			mediaStream.stop();
+		}
+		else
+		{
+			mediaStream.getTracks().forEach(function(track)
+			{
+				track.stop();
+			});
+		}
+	};
 
 
 })(window);

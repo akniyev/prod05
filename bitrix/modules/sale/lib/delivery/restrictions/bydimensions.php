@@ -3,6 +3,7 @@ namespace Bitrix\Sale\Delivery\Restrictions;
 
 use Bitrix\Sale\Delivery\Restrictions;
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Sale\Internals\CollectableEntity;
 
 Loc::loadMessages(__FILE__);
 
@@ -56,7 +57,7 @@ class ByDimensions extends Restrictions\Base
 		return true;
 	}
 
-	protected static function extractParams(\Bitrix\Sale\Shipment $shipment)
+	protected static function extractParams(CollectableEntity $shipment)
 	{
 		$paramsToCheck = array();
 
@@ -77,7 +78,7 @@ class ByDimensions extends Restrictions\Base
 		return $paramsToCheck;
 	}
 
-	public static function getParamsStructure()
+	public static function getParamsStructure($entityId = 0)
 	{
 		return array(
 			"LENGTH" => array(

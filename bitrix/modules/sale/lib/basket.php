@@ -98,6 +98,8 @@ class Basket
 	public function createItem($moduleId, $productId, $basketCode = null)
 	{
 		$basketItem = BasketItem::create($this, $moduleId, $productId, $basketCode);
+
+		$basketItem->setCollection($this);
 		$this->addItem($basketItem);
 
 		return $basketItem;
@@ -106,10 +108,10 @@ class Basket
 	/**
 	 * @internal
 	 *
-	 * @param BasketItem $basketItem
+	 * @param Internals\CollectableEntity $basketItem
 	 * @return bool
 	 */
-	public function addItem(BasketItem $basketItem)
+	public function addItem(Internals\CollectableEntity $basketItem)
 	{
 		/** @var BasketItem $basketItem */
 		$basketItem = parent::addItem($basketItem);
@@ -125,7 +127,7 @@ class Basket
 	}
 
 	/**
-	 * @param BasketItem $item
+	 * @param Internals\CollectableEntity $item
 	 * @param null $name
 	 * @param null $oldValue
 	 * @param null $value
@@ -134,7 +136,7 @@ class Basket
 	 * @throws \Bitrix\Main\NotImplementedException
 	 * @throws \Bitrix\Main\NotSupportedException
 	 */
-	public function onItemModify(BasketItem $item, $name = null, $oldValue = null, $value = null)
+	public function onItemModify(Internals\CollectableEntity $item, $name = null, $oldValue = null, $value = null)
 	{
 		$result = new Result();
 		if ($name == "QUANTITY")
@@ -147,34 +149,43 @@ class Basket
 
 			/** @var Result $r */
 			$r = Provider::checkAvailableProductQuantity($item, $deltaQuantity);
-			if (!$r->isSuccess())
+			if (!$r->isSuccess() && $item->getField('SUBSCRIBE') !== 'Y')
 			{
 				$result->addErrors($r->getErrors());
+				$result->setData($r->getData());
 				return $result;
 			}
 			else
 			{
-				$availableQuantityData = $r->getData();
-				if (array_key_exists('AVAILABLE_QUANTITY', $availableQuantityData))
+
+				if ($item->getField('SUBSCRIBE') === 'Y')
 				{
-					$availableQuantity = $availableQuantityData['AVAILABLE_QUANTITY'];
+					$availableQuantity = $value;
 				}
 				else
 				{
-					$result->addError( new ResultError(Loc::getMessage('SALE_BASKET_ITEM_WRONG_AVAILABLE_QUANTITY',
-																	   array(
-																			'#PRODUCT_NAME#' => $item->getField('NAME'),
-																		)), 'SALE_BASKET_ITEM_WRONG_AVAILABLE_QUANTITY')
-									);
-					return $result;
+					$availableQuantityData = $r->getData();
+					if (array_key_exists('AVAILABLE_QUANTITY', $availableQuantityData))
+					{
+						$availableQuantity = $availableQuantityData['AVAILABLE_QUANTITY'];
+					}
+					else
+					{
+						$result->addError( new ResultError(Loc::getMessage('SALE_BASKET_ITEM_WRONG_AVAILABLE_QUANTITY',
+																		   array(
+																				'#PRODUCT_NAME#' => $item->getField('NAME'),
+																			)), 'SALE_BASKET_ITEM_WRONG_AVAILABLE_QUANTITY')
+										);
+						return $result;
+					}
 				}
 			}
 
 			$checkQuantity = $oldValue + $availableQuantity;
 
 			if ($value != 0
-				&& (($deltaQuantity > 0) && ($checkQuantity < $value)   // plus
-				|| ($deltaQuantity < 0) && ($checkQuantity > $value)))   // minus
+				&& (($deltaQuantity > 0) && (roundEx($checkQuantity, SALE_VALUE_PRECISION) < roundEx($value, SALE_VALUE_PRECISION))   // plus
+				|| ($deltaQuantity < 0) && (roundEx($checkQuantity, SALE_VALUE_PRECISION) > roundEx($value, SALE_VALUE_PRECISION))))   // minus
 			{
 				$mess = ($deltaQuantity > 0) ? Loc::getMessage('SALE_BASKET_AVAILABLE_FOR_PURCHASE_QUANTITY',
 																array(
@@ -301,6 +312,7 @@ class Basket
 	{
 		$result = new Result();
 
+		$updatedList = array();
 		$isStartField = $this->isStartField();
 
 		$discount = null;
@@ -353,7 +365,7 @@ class Basket
 
 						if (in_array($k, $roundFields))
 						{
-							$v = roundEx($v, SALE_VALUE_PRECISION);
+							$v = PriceMaths::roundPrecision($v);
 						}
 					}
 					$value1[$k] = $v;
@@ -366,6 +378,35 @@ class Basket
 			if (!$item)
 				continue;
 
+			/** @var Main\Entity\Event $event */
+			$event = new Main\Event('sale', EventActions::EVENT_ON_BASKET_ITEM_REFRESH_DATA, array(
+				'ENTITY' => $item,
+				'VALUES' => $value
+			));
+			$event->send();
+
+			if ($event->getResults())
+			{
+				/** @var Main\EventResult $eventResult */
+				foreach($event->getResults() as $eventResult)
+				{
+					if($eventResult->getType() == Main\EventResult::ERROR)
+					{
+						$errorMsg = new ResultError(Main\Localization\Loc::getMessage('SALE_EVENT_ON_BASKET_ITEM_REFRESH_DATA'), 'SALE_EVENT_ON_BASKET_ITEM_REFRESH_DATA');
+						if ($eventResultData = $eventResult->getParameters())
+						{
+							if (isset($eventResultData) && $eventResultData instanceof ResultError)
+							{
+								/** @var ResultError $errorMsg */
+								$errorMsg = $eventResultData;
+							}
+						}
+
+						$result->addError($errorMsg);
+					}
+				}
+			}
+
 			if (!$item->isCustomPrice() && array_key_exists('DISCOUNT_PRICE', $value1) && array_key_exists('BASE_PRICE', $value1))
 			{
 				$value1['PRICE'] = $value1['BASE_PRICE'] - $value1['DISCOUNT_PRICE'];
@@ -375,6 +416,8 @@ class Basket
 				$discount->setBasketItemData($key, $value);
 
 			$isBundleParent = (bool)($item && $item->isBundleParent());
+
+			$updatedList[$item->getBasketCode()] = !empty($value1);
 
 			/** @var Result $r */
 			$r = $item->setFields($value1);
@@ -460,6 +503,13 @@ class Basket
 			{
 				$result->addErrors($r->getErrors());
 			}
+		}
+
+		if (!empty($updatedList))
+		{
+			$result->setData(array(
+				'UPDATED_LIST' => $updatedList
+			));
 		}
 
 		return $result;
@@ -552,6 +602,15 @@ class Basket
 		$collection->setParentBasketItem($basketItem);
 		if ($basketItem->getId() > 0)
 		{
+			/** @var Basket $basket */
+			if ($basket = $basketItem->getCollection())
+			{
+				if ($order = $basket->getOrder())
+				{
+					$collection->setOrder($order);
+				}
+			}
+
 			return $collection->loadFromDB(array(
 											"SET_PARENT_ID" => $basketItem->getId(),
 											"TYPE" => false
@@ -568,12 +627,6 @@ class Basket
 	 */
 	protected function loadFromDb(array $filter)
 	{
-
-		$order = $this->getOrder();
-		if ($order instanceof OrderBase)
-		{
-			$this->setOrder($order);
-		}
 
 		$select = array("ID", "LID", "MODULE", "PRODUCT_ID", "QUANTITY", "WEIGHT",
 			"DELAY", "CAN_BUY", "PRICE", "CUSTOM_PRICE", "BASE_PRICE", 'PRODUCT_PRICE_ID', "CURRENCY", 'BARCODE_MULTI', "RESERVED", "RESERVE_QUANTITY",
@@ -679,6 +732,10 @@ class Basket
 
 					if (static::getExistsItemInBundle($parentBasketItem, $item->getField('MODULE'), $item->getProductId(), $propList))
 					{
+						if (empty($this->bundleIndex[$item->getId()]))
+						{
+							$this->bundleIndex[$item->getId()] = $parentBasketItem->getId();
+						}
 						continue;
 					}
 
@@ -710,17 +767,6 @@ class Basket
 				}
 			}
 		}
-	}
-
-
-	/**
-	 * @param array $fields
-	 * @return \Bitrix\Main\Entity\AddResult
-	 */
-	public static function add(array $fields)
-	{
-		unset($fields['PROPS']);
-		return Internals\BasketTable::add($fields);
 	}
 
 	/**
@@ -889,7 +935,7 @@ class Basket
 			$itemsFromDbList = Internals\BasketTable::getList(
 				array(
 					"filter" => $filter,
-					"select" => array("ID", 'TYPE', 'SET_PARENT_ID', 'PRODUCT_ID', 'NAME', 'QUANTITY')
+					"select" => array("ID", 'TYPE', 'SET_PARENT_ID', 'PRODUCT_ID', 'NAME', 'QUANTITY', 'FUSER_ID', 'ORDER_ID')
 				)
 			);
 			while ($itemsFromDbItem = $itemsFromDbList->fetch())
@@ -949,15 +995,16 @@ class Basket
 					if ($isChanged)
 					{
 						OrderHistory::addLog('BASKET', $order->getId(), $isNew ? "BASKET_ITEM_ADD" : "BASKET_ITEM_UPDATE", $basketItem->getId(), $basketItem, $logFields, OrderHistory::SALE_ORDER_HISTORY_LOG_LEVEL_1);
+
+						OrderHistory::addAction(
+							'BASKET',
+							$order->getId(),
+							"BASKET_SAVED",
+							$basketItem->getId(),
+							$basketItem
+						);
 					}
 
-					OrderHistory::addAction(
-						'BASKET',
-						$order->getId(),
-						"BASKET_SAVED",
-						$basketItem->getId(),
-						$basketItem
-					);
 				}
 			}
 			else
@@ -1150,13 +1197,15 @@ class Basket
 		/** @var BasketItem $basketItem */
 		foreach ($this->collection as $basketItem)
 		{
-
-			if ($basketItem->getField('PRODUCT_ID') != $productId || $basketItem->getField('MODULE') != $moduleId)
+			$itemExists = ($basketItem->getField('PRODUCT_ID') == $productId && $basketItem->getField('MODULE') == $moduleId);
+			if (!$itemExists)
 			{
 				if ($basketItem->isBundleParent())
 				{
 					if (static::getExistsItemInBundle($basketItem, $moduleId, $productId, $properties))
+					{
 						continue;
+					}
 				}
 				else
 				{
@@ -1164,18 +1213,21 @@ class Basket
 				}
 			}
 
-			/** @var BasketPropertiesCollection $basketPropertyCollection */
-			$basketPropertyCollection = $basketItem->getPropertyCollection();
-			if (!empty($properties) && is_array($properties))
+			if ($itemExists)
 			{
-				if ($basketPropertyCollection->isPropertyAlreadyExists($properties))
+				/** @var BasketPropertiesCollection $basketPropertyCollection */
+				$basketPropertyCollection = $basketItem->getPropertyCollection();
+				if (!empty($properties) && is_array($properties))
+				{
+					if ($basketPropertyCollection->isPropertyAlreadyExists($properties))
+					{
+						return $basketItem;
+					}
+				}
+				elseif (count($basketPropertyCollection) == 0)
 				{
 					return $basketItem;
 				}
-			}
-			elseif (count($basketPropertyCollection) == 0)
-			{
-				return $basketItem;
 			}
 		}
 
@@ -1347,7 +1399,7 @@ class Basket
 																SELECT b_sale_fuser.id FROM b_sale_fuser WHERE
 																		b_sale_fuser.DATE_UPDATE < ".$sqlExpiredDate."
 																		AND b_sale_fuser.USER_ID IS NULL
-																)
+																)  AND ORDER_ID IS NULL
 										) LIMIT " . static::BASKET_DELETE_LIMIT;
 			$connection->queryExecute($query);
 
@@ -1356,7 +1408,7 @@ class Basket
      										SELECT b_sale_fuser.id FROM b_sale_fuser WHERE
      												b_sale_fuser.DATE_UPDATE < ".$sqlExpiredDate."
 													AND b_sale_fuser.USER_ID IS NULL
-											) LIMIT " . static::BASKET_DELETE_LIMIT;
+											) AND ORDER_ID IS NULL LIMIT " . static::BASKET_DELETE_LIMIT;
 			$connection->queryExecute($query);
 		}
 		elseif ($connection instanceof Main\DB\MssqlConnection)
@@ -1368,7 +1420,7 @@ class Basket
 																	SELECT b_sale_fuser.id FROM b_sale_fuser
 																	WHERE b_sale_fuser.DATE_UPDATE < ".$sqlExpiredDate."
 																			AND b_sale_fuser.USER_ID IS NULL
-															)
+															)  AND ORDER_ID IS NULL
 											)";
 
 			$connection->queryExecute($query);
@@ -1378,7 +1430,7 @@ class Basket
      										SELECT b_sale_fuser.id FROM b_sale_fuser WHERE
      												b_sale_fuser.DATE_UPDATE < ".$sqlExpiredDate."
 													AND b_sale_fuser.USER_ID IS NULL
-											)";
+											) AND ORDER_ID IS NULL";
 			$connection->queryExecute($query);
 		}
 		elseif($connection instanceof Main\DB\OracleConnection)
@@ -1390,7 +1442,7 @@ class Basket
 																	SELECT b_sale_fuser.id FROM b_sale_fuser WHERE
 																			b_sale_fuser.DATE_UPDATE < ".$sqlExpiredDate."
 																			AND b_sale_fuser.USER_ID IS NULL
-																)
+																)  AND ORDER_ID IS NULL
 											) AND ROWNUM <= ".static::BASKET_DELETE_LIMIT;
 
 			$connection->queryExecute($query);
@@ -1400,7 +1452,7 @@ class Basket
      										SELECT b_sale_fuser.id FROM b_sale_fuser WHERE
      												b_sale_fuser.DATE_UPDATE < ".$sqlExpiredDate."
 													AND b_sale_fuser.USER_ID IS NULL
-											) AND ROWNUM <= ".static::BASKET_DELETE_LIMIT;
+											)  AND ORDER_ID IS NULL AND ROWNUM <= ".static::BASKET_DELETE_LIMIT;
 
 			$connection->queryExecute($query);
 		}
@@ -1425,19 +1477,21 @@ class Basket
 		static::deleteOld($days);
 
 		Fuser::deleteOld($days);
+		$speed = intval($speed);
+		$result = "\\Bitrix\\Sale\\Basket::deleteOldAgent(".intval(Main\Config\Option::get("sale", "delete_after", "30")).");";
 
-		global $pPERIOD;
-		if(intval($speed) > 0)
-			$pPERIOD = $speed;
-		else
-			$pPERIOD = 3*60*60;
+		if ($speed > 0)
+		{
+			\CAgent::AddAgent($result, "sale", "N", $speed, "", "Y");
+			$result = "";
+		}
 
 		if (isset($tmpUser))
 		{
 			unset($GLOBALS["USER"]);
 		}
 
-		return "\\Bitrix\\Sale\\Basket::deleteOldAgent(".intval(Main\Config\Option::get("sale", "delete_after", "30")).", ".IntVal($speed).");";
+		return $result;
 	}
 
 	/**
@@ -1484,6 +1538,10 @@ class Basket
 				{
 					if ($basketPropertyItem->getField('CODE') == "PRODUCT.XML_ID" || $basketPropertyItem->getField('CODE') == "CATALOG.XML_ID")
 						continue;
+
+					if (strval(trim($basketPropertyItem->getField('VALUE'))) == "")
+						continue;
+
 
 					$basketItemDataProperty .= (!empty($basketItemDataProperty) ? "; " : "").trim($basketPropertyItem->getField('NAME')).": ".trim($basketPropertyItem->getField('VALUE'));
 				}

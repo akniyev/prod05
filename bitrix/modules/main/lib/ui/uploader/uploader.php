@@ -787,8 +787,8 @@ class Uploader
 							"~name" => $fileName,
 							"tmp_name" => $uploadedFiles[self::FILE_NAME]["tmp_name"][$fileID][$fileName],
 							"type" => $uploadedFiles[self::FILE_NAME]["type"][$fileID][$fileName],
-							"size" => $uploadedFiles[self::FILE_NAME]["size"][$fileID][$fileName],
-							"error" => $uploadedFiles[self::FILE_NAME]["error"][$fileID][$fileName]
+							"size" => intval($uploadedFiles[self::FILE_NAME]["size"][$fileID][$fileName]),
+							"error" => intval($uploadedFiles[self::FILE_NAME]["error"][$fileID][$fileName])
 						);
 						if ($file["type"] == "application/octet-stream" && array_key_exists("type", $arFile))
 							$file["type"] = $arFile["type"];
@@ -807,8 +807,8 @@ class Uploader
 						"~name" => $fileName,
 						"tmp_name" => $uploadedFiles[self::FILE_NAME]["tmp_name"][$fileID],
 						"type" => $uploadedFiles[self::FILE_NAME]["type"][$fileID],
-						"size" => $uploadedFiles[self::FILE_NAME]["size"][$fileID],
-						"error" => $uploadedFiles[self::FILE_NAME]["error"][$fileID]
+						"size" => intval($uploadedFiles[self::FILE_NAME]["size"][$fileID]),
+						"error" => intval($uploadedFiles[self::FILE_NAME]["error"][$fileID])
 					);
 					$files[$fileID][] = array_merge($postData, $file);
 				}

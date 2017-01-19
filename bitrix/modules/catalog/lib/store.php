@@ -143,7 +143,7 @@ class StoreTable extends Main\Entity\DataManager
 			'SITE_ID' => new Main\Entity\StringField('SITE_ID', array(
 				'validation' => array(__CLASS__, 'validateSiteId'),
 				'title' => Loc::getMessage('STORE_ENTITY_SITE_ID_FIELD')
-			))
+			)),
 		);
 	}
 

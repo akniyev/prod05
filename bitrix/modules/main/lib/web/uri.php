@@ -136,6 +136,17 @@ class Uri
 	}
 
 	/**
+	 * Sets the password.
+	 * @param string $pass Password,
+	 * @return $this
+	 */
+	public function setPass($pass)
+	{
+		$this->pass = $pass;
+		return $this;
+	}
+
+	/**
 	 * Returns the path.
 	 * @return string
 	 */
@@ -206,6 +217,17 @@ class Uri
 	}
 
 	/**
+	 * Sets the user.
+	 * @param string $user User.
+	 * @return $this
+	 */
+	public function setUser($user)
+	{
+		$this->user = $user;
+		return $this;
+	}
+
+	/**
 	 * Deletes parameters from the query.
 	 * @param array $params Parameters to delete.
 	 * @return $this
@@ -240,7 +262,7 @@ class Uri
 			parse_str($this->query, $currentParams);
 		}
 
-		$currentParams = array_merge($currentParams, $params);
+		$currentParams = array_replace($currentParams, $params);
 
 		$this->query = http_build_query($currentParams, "", "&");
 

@@ -1,9 +1,9 @@
 <?php
 
-use Bitrix\Main;
-use Bitrix\Main\Localization\Loc;
-use Bitrix\Iblock;
-use Bitrix\Catalog;
+use Bitrix\Main,
+	Bitrix\Main\Localization\Loc,
+	Bitrix\Iblock,
+	Bitrix\Catalog;
 
 if (!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED !== true) die();
 
@@ -111,7 +111,6 @@ class ProductSearchComponent extends \CBitrixComponent
 
 	public function onPrepareComponentParams($params)
 	{
-
 		$params['IBLOCK_ID'] = isset($params['IBLOCK_ID']) ? (int)$params['IBLOCK_ID'] : 0;
 		if (!empty($_REQUEST['IBLOCK_ID']))
 			$params['IBLOCK_ID'] = (int)$_REQUEST['IBLOCK_ID'];
@@ -138,7 +137,7 @@ class ProductSearchComponent extends \CBitrixComponent
 		if (!empty($_REQUEST['del_filter']))
 		{
 			ClearVars('filter_');
-			foreach ($_REQUEST AS $key => $value)
+			foreach ($_REQUEST as $key => $value)
 			{
 				if (strpos($key,'filter_') === 0)
 					unset($_REQUEST[$key]);
@@ -150,6 +149,7 @@ class ProductSearchComponent extends \CBitrixComponent
 		if (isset($params['CHECK_PERMISSIONS']) && $params['CHECK_PERMISSIONS'] == 'N')
 			$this->checkPermissions = false;
 
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$userOptions = \CUserOptions::getOption('catalog', self::TABLE_ID_PREFIX . '_' . $params['caller'], false, $this->getUserId());
 		if (is_array($userOptions))
 		{
@@ -195,7 +195,7 @@ class ProductSearchComponent extends \CBitrixComponent
 
 	protected function isFiltering()
 	{
-		foreach ($_REQUEST AS $key => $value)
+		foreach ($_REQUEST as $key => $value)
 		{
 			if (strpos($key,'filter_') === 0)
 				return true;
@@ -211,9 +211,8 @@ class ProductSearchComponent extends \CBitrixComponent
 	protected function getGridOptions()
 	{
 		if ($this->gridOprtions === null)
-		{
 			$this->gridOprtions = new \CGridOptions($this->getTableId());
-		}
+
 		return $this->gridOprtions;
 	}
 
@@ -387,19 +386,25 @@ class ProductSearchComponent extends \CBitrixComponent
 		{
 			$propFilter = array();
 			$props = $this->getSkuProps(true);
-			if ($props)
+			if (!empty($props))
 			{
-				foreach($props AS $prop)
-					$propFilter['ID'][] = $prop['ID'];
+				$visibleProperties = $this->getVisibleProperties();
+				foreach($props as $prop)
+				{
+					if (in_array($prop['ID'], $visibleProperties))
+						$propFilter['ID'][] = $prop['ID'];
+				}
+				unset($prop);
 			}
+			unset($props);
 
-			$select = array('NAME',  "ACTIVE", 'CATALOG_QUANTITY');
+			$select = array('NAME',  'ACTIVE', 'CATALOG_QUANTITY');
 			$visible = $this->getVisibleColumns();
 			if (in_array('PREVIEW_PICTURE', $visible))
 				$select[] = 'PREVIEW_PICTURE';
 			if (in_array('DETAIL_PICTURE', $visible))
 				$select[] = 'DETAIL_PICTURE';
-			$this->offers = \CCatalogSKU::getOffersList($productIds,$this->getIblockId(), array(), $select,	$propFilter);
+			$this->offers = \CCatalogSku::getOffersList($productIds, $this->getIblockId(), array(), $select, $propFilter);
 			if (!empty($this->offers))
 			{
 				$offersIds = array();
@@ -409,12 +414,12 @@ class ProductSearchComponent extends \CBitrixComponent
 					if (empty($productOffers))
 						continue;
 					$productOffersIds = array_keys($productOffers);
-					foreach ($productOffersIds as &$oneId)
+					foreach ($productOffersIds as $oneId)
 					{
 						$offersIds[] = $oneId;
 						$offersLink[$oneId] = &$this->offers[$productId][$oneId];
 					}
-
+					unset($oneId);
 				}
 				unset($productId, $productOffers);
 				if (!empty($offersIds))
@@ -433,14 +438,13 @@ class ProductSearchComponent extends \CBitrixComponent
 					}
 					unset($ratioResult);
 				}
-
 				unset($offersLink, $offersIds);
 			}
 		}
 	}
 	/**
 	 * @param array $arProduct
-	 * @return array
+	 * @return array|bool
 	 */
 	protected function getProductSku($arProduct)
 	{
@@ -451,66 +455,112 @@ class ProductSearchComponent extends \CBitrixComponent
 		$arResult = array();
 		if (!empty($this->offers[$productId]))
 		{
+			$listImageSize = Main\Config\Option::get('iblock', 'list_image_size');
+			$minImageSize = array('W' => 1, 'H' => 1);
+			$maxImageSize = array(
+				'W' => $listImageSize,
+				'H' => $listImageSize,
+			);
+			unset($listImageSize);
+
 			$arSku = array();
 
-			foreach ($this->offers[$productId] as $arOffer)
+			foreach ($this->offers[$productId] as $index => $arOffer)
 			{
 				$arSkuTmp = array();
 				$arSkuTmp['PROPERTIES'] = array();
-				$arSkuTmp['PROPERTIES_SHOW'] = array();
 				$arOffer["CAN_BUY"] = "N";
 
 				if (!empty($arOffer['PROPERTIES']))
 				{
-					foreach ($arOffer['PROPERTIES'] AS $pid => $property)
+					foreach ($arOffer['PROPERTIES'] as $pid => $property)
 					{
-						if ($property['PROPERTY_TYPE'] == 'F')
-							continue;
+						$viewValues = array();
+						$property['USER_TYPE'] = (string)$property['USER_TYPE'];
 
-						$property = \CIBlockFormatProperties::GetDisplayValue($arOffer, $property, "catalog_out");
-						if (empty($property["DISPLAY_VALUE"]))
-							continue;
+						$userType = ($property['USER_TYPE'] !== '' ? CIBlockProperty::GetUserType($property['USER_TYPE']) : array());
 
-						$arSkuTmp['PROPERTIES'][$property["ID"]] = array();
-						if ($property['MULTIPLE'] == 'Y' && is_array($property["PROPERTY_VALUE_ID"]))
+						if ($property['MULTIPLE'] == 'N' || !is_array($property['VALUE']))
+							$valueIdList = array($property['PROPERTY_VALUE_ID']);
+						else
+							$valueIdList = $property['PROPERTY_VALUE_ID'];
+
+						if (isset($userType['GetAdminListViewHTML']))
 						{
-							foreach($property["PROPERTY_VALUE_ID"] AS $key => $propertyValueId)
-							{
-								$arSkuTmp['PROPERTIES'][$property["ID"]][$propertyValueId] =
-									$property["PROPERTY_TYPE"] === "L" ? $property["VALUE_ENUM"][$key] : $property["VALUE"][$key];
-							}
-							unset($key, $propertyValueId);
+							if ($property['MULTIPLE'] == 'N' || !is_array($property['~VALUE']))
+								$valueList = array($property['~VALUE']);
+							else
+								$valueList = $property['~VALUE'];
 						}
 						else
 						{
-							$arSkuTmp['PROPERTIES'][$property["ID"]][$property["PROPERTY_VALUE_ID"]] =
-								$property["PROPERTY_TYPE"] === "L" ? $property["VALUE_ENUM"] : $property["VALUE"];
+							if ($property['MULTIPLE'] == 'N' || !is_array($property['VALUE']))
+								$valueList = array($property['VALUE']);
+							else
+								$valueList = $property['VALUE'];
 						}
-						$mxValues = '';
-						if ($property['PROPERTY_TYPE'] == Iblock\PropertyTable::TYPE_ELEMENT)
+
+						foreach ($valueList as $valueIndex => $value)
 						{
-							if (!empty($property['LINK_ELEMENT_VALUE']))
+							if (isset($userType['GetAdminListViewHTML']))
 							{
-								$mxValues = array();
-								foreach ($property['LINK_ELEMENT_VALUE'] as $arTempo)
-									$mxValues[] = $arTempo['NAME'] . ' [' . $arTempo['ID'] . ']';
+								$viewValues[] = call_user_func_array(
+									$userType['GetAdminListViewHTML'],
+									array(
+										$property,
+										array(
+											'VALUE' => $value
+										),
+										array()
+									));
+							}
+							else
+							{
+								switch ($property['PROPERTY_TYPE'])
+								{
+									case Iblock\PropertyTable::TYPE_SECTION:
+										$viewValues[] = static::getSectionName($value);
+										break;
+									case Iblock\PropertyTable::TYPE_ELEMENT:
+										$viewValues[] = static::getElementName($value);
+										break;
+									case Iblock\PropertyTable::TYPE_FILE:
+										$viewValues[] = CFileInput::Show(
+											'NO_FIELDS['.$valueIdList[$valueIndex].']',
+											$value,
+											array(
+												'IMAGE' => 'Y',
+												'PATH' => 'N',
+												'FILE_SIZE' => 'N',
+												'DIMENSIONS' => 'N',
+												'IMAGE_POPUP' => 'Y',
+												'MAX_SIZE' => $maxImageSize,
+												'MIN_SIZE' => $minImageSize,
+											),
+											array(
+												'upload' => false,
+												'medialib' => false,
+												'file_dialog' => false,
+												'cloud' => false,
+												'del' => false,
+												'description' => false,
+											)
+										);
+										break;
+									case Iblock\PropertyTable::TYPE_LIST:
+									case Iblock\PropertyTable::TYPE_NUMBER:
+									case Iblock\PropertyTable::TYPE_STRING:
+									default:
+										$viewValues[] = $value;
+										break;
+								}
 							}
 						}
-						elseif ($property['PROPERTY_TYPE'] == Iblock\PropertyTable::TYPE_SECTION)
-						{
-							if (!empty($property['LINK_SECTION_VALUE']))
-							{
-								$mxValues = array();
-								foreach ($property['LINK_SECTION_VALUE'] as $arTempo)
-									$mxValues[] = $arTempo['NAME'] . ' [' . $arTempo['ID'] . ']';
-							}
-						}
-						if (empty($mxValues))
-						{
-							$mxValues = $property["DISPLAY_VALUE"];
-						}
-						if ($mxValues)
-							$arSkuTmp['PROPERTIES_SHOW'][$property["NAME"]] = strip_tags(is_array($mxValues) ? implode("/ ", $mxValues) : $mxValues);
+						unset($value, $valueList, $valueIdList);
+						unset($userType);
+
+						$arSkuTmp['PROPERTIES'][$property['ID']] = $viewValues;
+						unset($viewValues);
 					}
 				}
 
@@ -551,7 +601,7 @@ class ProductSearchComponent extends \CBitrixComponent
 			if ($arItem['TYPE'] != 'S')
 			{
 				$arProductIds[] = $arItem['ID'];
-				$arItem['PROPERTIES'] = $this->getItemProperies($arItem['ID']);
+				$arItem['PROPERTIES'] = array();
 				$arItemsResult[$arItem['ID']] = $arItem;
 			}
 			else
@@ -560,13 +610,129 @@ class ProductSearchComponent extends \CBitrixComponent
 
 		if (!empty($arProductIds))
 		{
+			$arPropFilter = array(
+				'ID' => $arProductIds,
+				'IBLOCK_ID' => $this->getIblockId()
+			);
+			CIBlockElement::GetPropertyValuesArray(
+				$arItemsResult,
+				$this->getIblockId(),
+				$arPropFilter,
+				array('ID' => $this->getVisibleProperties())
+			);
+
+			$listImageSize = Main\Config\Option::get('iblock', 'list_image_size');
+			$minImageSize = array('W' => 1, 'H' => 1);
+			$maxImageSize = array(
+				'W' => $listImageSize,
+				'H' => $listImageSize,
+			);
+			unset($listImageSize);
+
+			foreach ($arItemsResult as $item)
+			{
+				if (!empty($item['PROPERTIES']))
+				{
+					foreach ($item['PROPERTIES'] as $pid => $property)
+					{
+						$viewValues = array();
+						$property['USER_TYPE'] = (string)$property['USER_TYPE'];
+
+						$userType = ($property['USER_TYPE'] !== '' ? CIBlockProperty::GetUserType($property['USER_TYPE']) : array());
+
+						if ($property['MULTIPLE'] == 'N' || !is_array($property['VALUE']))
+							$valueIdList = array($property['PROPERTY_VALUE_ID']);
+						else
+							$valueIdList = $property['PROPERTY_VALUE_ID'];
+
+						if (isset($userType['GetAdminListViewHTML']))
+						{
+							if ($property['MULTIPLE'] == 'N' || !is_array($property['~VALUE']))
+								$valueList = array($property['~VALUE']);
+							else
+								$valueList = $property['~VALUE'];
+						}
+						else
+						{
+							if ($property['MULTIPLE'] == 'N' || !is_array($property['VALUE']))
+								$valueList = array($property['VALUE']);
+							else
+								$valueList = $property['VALUE'];
+						}
+
+						foreach ($valueList as $valueIndex => $value)
+						{
+							if (isset($userType['GetAdminListViewHTML']))
+							{
+								$viewValues[] = call_user_func_array(
+									$userType['GetAdminListViewHTML'],
+									array(
+										$property,
+										array(
+											'VALUE' => $value
+										),
+										array()
+									));
+							}
+							else
+							{
+								switch ($property['PROPERTY_TYPE'])
+								{
+									case Iblock\PropertyTable::TYPE_SECTION:
+										$viewValues[] = static::getSectionName($value);
+										break;
+									case Iblock\PropertyTable::TYPE_ELEMENT:
+										$viewValues[] = static::getElementName($value);
+										break;
+									case Iblock\PropertyTable::TYPE_FILE:
+										$viewValues[] = CFileInput::Show(
+											'NO_FIELDS['.$valueIdList[$valueIndex].']',
+											$value,
+											array(
+												'IMAGE' => 'Y',
+												'PATH' => 'N',
+												'FILE_SIZE' => 'N',
+												'DIMENSIONS' => 'N',
+												'IMAGE_POPUP' => 'Y',
+												'MAX_SIZE' => $maxImageSize,
+												'MIN_SIZE' => $minImageSize,
+											),
+											array(
+												'upload' => false,
+												'medialib' => false,
+												'file_dialog' => false,
+												'cloud' => false,
+												'del' => false,
+												'description' => false,
+											)
+										);
+										break;
+									case Iblock\PropertyTable::TYPE_LIST:
+									case Iblock\PropertyTable::TYPE_NUMBER:
+									case Iblock\PropertyTable::TYPE_STRING:
+									default:
+										$viewValues[] = $value;
+										break;
+								}
+							}
+						}
+						unset($value, $valueList, $valueIdList);
+						unset($userType);
+
+						$arItemsResult[$item['ID']]['PROPERTIES'][$property['ID']] = $viewValues;
+						unset($viewValues);
+					}
+				}
+			}
+			unset($item);
+
 			$dbCatalogProduct = \CCatalogProduct::GetList(array(), array('@ID' => $arProductIds));
 			while ($arCatalogProduct = $dbCatalogProduct->fetch())
 			{
 				$arItemsResult[$arCatalogProduct['ID']]['PRODUCT'] = $arCatalogProduct;
 			}
 
-			$offersExistsIds = \CCatalogSKU::getExistOffers($arProductIds, $this->getIblockId());
+			$offersExistsIds = \CCatalogSku::getExistOffers($arProductIds, $this->getIblockId());
 			$noOffersIds = array();
 
 			if (empty($offersExistsIds))
@@ -670,8 +836,8 @@ class ProductSearchComponent extends \CBitrixComponent
 		if ($this->offers)
 		{
 			$ids = array();
-			foreach ($this->offers AS $id => $offers)
-				foreach ($offers AS $offer)
+			foreach ($this->offers as $id => $offers)
+				foreach ($offers as $offer)
 					$ids[] = $offer['ID'];
 			if ($ids)
 			{
@@ -707,26 +873,6 @@ class ProductSearchComponent extends \CBitrixComponent
 			}
 		}
 		return $result;
-	}
-
-	protected function getItemProperies($id)
-	{
-		$arProperties = array();
-		$propIds = $this->getVisibleProperties();
-		if ($propIds)
-		{
-			$rsProperties = \CIBlockElement::GetProperty($this->getIblockId(), $id, 'sort', 'asc', array('ID' => $propIds));
-			while ($ar = $rsProperties->Fetch())
-			{
-				if (!array_key_exists($ar["ID"], $arProperties))
-					$arProperties[$ar["ID"]] = array();
-				if ($ar["PROPERTY_TYPE"] === "L")
-					$arProperties[$ar["ID"]][$ar["PROPERTY_VALUE_ID"]] = $ar["VALUE_ENUM"];
-				else
-					$arProperties[$ar["ID"]][$ar["PROPERTY_VALUE_ID"]] = $ar["VALUE"];
-			}
-		}
-		return $arProperties;
 	}
 
 	protected function getJsCallbackName()
@@ -881,20 +1027,17 @@ class ProductSearchComponent extends \CBitrixComponent
 	protected function getOffersCatalog()
 	{
 		if ($this->offersCatalog === null)
-		{
-			$this->offersCatalog = \CCatalogSKU::GetInfoByProductIBlock($this->getIblockId());
-		}
+			$this->offersCatalog = \CCatalogSku::GetInfoByProductIBlock($this->getIblockId());
+
 		return $this->offersCatalog;
 	}
 
 	protected function getProps($flagAll = false)
 	{
 		if ($this->arProps === null)
-		{
 			$this->arProps = $this->getPropsList($this->getIblockId());
-		}
 
-		return $flagAll? $this->arProps : $this->filterProps($this->arProps);
+		return $flagAll ? $this->arProps : $this->filterProps($this->arProps);
 	}
 
 	protected function getSkuProps($flagAll = false)
@@ -904,7 +1047,7 @@ class ProductSearchComponent extends \CBitrixComponent
 			$arCatalog = $this->getOffersCatalog();
 			$this->arSkuProps = $arCatalog? $this->getPropsList($arCatalog["IBLOCK_ID"], $arCatalog['SKU_PROPERTY_ID']) : array();
 		}
-		return $flagAll? $this->arSkuProps : $this->filterProps($this->arSkuProps);
+		return $flagAll ? $this->arSkuProps : $this->filterProps($this->arSkuProps);
 	}
 
 	protected function getPrices()
@@ -965,7 +1108,7 @@ class ProductSearchComponent extends \CBitrixComponent
 			$arProps = $this->getSkuProps(true);
 			if (!empty($arProps))
 			{
-				foreach ($arProps as &$prop)
+				foreach ($arProps as $prop)
 				{
 					$this->arHeaders[] = array(
 						"id" => "PROPERTY_".$prop['ID'], "content" => $prop['NAME'].' ('.Loc::getMessage("SPS_OFFER").')',
@@ -978,12 +1121,12 @@ class ProductSearchComponent extends \CBitrixComponent
 			$arPrices = $this->getPrices();
 			if (!empty($arPrices))
 			{
-				foreach ($arPrices as &$price)
+				foreach ($arPrices as $price)
 				{
 					$this->arHeaders[] = array(
 						"id" => "PRICE".$price["ID"],
-						"content" => htmlspecialcharsex(!empty($price["NAME_LANG"]) ? $price["NAME_LANG"] : $price["NAME"]),
-						"default" => ($price["BASE"] == 'Y') ? true : false
+						"content" => htmlspecialcharsEx(!empty($price["NAME_LANG"]) ? $price["NAME_LANG"] : $price["NAME"]),
+						"default" => $price["BASE"] == 'Y'
 					);
 				}
 				unset($price);
@@ -1035,7 +1178,7 @@ class ProductSearchComponent extends \CBitrixComponent
 		{
 			$this->visiblePrices = array();
 			$columns = $this->getVisibleColumns();
-			foreach ($columns AS $column)
+			foreach ($columns as $column)
 			{
 				if (strpos($column,'PRICE') === 0)
 					$this->visiblePrices[] = (int)str_replace('PRICE','',$column);
@@ -1050,7 +1193,7 @@ class ProductSearchComponent extends \CBitrixComponent
 		{
 			$this->vilibleProperties = array();
 			$columns = $this->getVisibleColumns();
-			foreach ($columns AS $column)
+			foreach ($columns as $column)
 			{
 				if (strpos($column,'PROPERTY_') === 0)
 					$this->vilibleProperties[] = (int)str_replace('PROPERTY_','',$column);
@@ -1082,7 +1225,7 @@ class ProductSearchComponent extends \CBitrixComponent
 		if ($arProps = $this->getProps(true))
 		{
 			$filtered = null;
-			foreach ($arProps as &$arProp)
+			foreach ($arProps as $arProp)
 			{
 				$filterValueName = 'filter_el_property_'.$arProp['ID'];
 				if (isset($arProp["PROPERTY_USER_TYPE"]['AddFilterFields']))
@@ -1110,38 +1253,42 @@ class ProductSearchComponent extends \CBitrixComponent
 			unset($arProp);
 		}
 
+		$arCatalog = array();
 		$arSubQuery = array();
 		if ($arSKUProps = $this->getSkuProps())
 		{
 			$arCatalog = $this->getOffersCatalog();
 			$arSubQuery = array("IBLOCK_ID" => $arCatalog['IBLOCK_ID']);
-			$filtered=null;
+			$filtered = null;
 
-			for ($i = 0, $intPropCount = count($arSKUProps); $i < $intPropCount; $i++)
+			foreach ($arSKUProps as $arProp)
 			{
-				if (('Y' == $arSKUProps[$i]["FILTRABLE"]) && ('F' != $arSKUProps[$i]["PROPERTY_TYPE"]) && ($arCatalog['SKU_PROPERTY_ID'] != $arSKUProps[$i]["ID"]))
+				if ($arProp['ID'] == $arCatalog['SKU_PROPERTY_ID'])
+					continue;
+				$filterValueName = 'filter_sub_el_property_'.$arProp['ID'];
+				if (isset($arProp["PROPERTY_USER_TYPE"]['AddFilterFields']))
 				{
-					if (array_key_exists("AddFilterFields", $arSKUProps[$i]["PROPERTY_USER_TYPE"]))
-					{
-						call_user_func_array($arSKUProps[$i]["PROPERTY_USER_TYPE"]["AddFilterFields"], array(
-							$arSKUProps[$i],
-							array("VALUE" => "filter_sub_el_property_" . $arSKUProps[$i]["ID"]),
-							&$arSubQuery,
-							&$filtered,
-						));
-					}
-					else
-					{
-						$value = \CUtil::ConvertToLangCharset($_REQUEST['filter_sub_el_property_' . $arSKUProps[$i]["ID"]]);
-						if (is_array($value) || strlen($value))
-						{
-							if ($value === "NOT_REF")
-								$value = false;
-							$arSubQuery["?PROPERTY_" . $arSKUProps[$i]["ID"]] = $value;
-						}
-					}
+					call_user_func_array($arProp["PROPERTY_USER_TYPE"]["AddFilterFields"], array(
+						$arProp,
+						array("VALUE" => $filterValueName),
+						&$arSubQuery,
+						&$filtered,
+					));
 				}
+				elseif (isset($_REQUEST[$filterValueName]))
+				{
+					$value = $_REQUEST[$filterValueName];
+					if (is_array($value) || strlen($value))
+					{
+						if ($value === "NOT_REF")
+							$value = false;
+						$arSubQuery["?PROPERTY_".$arProp["ID"]] = $value;
+					}
+					unset($value);
+				}
+				unset($filterValueName);
 			}
+			unset($arProp);
 		}
 
 		if (!empty($_REQUEST["filter_timestamp_from"]))
@@ -1149,7 +1296,7 @@ class ProductSearchComponent extends \CBitrixComponent
 		if (!empty($_REQUEST["filter_timestamp_to"]))
 			$arFilter["DATE_MODIFY_TO"] = $_REQUEST["filter_timestamp_to"];
 		if (!empty($_REQUEST["filter_code"]))
-			$arFilter["CODE"] = \CUtil::ConvertToLangCharset($_REQUEST["filter_code"]);
+			$arFilter["CODE"] = $_REQUEST["filter_code"];
 
 		$arSearchedIds = $arSearchedSectionIds = null;
 
@@ -1166,7 +1313,7 @@ class ProductSearchComponent extends \CBitrixComponent
 					$rsBarCode = \CCatalogStoreBarCode::getList(array(), array("BARCODE" => $barcode), false, false, array('PRODUCT_ID'));
 					while ($res = $rsBarCode->Fetch())
 					{
-						$res2 = \CCatalogSKU::GetProductInfo($res["PRODUCT_ID"]);
+						$res2 = \CCatalogSku::GetProductInfo($res["PRODUCT_ID"]);
 						$arSearchedIds[] = $res2 ? $res2['ID'] : $res['PRODUCT_ID'];
 					}
 				}
@@ -1266,8 +1413,8 @@ class ProductSearchComponent extends \CBitrixComponent
 		while ($arSection = $rsSections->Fetch())
 		{
 			$arSectionTmp = array(
-				"text" => htmlspecialcharsex($arSection["NAME"]),
-				"title" => htmlspecialcharsex($arSection["NAME"]),
+				"text" => htmlspecialcharsEx($arSection["NAME"]),
+				"title" => htmlspecialcharsEx($arSection["NAME"]),
 				"icon" => "iblock_menu_icon_sections",
 				"dynamic" => (($arSection["RIGHT_MARGIN"] - $arSection["LEFT_MARGIN"]) > 1),
 				"items" => array(),
@@ -1468,7 +1615,6 @@ class ProductSearchComponent extends \CBitrixComponent
 			array(
 				"IBLOCK_ID" => $iblockId,
 				"ACTIVE" => "Y",
-				"!XML_ID" => "CML2_LINK",
 				"CHECK_PERMISSIONS" => "N",
 			)
 		);
@@ -1485,14 +1631,44 @@ class ProductSearchComponent extends \CBitrixComponent
 	private function filterProps(&$props)
 	{
 		$result = array();
-		if ($props)
+		if (empty($props) || !is_array($props))
+			return $result;
+		foreach ($props as $prop)
 		{
-			foreach ($props AS $prop)
+			if ($prop['FILTRABLE'] == 'Y' && $prop['PROPERTY_TYPE'] != 'F')
+				$result[] = $prop;
+		}
+
+		return $result;
+	}
+
+	/* deprecated methods */
+
+	/**
+	 * Return properties from product.
+	 *
+	 * @deprecated deprecated since catalog 16.5.3
+	 *
+	 * @param int $id		Product id.
+	 * @return array
+	 */
+	protected function getItemProperies($id)
+	{
+		$arProperties = array();
+		$propIds = $this->getVisibleProperties();
+		if ($propIds)
+		{
+			$rsProperties = \CIBlockElement::GetProperty($this->getIblockId(), $id, 'SORT', 'ASC', array('ID' => $propIds));
+			while ($ar = $rsProperties->Fetch())
 			{
-				if ($prop['FILTRABLE'] == 'Y' && $prop['PROPERTY_TYPE'] != 'F')
-					$result[] = $prop;
+				if (!array_key_exists($ar["ID"], $arProperties))
+					$arProperties[$ar["ID"]] = array();
+				if ($ar["PROPERTY_TYPE"] === "L")
+					$arProperties[$ar["ID"]][$ar["PROPERTY_VALUE_ID"]] = $ar["VALUE_ENUM"];
+				else
+					$arProperties[$ar["ID"]][$ar["PROPERTY_VALUE_ID"]] = $ar["VALUE"];
 			}
 		}
-		return $result;
+		return $arProperties;
 	}
 }

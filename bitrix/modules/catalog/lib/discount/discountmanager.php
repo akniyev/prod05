@@ -4,7 +4,6 @@ namespace Bitrix\Catalog\Discount;
 use Bitrix\Main,
 	Bitrix\Main\Localization\Loc,
 	Bitrix\Main\Loader,
-	Bitrix\Currency,
 	Bitrix\Catalog,
 	Bitrix\Iblock,
 	Bitrix\Sale;
@@ -31,7 +30,8 @@ class DiscountManager
 			array(
 				'prepareData' => array(__CLASS__, 'prepareData'),
 				'getEditUrl' => array(__CLASS__, 'getEditUrl'),
-				'calculateApplyCoupons' => array(__CLASS__,'calculateApplyCoupons')
+				'calculateApplyCoupons' => array(__CLASS__, 'calculateApplyCoupons'),
+				'roundPrice' => array(__CLASS__, 'roundPrice')
 			),
 			'catalog'
 		);
@@ -155,7 +155,7 @@ class DiscountManager
 			return $result;
 
 		$filteredCoupons = array();
-		foreach ($couponsList as &$coupon)
+		foreach ($couponsList as $coupon)
 		{
 			if (!isset($coupon['COUPON']) || $coupon['COUPON'] == '')
 				continue;
@@ -194,7 +194,7 @@ class DiscountManager
 		$iblockList = array();
 		$product2Iblock = array();
 		$itemIds = array();
-		foreach ($filteredBasket as &$basketItem)
+		foreach ($filteredBasket as $basketItem)
 		{
 			$productId = (int)$basketItem['PRODUCT_ID'];
 			$itemIds[$productId] = $productId;
@@ -223,7 +223,9 @@ class DiscountManager
 
 		foreach($iblockList as $iblockId => $elements)
 		{
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			\CCatalogDiscount::setProductSectionsCache($elements);
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			\CCatalogDiscount::setDiscountProductCache($elements, array('IBLOCK_ID' => $iblockId, 'GET_BY_ID' => 'Y'));
 		}
 		unset($iblockId, $elements);
@@ -241,6 +243,7 @@ class DiscountManager
 			if (empty($discountCoupons))
 				break;
 
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			$discountList = \CCatalogDiscount::getDiscount(
 				$productId,
 				$product2Iblock[$productId],
@@ -255,7 +258,7 @@ class DiscountManager
 				continue;
 
 			$itemDiscounts = array();
-			foreach ($discountList as &$discount)
+			foreach ($discountList as $discount)
 			{
 				if (!isset($discountIds[$discount['ID']]))
 					continue;
@@ -284,6 +287,59 @@ class DiscountManager
 
 		\CCatalogDiscount::setUseBasePrice($discountPercentMode);
 		unset($discountPercentMode);
+
+		return $result;
+	}
+
+	/**
+	 * Round basket item price.
+	 *
+	 * @param array $basketItem		Basket item data.
+	 * @param array $roundData		Round rule.
+	 * @return array
+	 */
+	public static function roundPrice(array $basketItem, array $roundData = array())
+	{
+		if (empty($basketItem))
+			return array();
+		if (empty($roundData))
+		{
+			$priceTypeId = 0;
+			if (isset($basketItem['CATALOG_GROUP_ID']))
+				$priceTypeId = (int)$basketItem['CATALOG_GROUP_ID'];
+			if ($priceTypeId <= 0 && isset($basketItem['PRODUCT_PRICE_ID']))
+			{
+				$priceId = (int)$basketItem['PRODUCT_PRICE_ID'];
+				if ($priceId > 0)
+				{
+					$row = Catalog\PriceTable::getList(array(
+						'select' => array('ID', 'CATALOG_GROUP_ID'),
+						'filter' => array('=ID' => $priceId)
+					))->fetch();
+					if (!empty($row))
+						$priceTypeId = (int)$row['CATALOG_GROUP_ID'];
+					unset($row);
+				}
+				unset($priceId);
+			}
+			if ($priceTypeId > 0)
+				$roundData = Catalog\Product\Price::searchRoundRule($priceTypeId, $basketItem['PRICE'], $basketItem['CURRENCY']);
+			unset($priceTypeId);
+		}
+		if (empty($roundData))
+			return array();
+		$result = array(
+			'ROUND_RULE' => $roundData
+		);
+		$result['PRICE'] = Catalog\Product\Price::roundValue($basketItem['PRICE'], $roundData['ROUND_PRECISION'], $roundData['ROUND_TYPE']);
+
+		if (isset($basketItem['BASE_PRICE']))
+			$result['DISCOUNT_PRICE'] = $basketItem['BASE_PRICE'] - $result['PRICE'];
+		else
+			$result['DISCOUNT_PRICE'] += ($basketItem['PRICE'] - $result['PRICE']);
+
+		if ($result['DISCOUNT_PRICE'] < 0)
+			$result['DISCOUNT_PRICE'] = 0;
 
 		return $result;
 	}
@@ -553,6 +609,7 @@ class DiscountManager
 
 			$conn = Main\Application::getConnection();
 			$helper = $conn->getSqlHelper();
+			/** @noinspection SqlResolve */
 			$moduleIterator = $conn->query(
 				'select MODULE_ID from '.$helper->quote('b_catalog_discount_module').' where '.$helper->quote('DISCOUNT_ID').' = '.$id
 			);
@@ -1037,6 +1094,7 @@ class DiscountManager
 					if ($elementSection['ADDITIONAL_PROPERTY_ID'] > 0)
 						continue;
 					$productSection[$elementSection['IBLOCK_ELEMENT_ID']][$elementSection['IBLOCK_SECTION_ID']] = true;
+					/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 					$parentSectionIterator = \CIBlockSection::getNavChain(0, $elementSection['IBLOCK_SECTION_ID'], array('ID'));
 					while ($parentSection = $parentSectionIterator->fetch())
 					{
@@ -1061,8 +1119,11 @@ class DiscountManager
 						'ID' => $iblockData['iblockElement'][$iblock],
 						'IBLOCK_ID' => $iblock
 					);
+					/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 					\CTimeZone::disable();
+					/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 					\CIBlockElement::getPropertyValuesArray($propertyValues, $iblock, $filter, array('ID' => $propertyList));
+					/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 					\CTimeZone::enable();
 				}
 				unset($filter, $iblock, $propertyList);

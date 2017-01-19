@@ -174,4 +174,5 @@ $MESS["SALE_MENU_EBAY_POLICY_DESCR"] = "eBay policy preferences";
 $MESS["SALE_MENU_EBAY_EXCHANGE"] = "Data exchange";
 $MESS["SALE_MENU_EBAY_EXCHANGE_DESCR"] = "eBay integration wizard";
 $MESS["SALE_MENU_EBAY_WIZARD"] = "Integration wizard";
+$MESS["SALE_MENU_SUBSCRIPTION_PRODUCT"] = "Product subscriptions";
 ?>

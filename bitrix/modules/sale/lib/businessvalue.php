@@ -53,6 +53,8 @@ final class BusinessValue
 		}
 		else
 		{
+			if ($personTypeId <= 0)
+				$personTypeId = null;
 			$mapping = self::getMapping($codeKey, $consumerKey, $personTypeId, array('GET_VALUE' => array('PROPERTY' => 'BY_ID')));
 		}
 
@@ -612,6 +614,9 @@ class BusinessValueHandlers
 				{
 					$value = null;
 
+					if ($providerInstance === null)
+						return $value;
+
 					if (substr($providerValue, 0, 3) == 'UF_')
 					{
 						global $USER_FIELD_MANAGER;
@@ -922,27 +927,33 @@ class BusinessValueHandlers
 										{
 											if (($value = $property->getValue())
 												&& ($propertyField = $property->getProperty())
-												&& $propertyField['TYPE'] == "LOCATION"
 											)
 											{
-												$limit = -1;
-												$filter['CODE'] = $value;
-												$filter['=PARENTS.NAME.LANGUAGE_ID'] = LANGUAGE_ID;
-												if(is_set($locationField))
+												if($propertyField['TYPE'] == "LOCATION")
 												{
-													$filter['=PARENTS.TYPE.CODE'] = $locationField;
-													$limit = 1;
-												}
-												$row = \Bitrix\Sale\Location\LocationTable::getList(array(
-														'select' => array('LOCATION_NAME' => 'PARENTS.NAME.NAME'),
-														'filter' => $filter,
-														'limit' => $limit,
-												));
-												$locations  = array();
-												while($location = $row->fetch())
-													$locations[] = $location['LOCATION_NAME'];
+													$limit = -1;
+													$filter['=CODE'] = $value;
+													$filter['=PARENTS.NAME.LANGUAGE_ID'] = LANGUAGE_ID;
+													if(is_set($locationField))
+													{
+														$filter['=PARENTS.TYPE.CODE'] = $locationField;
+														$limit = 1;
+													}
+													$row = \Bitrix\Sale\Location\LocationTable::getList(array(
+															'select' => array('LOCATION_NAME' => 'PARENTS.NAME.NAME'),
+															'filter' => $filter,
+															'limit' => $limit,
+													));
+													$locations  = array();
+													while($location = $row->fetch())
+														$locations[] = $location['LOCATION_NAME'];
 
-												$value = count($locations)>0? implode('-',$locations):$value;
+													$value = count($locations)>0? implode('-',$locations):$value;
+												}
+												elseif($propertyField['TYPE'] == "ENUM")
+												{
+													$value = $propertyField['OPTIONS'][$property->getValue()];
+												}
 											}
 											break;
 										}
@@ -1285,7 +1296,7 @@ class BusinessValueConsumer1C
 			}
 		}
 
-		$mapping = $mapping['PROVIDER_KEY'] && $mapping['PROVIDER_VALUE']
+		$mapping = $mapping['PROVIDER_KEY'] 
 				? array(
 						'PROVIDER_KEY'   => $mapping['PROVIDER_KEY'  ],
 						'PROVIDER_VALUE' => $mapping['PROVIDER_VALUE'],

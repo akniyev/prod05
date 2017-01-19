@@ -1,6 +1,7 @@
 <?php
 namespace Bitrix\Main\Text;
 
+use Bitrix\Main\Loader;
 use Bitrix\Main\Application;
 use Bitrix\Main\Config\Configuration;
 use Bitrix\Main\ErrorCollection;
@@ -182,7 +183,7 @@ class Encoding
 	protected function convertByMbstring($data, $charsetFrom, $charsetTo)
 	{
 		$res = '';
-		if (extension_loaded("mbstring") && mb_encoding_aliases($charsetFrom) && mb_encoding_aliases($charsetTo))
+		if (extension_loaded("mbstring") && mb_encoding_aliases($charsetFrom) !== false && mb_encoding_aliases($charsetTo) !== false)
 		{
 			//For UTF-16 we have to detect the order of bytes
 			//Default for mbstring extension is Big endian
@@ -277,7 +278,7 @@ class Encoding
 				continue;
 			}
 
-			$pathToTable = Application::getDocumentRoot().self::PATH_TO_CONVERT_TABLES.$fileName;
+			$pathToTable = Loader::getDocumentRoot().self::PATH_TO_CONVERT_TABLES.$fileName;
 			if (!file_exists($pathToTable))
 			{
 				$this->errors[] = new Error(str_replace("#FILE#", $pathToTable, "File #FILE# is not found."));

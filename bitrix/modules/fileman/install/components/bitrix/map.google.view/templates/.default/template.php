@@ -11,6 +11,7 @@ $arTransParams = array(
 	'CONTROLS' => $arParams['CONTROLS'],
 	'OPTIONS' => $arParams['OPTIONS'],
 	'MAP_ID' => $arParams['MAP_ID'],
+	'API_KEY' => $arParams['API_KEY'],
 );
 
 if ($arParams['DEV_MODE'] == 'Y')

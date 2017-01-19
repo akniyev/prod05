@@ -8,11 +8,10 @@
 
 namespace Bitrix\Highloadblock;
 
-use Bitrix\Main;
-use Bitrix\Main\Application;
-use Bitrix\Main\DB\MssqlConnection;
-use Bitrix\Main\Entity;
-use Bitrix\Main\Type;
+use Bitrix\Main,
+	Bitrix\Main\Application,
+	Bitrix\Main\DB\MssqlConnection,
+	Bitrix\Main\Entity;
 
 Main\Localization\Loc::loadLanguageFile(__FILE__);
 
@@ -37,6 +36,7 @@ class HighloadBlockTable extends Entity\DataManager
 
 		$sqlHelper = Application::getConnection()->getSqlHelper();
 
+		/** @noinspection PhpMethodParametersCountMismatchInspection */
 		$fieldsMap = array(
 			'ID' => array(
 				'data_type' => 'integer',
@@ -80,9 +80,8 @@ class HighloadBlockTable extends Entity\DataManager
 		}
 
 		// create table in db
-		$dbtype = strtolower($GLOBALS['DB']->type);
-
 		$connection = Application::getConnection();
+		$dbtype = $connection->getType();
 		$sqlHelper = $connection->getSqlHelper();
 
 		if ($dbtype == 'mysql')
@@ -167,6 +166,7 @@ class HighloadBlockTable extends Entity\DataManager
 			}
 
 			// rename also uf multiple tables and its constraints, sequences, and triggers
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			foreach ($USER_FIELD_MANAGER->getUserFields('HLBLOCK_'.$oldData['ID']) as $field)
 			{
 				if ($field['MULTIPLE'] == 'Y')
@@ -196,6 +196,7 @@ class HighloadBlockTable extends Entity\DataManager
 
 		// get file fields
 		$file_fields = array();
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$fields = $USER_FIELD_MANAGER->getUserFields('HLBLOCK_'.$hlblock['ID']);
 
 		foreach ($fields as $name => $field)
@@ -274,11 +275,10 @@ class HighloadBlockTable extends Entity\DataManager
 		}
 
 		// clear uf cache
-		global $CACHE_MANAGER;
-
+		$managedCache = Application::getInstance()->getManagedCache();
 		if(CACHED_b_user_field !== false)
 		{
-			$CACHE_MANAGER->cleanDir("b_user_field");
+			$managedCache->cleanDir("b_user_field");
 		}
 
 		// remove row
@@ -360,6 +360,7 @@ class HighloadBlockTable extends Entity\DataManager
 		/** @var \Bitrix\Main\Entity\DataManager $entity_data_class */
 		$entity = $entity_data_class::getEntity();
 
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$uFields = $USER_FIELD_MANAGER->getUserFields('HLBLOCK_'.$hlblock['ID']);
 
 		foreach ($uFields as $uField)
@@ -477,7 +478,7 @@ class HighloadBlockTable extends Entity\DataManager
 
 	public static function OnBeforeUserTypeDelete($field)
 	{
-		global $APPLICATION, $USER_FIELD_MANAGER;
+		global $USER_FIELD_MANAGER;
 
 		if (preg_match('/^HLBLOCK_(\d+)$/', $field['ENTITY_ID'], $matches))
 		{
@@ -487,13 +488,11 @@ class HighloadBlockTable extends Entity\DataManager
 
 			if (empty($hlblock))
 			{
-				$APPLICATION->throwException(sprintf(
-					'Entity "HLBLOCK_%s" wasn\'t found.', $hlblock_id
-				));
-
-				return false;
+				// non-existent or zombie. let it go
+				return array('PROVIDE_STORAGE' => false);
 			}
 
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 			$fieldType = $USER_FIELD_MANAGER->getUserType($field["USER_TYPE_ID"]);
 
 			if ($fieldType['BASE_TYPE'] == 'file')

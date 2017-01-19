@@ -3,6 +3,7 @@ namespace Bitrix\Sale\Delivery\Restrictions;
 
 use Bitrix\Sale\Delivery\Restrictions;
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Sale\Internals\CollectableEntity;
 
 Loc::loadMessages(__FILE__);
 
@@ -57,7 +58,7 @@ class ByMaxSize extends Restrictions\Base
 		return true;
 	}
 
-	protected static function extractParams(\Bitrix\Sale\Shipment $shipment)
+	protected static function extractParams(CollectableEntity $shipment)
 	{
 		$result = array();
 
@@ -75,7 +76,7 @@ class ByMaxSize extends Restrictions\Base
 		return $result;
 	}
 
-	public static function getParamsStructure()
+	public static function getParamsStructure($entityId = 0)
 	{
 		return array(
 			"MAX_SIZE" => array(

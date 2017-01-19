@@ -16,6 +16,7 @@ class ServiceResult extends Result
 	private $psData = array();
 	private $resultApplied = true;
 	private $operationType = null;
+	private $template = '';
 
 	/**
 	 * @param array $psData
@@ -64,5 +65,21 @@ class ServiceResult extends Result
 	public function setResultApplied($resultApplied)
 	{
 		$this->resultApplied = $resultApplied;
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getTemplate()
+	{
+		return $this->template;
+	}
+
+	/**
+	 * @param string $template
+	 */
+	public function setTemplate($template)
+	{
+		$this->template = $template;
 	}
 }

@@ -83,6 +83,9 @@ class Manager
 	protected static $classNames = null;
 	//If status didn't changed for a long time let's stop update it.
 	protected static $activeStatusLiveTime = 5184000;  //60 days
+	
+	/** @var bool  */
+	protected $isClone = false;
 
 	protected function __clone(){}
 
@@ -131,6 +134,25 @@ class Manager
 			Statuses::PROBLEM => Loc::getMessage("SALE_DTM_STATUS_NAME_PROBLEM"),
 			Statuses::UNKNOWN => Loc::getMessage("SALE_DTM_STATUS_NAME_UNKNOWN"),
 		);
+	}
+
+	/**
+	 * @param int $deliveryId Delivery service id.
+	 * @param string $trackingNumber Trcking number.
+	 * @return string  Url were we can see tracking information.
+	 * @throws ArgumentNullException
+	 */
+	public function getTrackingUrl($deliveryId, $trackingNumber = '')
+	{
+		if(!$deliveryId)
+			return '';
+
+		$trackingObject = $this->getTrackingObjectByDeliveryId($deliveryId);
+
+		if(!$trackingObject)
+			return '';
+
+		return $trackingObject->getTrackingUrl($trackingNumber);
 	}
 
 	/**
@@ -630,5 +652,37 @@ class Manager
 			'TRACKING_DESCRIPTION' => $params->description,
 			'TRACKING_NUMBER' => $params->trackingNumber
 		));
+	}
+
+	/**
+	 * @internal 
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return Manager
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$trackingClone = clone $this;
+		$trackingClone->isClone = true;
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $trackingClone;
+		}
+		
+		return $trackingClone;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isClone()
+	{
+		return $this->isClone;
 	}
 }

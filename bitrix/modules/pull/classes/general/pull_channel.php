@@ -455,9 +455,6 @@ class CPullChannel
 	public static function CheckExpireAgent()
 	{
 		global $DB;
-		if (!CPullOptions::ModuleEnable())
-			return false;
-
 		$sqlDateFunction = null;
 		$dbType = strtolower($DB->type);
 		if ($dbType== "mysql")
@@ -484,7 +481,7 @@ class CPullChannel
 	public static function CheckOnlineChannel()
 	{
 		if (!CPullOptions::GetQueueServerStatus())
-			return false;
+			return "CPullChannel::CheckOnlineChannel();";
 
 		global $DB;
 		$arUser = Array();
@@ -609,7 +606,7 @@ class CPullChannel
 		$userMobileStatus = '0';
 		if (CModule::IncludeModule('im'))
 		{
-			$res = Bitrix\Im\StatusTable::getById($arParams['user_fields']['ID']);
+			$res = Bitrix\Im\Model\StatusTable::getById($arParams['user_fields']['ID']);
 			if ($status = $res->fetch())
 			{
 				$userStatus = $status['STATUS'];

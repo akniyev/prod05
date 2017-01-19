@@ -27,31 +27,32 @@ namespace Bitrix\Sale\Delivery\AdminPage\DeliveryExtraServiceEdit
 	Loc::loadMessages(__FILE__);
 
 	$ID = intval($_GET['ID']);
-	$strError = "";
+	global $srvStrError;
 
-	if(isset($_REQUEST["action"]) && $_REQUEST["action"] == "delete_extra_service" && isset($_REQUEST["ES_ID"]))
+	if(isset($_REQUEST["action"]) && $_REQUEST["action"] == "delete_extra_service" && isset($_REQUEST["ES_ID"]) && $saleModulePermissions == "W" && check_bitrix_sessid())
 	{
 		if(intval($_REQUEST["ES_ID"] > 0))
 		{
 			$res = ExtraServices\Table::delete(intval($_REQUEST["ES_ID"]));
 
 			if(!$res->isSuccess())
-				$strError .= Loc::getMessage("SALE_ESDE_ERROR_DELETE").' '.implode("<br>\n",$res->getErrorMessages());
+				$srvStrError .= Loc::getMessage("SALE_ESDE_ERROR_DELETE").' '.implode("<br>\n",$res->getErrorMessages());
 		}
 		else
 		{
-			$strError .= Loc::getMessage("SALE_ESDE_ERROR_ID");
+			$srvStrError .= Loc::getMessage("SALE_ESDE_ERROR_ID");
 		}
 	}
 
 	$tableId = 'table_delivery_extra_service';
 	$oSort = new \CAdminSorting($tableId);
 	$lAdmin = new \CAdminList($tableId, $oSort);
+	$esClasses = ExtraServices\Manager::getClassesList();
 
 	$res = \Bitrix\Sale\Delivery\ExtraServices\Table::getList(array(
 		'filter' => array(
-			'DELIVERY_ID' => $ID,
-			'=CLASS_NAME' => ExtraServices\Manager::getClassesList()
+			'=DELIVERY_ID' => $ID,
+			'=CLASS_NAME' => $esClasses
 		),
 		'select' => array('ID', 'CODE', 'NAME', 'DESCRIPTION', 'CLASS_NAME', 'RIGHTS', 'ACTIVE', 'SORT'),
 		'order' => array('SORT' => 'ASC', 'ID' => 'DESC')
@@ -152,6 +153,9 @@ namespace Bitrix\Sale\Delivery\AdminPage\DeliveryExtraServiceEdit
 		foreach(ExtraServices\Manager::getClassesList() as $esClass)
 		{
 			if($esClass == '\Bitrix\Sale\Delivery\ExtraServices\String')
+				continue;
+
+			if($esClass::isEmbeddedOnly())
 				continue;
 
 			$menu[] =  array(

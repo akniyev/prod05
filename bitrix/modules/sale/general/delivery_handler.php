@@ -975,9 +975,16 @@ class CAllSaleDeliveryHandler
 		{
 			foreach($arData["PROFILES"] as $profileCode => $profileData)
 			{
+				if(strlen($profileData["TITLE"]) > 0)
+					$name = $profileData["TITLE"];
+				elseif(strlen($handlers[$code]['PROFILES'][$profileCode]['TITLE']) > 0)
+					$name = $handlers[$code]['PROFILES'][$profileCode]['TITLE'];
+				else
+					$name = "-";
+
 				self::Set($code.":".$profileCode,
 					array(
-						"NAME" => strlen($profileData["TITLE"]) > 0 ? $profileData["TITLE"] : $handlers[$code]['PROFILES'][$profileCode]['TITLE'],
+						"NAME" => $name,
 						"DESCRIPTION" => isset($profileData["DESCRIPTION"]) ? $profileData["DESCRIPTION"] : '',
 						"ACTIVE" => isset($profileData["ACTIVE"]) ?  $profileData["ACTIVE"] : "N",
 						"TAX_RATE" => isset($profileData["TAX_RATE"]) ?  $profileData["TAX_RATE"] : 0,
@@ -1151,8 +1158,16 @@ class CAllSaleDeliveryHandler
 		if(!$shipment = $params->getParameter("SHIPMENT"))
 			return new \Bitrix\Main\EventResult(\Bitrix\Main\EventResult::ERROR, null, 'sale');
 
+		$deliveryId = $shipment->getDeliveryId();
+
+		if(intval($deliveryId) <= 0 && intval($params->getParameter("DELIVERY_ID")) > 0)
+			$deliveryId = intval($params->getParameter("DELIVERY_ID"));
+
+		if(intval($deliveryId) <= 0)
+			return new \Bitrix\Main\EventResult(\Bitrix\Main\EventResult::ERROR, null, 'sale');
+
 		/** @var \Bitrix\Sale\Delivery\Services\Base $deliverySrv */
-		if(!$deliverySrv = $shipment->getDelivery())
+		if(!$deliverySrv = \Bitrix\Sale\Delivery\Services\Manager::getObjectById($deliveryId))
 			return new \Bitrix\Main\EventResult(\Bitrix\Main\EventResult::ERROR, null, 'sale');
 
 		if(get_class($deliverySrv) != 'Bitrix\Sale\Delivery\Services\AutomaticProfile')
@@ -1175,11 +1190,12 @@ class CAllSaleDeliveryHandler
 			return new \Bitrix\Main\EventResult(\Bitrix\Main\EventResult::ERROR, null, 'sale');
 
 		$oldOrder = \Bitrix\Sale\Compatible\OrderCompatibility::convertOrderToArray($order);
+		$errorMessage = $result->isSuccess() ? '' : implode("<br>\n", $result->getErrorMessages());
 
 		$oldResult = array(
 			"VALUE" => $result->getPrice(),
 			"TRANSIT" => $result->getPeriodDescription(),
-			"TEXT" => $result->isSuccess() ? $result->getDescription() : implode("<br>\n", $result->getErrorMessages()),
+			"TEXT" => $result->isSuccess() ? $result->getDescription() : $errorMessage,
 			"RESULT" => $result->isSuccess() ? "OK" : "ERROR"
 		);
 
@@ -1200,9 +1216,14 @@ class CAllSaleDeliveryHandler
 		$result->setDeliveryPrice($oldResult["VALUE"]);
 
 		if($oldResult["RESULT"] == "ERROR")
-			$result->addError(new \Bitrix\Main\Entity\EntityError($oldResult["TEXT"]));
+		{
+			if($oldResult["TEXT"] != $errorMessage)
+				$result->addError(new \Bitrix\Main\Entity\EntityError($oldResult["TEXT"]));
+		}
 		elseif($oldResult["RESULT"] == "NEXT_STEP")
+		{
 			$result->setAsNextStep();
+		}
 
 		if(isset($oldResult["TRANSIT"])) $result->setPeriodDescription($oldResult["TRANSIT"]);
 		if(isset($oldResult["TEXT"])) $result->setDescription($oldResult["TEXT"]);
@@ -1476,7 +1497,7 @@ class CAllSaleDeliveryHandler
 	}
 
 	/**
-	 * @return \Bitrix\Sale\Result|bool
+	 * @return \Bitrix\Sale\Result
 	 * @throws Exception
 	 * @throws \Bitrix\Main\SystemException
 	 */
@@ -1486,7 +1507,7 @@ class CAllSaleDeliveryHandler
 		$con = \Bitrix\Main\Application::getConnection();
 
 		if(!$con->isTableExists("b_sale_delivery_handler"))
-			return true;
+			return $result;
 
 		$sqlHelper = $con->getSqlHelper();
 		$deliveryRes = $con->query('SELECT * FROM b_sale_delivery_handler WHERE CONVERTED != \'Y\'');
@@ -1502,13 +1523,21 @@ class CAllSaleDeliveryHandler
 		{
 			if(strlen($delivery["HID"]) <= 0)
 			{
-				$result->addError( new \Bitrix\Main\Entity\EntityError("Can't delivery HID. ID: \"".$delivery["ID"]."\""));
+				$result->addError( new \Bitrix\Main\Entity\EntityError("Can't find delivery HID. ID: \"".$delivery["ID"]."\""));
 				continue;
 			}
 
 			if(!isset($handlers[$delivery["HID"]]))
 			{
-				$result->addError( new \Bitrix\Main\Entity\EntityError("Can't find delivery handler in registered HID: \"".$delivery["HID"]."\""));
+				\CEventLog::Add(array(
+					"SEVERITY" => "ERROR",
+					"AUDIT_TYPE_ID" => "SALE_CONVERTER_ERROR",
+					"MODULE_ID" => "sale",
+					"ITEM_ID" => "CAllSaleDeliveryHandler::convertToNew()",
+					"DESCRIPTION" => "Can't find delivery handler for registered HID: \"".$delivery["HID"]."\"",
+				));
+
+				//$result->addError( new \Bitrix\Main\Entity\EntityError("Can't find delivery handler for registered HID: \"".$delivery["HID"]."\""));
 				continue;
 			}
 
@@ -1555,6 +1584,14 @@ class CAllSaleDeliveryHandler
 				}
 			}
 
+			if(empty($delivery["NAME"]))
+			{
+				if(!empty($handlers[$delivery["HID"]]["NAME"]))
+					$delivery["NAME"] = $handlers[$delivery["HID"]]["NAME"];
+				else
+					$delivery["NAME"] = "-";
+			}
+			
 			$delivery["SID"] = $handlers[$delivery["HID"]]["SID"];
 
 			$id = \CSaleDeliveryHandler::Set(
@@ -1588,9 +1625,9 @@ class CAllSaleDeliveryHandler
 				if(intval($profileId) > 0)
 				{
 					foreach($tablesToUpdate as $table)
-						$con->queryExecute("UPDATE ".$table." SET DELIVERY_ID=".$sqlHelper->forSql($profileId)." WHERE DELIVERY_ID = '".$sqlHelper->forSql($fullSid)."'");
+						$con->queryExecute("UPDATE ".$table." SET DELIVERY_ID='".$sqlHelper->forSql($profileId)."' WHERE DELIVERY_ID = '".$sqlHelper->forSql($fullSid)."'");
 
-					$con->queryExecute("UPDATE b_sale_delivery2paysystem SET DELIVERY_ID=".$sqlHelper->forSql($profileId).", DELIVERY_PROFILE_ID='' WHERE DELIVERY_ID = '".$sqlHelper->forSql($delivery["HID"])."' AND DELIVERY_PROFILE_ID='".$profileName."'");
+					$con->queryExecute("UPDATE b_sale_delivery2paysystem SET DELIVERY_ID='".$sqlHelper->forSql($profileId)."', DELIVERY_PROFILE_ID='##CONVERTED##' WHERE DELIVERY_ID = '".$sqlHelper->forSql($delivery["HID"])."' AND DELIVERY_PROFILE_ID='".$profileName."'");
 				}
 				else
 				{
@@ -1598,7 +1635,7 @@ class CAllSaleDeliveryHandler
 				}
 			}
 
-			$con->queryExecute("UPDATE b_sale_delivery2paysystem SET DELIVERY_ID=".$sqlHelper->forSql($id).", DELIVERY_PROFILE_ID='' WHERE DELIVERY_ID = '".$sqlHelper->forSql($delivery["HID"])."' AND (DELIVERY_PROFILE_ID='' OR DELIVERY_PROFILE_ID IS NULL)");
+			$con->queryExecute("UPDATE b_sale_delivery2paysystem SET DELIVERY_ID='".$sqlHelper->forSql($id)."', DELIVERY_PROFILE_ID='##CONVERTED##' WHERE DELIVERY_ID = '".$sqlHelper->forSql($delivery["HID"])."' AND (DELIVERY_PROFILE_ID='' OR DELIVERY_PROFILE_ID IS NULL)");
 
 			$d2pRes = \Bitrix\Sale\Internals\DeliveryPaySystemTable::getList(array(
 				'filter' => array(

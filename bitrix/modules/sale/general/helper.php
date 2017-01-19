@@ -250,7 +250,7 @@ class CSaleHelper
 		return $wrapHtml;
 	}
 
-	public function getOptionOrImportValues($optName, $importFuncName = false, $arFuncParams = array(), $siteId = "")
+	public static function getOptionOrImportValues($optName, $importFuncName = false, $arFuncParams = array(), $siteId = "")
 	{
 		$arResult = array();
 
@@ -385,7 +385,7 @@ class CSaleHelper
 	* @param array $arSize - width and height for image thumbnail
 	* @return string
 	*/
-	function getFileInfo($fileId, $arSize = array("WIDTH" => 90, "HEIGHT" => 90))
+	public static function getFileInfo($fileId, $arSize = array("WIDTH" => 90, "HEIGHT" => 90))
 	{
 		$resultHTML = "";
 		$arFile = CFile::GetFileArray($fileId);
@@ -400,7 +400,7 @@ class CSaleHelper
 		return $resultHTML;
 	}
 
-	function getIblockPropInfo($value, $propData, $arSize = array("WIDTH" => 90, "HEIGHT" => 90))
+	public static function getIblockPropInfo($value, $propData, $arSize = array("WIDTH" => 90, "HEIGHT" => 90))
 	{
 		$res = "";
 

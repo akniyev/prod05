@@ -21,4 +21,7 @@ $MESS["top_panel_ai_marketplace_hide"] = "Скрыть";
 $MESS["top_panel_ai_marketplace_add"] = "Оставить отзыв";
 $MESS["top_panel_ai_marketplace_descr"] = "Вы используете решение <b>#NAME#</b> (#ID#).<br />Поделитесь своими впечатлениями.<br />
 Что понравилось?<br />Есть ли замечания?<br />Ваш отзыв очень важен для нас!";
+$MESS["top_panel_ai_composite_title"] = "Автокомпозитный сайт";
+$MESS["top_panel_ai_composite_desc"] = "Уникальная технология позволит ускорить скорость загрузки страниц вашего сайта.";
+$MESS["top_panel_ai_composite_switch_on"] = "Включить АвтоКомпозит";
 ?>

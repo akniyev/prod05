@@ -318,8 +318,7 @@ Submit: function()
 {
 	var mt = this.config.AmPmMode ? this.config.AmPm : '';
 	this.pInput.value = this.Hour2Str(this.curHour, this.config.AmPmMode) + ':' + this.Int2Str(this.curMin) + mt;
-	if (this.pInput.onchange && typeof this.pInput.onchange == 'function')
-		this.pInput.onchange.apply(this.pInput, []);
+	BX.fireEvent(this.pInput, 'change');
 
 	if (!this.bInline)
 		this.Close();

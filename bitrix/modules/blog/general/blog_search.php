@@ -1,11 +1,10 @@
 <?
 class CBlogSearch 
 {
-	function OnSearchReindex($NS=Array(), $oCallback=NULL, $callback_method="")
+	public static function OnSearchReindex($NS=Array(), $oCallback=NULL, $callback_method="")
 	{
-		global $DB;
+		global $DB, $USER_FIELD_MANAGER;
 		$arResult = array();
-		
 		//CBlogSearch::Trace('OnSearchReindex', 'NS', $NS);
 		if($NS["MODULE"]=="blog" && strlen($NS["ID"])>0)
 		{
@@ -17,6 +16,7 @@ class CBlogSearch
 			$category = 'B';//start with blogs
 			$id = 0;//very first id
 		}
+
 		//CBlogSearch::Trace('OnSearchReindex', 'category+id', array("CATEGORY"=>$category,"ID"=>$id));
 		
 		//Reindex blogs
@@ -146,6 +146,7 @@ class CBlogSearch
 				ORDER BY
 					bp.ID
 			";
+
 			/*		AND bp.PUBLISH_STATUS = '".$DB->ForSQL(BLOG_PUBLISH_STATUS_PUBLISH)."'*/
 			//AND b.SEARCH_INDEX = 'Y'
 			//CBlogSearch::Trace('OnSearchReindex', 'strSql', $strSql);
@@ -185,14 +186,17 @@ class CBlogSearch
 						$arTag[] = $arCategory["NAME"];
 					}
 					$tag =  implode(",", $arTag);
-				}				
+				}
+
+				$searchContent = blogTextParser::killAllTags($ar["DETAIL_TEXT"]);
+				$searchContent .= "\r\n" . $USER_FIELD_MANAGER->OnSearchIndex("BLOG_POST", $ar["ID"]);
 
 				//CBlogSearch::Trace('OnSearchReindex', 'arSite', $arSite);
 				$Result = Array(
 					"ID"		=> "P".$ar["ID"],
 					"LAST_MODIFIED"	=> $ar["DATE_PUBLISH"],
-					"TITLE"		=> blogTextParser::killAllTags($ar["TITLE"]),
-					"BODY"		=> blogTextParser::killAllTags($ar["DETAIL_TEXT"]),
+					"TITLE"		=> CSearch::KillTags(blogTextParser::killAllTags($ar["MICRO"] == "Y" ? $ar["TITLE"] : htmlspecialcharsEx($ar["TITLE"]))),
+					"BODY"		=> CSearch::KillTags($searchContent),
 					"SITE_ID"	=> $arSite,
 					"PARAM1"	=> "POST",
 					"PARAM2"	=> $ar["BLOG_ID"],
@@ -411,7 +415,7 @@ class CBlogSearch
 										"BLOG_ID" => $arF["BLOG_ID"],
 										"POST_ID" => $ar["ID"],
 										"SITE_ID" => $ar["SITE_ID"],
-										"PATH" => $arPostSite[$arGroup["SITE_ID"]]."?commentId=#comment_id###comment_id#",
+										"PATH" => $arPostSite[$arGroup["SITE_ID"]]."?commentId=#comment_id##com#comment_id#",
 										"USE_SOCNET" => "Y",
 									);
 									CBlogComment::_IndexPostComments($arParamsComment);
@@ -461,6 +465,8 @@ class CBlogSearch
 							}
 							$Result["PARAMS"]["mentioned_user_id"] = $arMentionedUserID;
 						}
+
+						$socnetPerms = false;
 
 						if(IntVal($ar["SLID"]) <= 0)
 						{
@@ -535,7 +541,7 @@ class CBlogSearch
 							}
 
 							CSocNetLogRights::DeleteByLogID($logID);
-							CSocNetLogRights::Add($logID, $socnetPerms);
+							CSocNetLogRights::Add($logID, $socnetPerms, false, false);
 						}
 					}
 				}
@@ -562,6 +568,8 @@ class CBlogSearch
 		}
 		if($category == 'C')
 		{
+			$bSonet = CModule::IncludeModule("socialnetwork");
+
 			$strSql = "
 				SELECT
 					bc.ID
@@ -600,7 +608,19 @@ class CBlogSearch
 				$tag = "";
 				$PostPerms = CBlogUserGroup::GetGroupPerms(1, $ar["BLOG_ID"], $ar["POST_ID"], BLOG_PERMS_POST);
 				if($PostPerms < BLOG_PERMS_READ)
+				{
 					continue;
+				}
+
+				if ($bSonet)
+				{
+					$handlerManager = new Bitrix\Socialnetwork\CommentAux\HandlerManager();
+					if($handlerManager->getHandlerByPostText($ar["POST_TEXT"]))
+					{
+						continue;
+					}
+				}
+
 				//CBlogSearch::Trace('OnSearchReindex', 'ar', $ar);
 				if(strlen($ar["PATH"]) > 0)
 				{
@@ -615,6 +635,9 @@ class CBlogSearch
 					);
 				}
 
+				$searchContent = blogTextParser::killAllTags($ar["POST_TEXT"]);
+//				$searchContent .= "\r\n" . $GLOBALS["USER_FIELD_MANAGER"]->OnSearchIndex("BLOG_COMMENT", $ar["ID"]);
+
 				$Result = array(
 					"ID" => "C".$ar["ID"],
 					"SITE_ID" => $arSite,
@@ -622,13 +645,14 @@ class CBlogSearch
 					"PARAM1" => "COMMENT",
 					"PARAM2" => $ar["BLOG_ID"]."|".$ar["POST_ID"],
 					"PERMISSIONS" => array(2),
-					"TITLE" => $ar["TITLE"],
-					"BODY" => blogTextParser::killAllTags($ar["POST_TEXT"]),
+					"TITLE" => CSearch::KillTags($ar["TITLE"]),
+					"BODY" => CSearch::KillTags($searchContent),
 					"INDEX_TITLE" => false,
 					"USER_ID" => (IntVal($ar["AUTHOR_ID"]) > 0) ? $ar["AUTHOR_ID"] : false,
 					"ENTITY_TYPE_ID" => "BLOG_COMMENT",
 					"ENTITY_ID" => $ar["ID"],
 				);
+
 				if($ar["USE_SOCNET"] == "Y")
 				{
 					$arSp = CBlogComment::GetSocNetCommentPerms($ar["POST_ID"]);
@@ -684,7 +708,7 @@ class CBlogSearch
 
 				if(strlen($ar["TITLE"]) <= 0)
 				{
-					$Result["TITLE"] = substr($Result["BODY"], 0, 100);
+					$Result["TITLE"] = substr(CSearch::KillTags($searchContent), 0, 100);
 				}
 
 				if($oCallback)
@@ -781,8 +805,10 @@ class CBlogSearch
 				}
 			}
 		}
+
 		if($oCallback)
 			return false;
+
 		return $arResult;
 	}
 	function Trace($method, $varname, $var)

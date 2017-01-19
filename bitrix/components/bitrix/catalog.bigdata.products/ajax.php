@@ -1,5 +1,7 @@
 <?php
 
+define("PUBLIC_AJAX_MODE", true);
+
 if (empty($_POST['parameters']))
 {
 	echo 'no parameters found';

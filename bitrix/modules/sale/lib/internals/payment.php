@@ -73,9 +73,9 @@ class PaymentTable extends Main\Entity\DataManager
 				'title' => Loc::getMessage('ORDER_PAYMENT_ENTITY_PAY_SYSTEM_ID_FIELD'),
 			),
 			'PAY_SYSTEM' => array(
-				'data_type' => 'Bitrix\Sale\PaySystemAction',
+				'data_type' => 'Bitrix\Sale\Internals\PaySystemAction',
 				'reference' => array(
-					'=this.PAY_SYSTEM_ID' => 'ref.PAY_SYSTEM_ID'
+					'=this.PAY_SYSTEM_ID' => 'ref.ID'
 				)
 			),
 			'PS_STATUS' => array(
@@ -289,7 +289,7 @@ class PaymentTable extends Main\Entity\DataManager
 	public static function validatePsStatusDescription()
 	{
 		return array(
-			new Main\Entity\Validator\Length(null, 250),
+			new Main\Entity\Validator\Length(null, 512),
 		);
 	}
 	/**

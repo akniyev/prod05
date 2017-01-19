@@ -22,14 +22,12 @@ class FinderDestTable extends Entity\DataManager
 
 	public static function getMap()
 	{
+		global $USER;
+
 		return array(
-			'ID' => array(
-				'data_type' => 'integer',
-				'primary' => true,
-				'autocomplete' => true,
-			),
 			'USER_ID' => array(
-				'data_type' => 'integer'
+				'data_type' => 'integer',
+				'primary' => true
 			),
 			new Entity\ReferenceField(
 				'USER',
@@ -37,7 +35,8 @@ class FinderDestTable extends Entity\DataManager
 				array('=this.USER_ID' => 'ref.ID')
 			),
 			'CODE' => array(
-				'data_type' => 'string'
+				'data_type' => 'string',
+				'primary' => true
 			),
 			'CODE_USER_ID' => array(
 				'data_type' => 'integer'
@@ -55,11 +54,12 @@ class FinderDestTable extends Entity\DataManager
 				'Bitrix\Main\UserTable',
 				array(
 					'=this.CODE_USER_ID' => 'ref.ID',
-					'=this.USER_ID' => new SqlExpression('?i', $GLOBALS["USER"]->GetId())
+					'=this.USER_ID' => new SqlExpression('?i', $USER->GetId())
 				)
 			),
 			'CONTEXT' => array(
-				'data_type' => 'string'
+				'data_type' => 'string',
+				'primary' => true
 			),
 			'LAST_USE_DATE' => array(
 				'data_type' => 'datetime'
@@ -74,6 +74,8 @@ class FinderDestTable extends Entity\DataManager
      */
 	public static function merge($data)
 	{
+		global $USER;
+
 		static $connection = false;
 		static $helper = false;
 
@@ -81,7 +83,7 @@ class FinderDestTable extends Entity\DataManager
 			isset($data['USER_ID'])
 			&& intval($data['USER_ID']) > 0
 				? intval($data['USER_ID'])
-				: (is_object($GLOBALS['USER']) ? $GLOBALS['USER']->getId() : 0)
+				: (is_object($GLOBALS['USER']) ? $USER->getId() : 0)
 		);
 
 		if ($userId <= 0)

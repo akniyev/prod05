@@ -114,11 +114,73 @@ BX.PopupWindow = function(uniquePopupId, bindElement, params)
 			BX.addCustomEvent(this, eventName, this.params.events[eventName]);
 	}
 
+	if (params.darkMode)
+	{
+		BX.addClass(this.popupContainer, 'popup-window-dark');
+	}
+
+	var popupClassName = "popup-window";
+
+	/*if (params.lightShadow)
+		popupClassName += " popup-window-light";*/
+
+	if (params.contentColor && BX.type.isNotEmptyString(params.contentColor))
+		popupClassName += " popup-window-content-" + params.contentColor;
+
+	if (params.contentNoPaddings)
+		popupClassName += " popup-window-content-no-paddings";
+
+	if (params.noAllPaddings)
+		popupClassName += " popup-window-no-paddings";
+
+	if (params.titleBar)
+		popupClassName += " popup-window-with-titlebar";
+
+	if (params.className && BX.type.isNotEmptyString(params.className))
+		popupClassName += " " + params.className;
+
+	if (params.darkMode)
+		popupClassName += ' popup-window-dark';
+
 	this.popupContainer = document.createElement("DIV");
+	var titleBarID = 'popup-window-titlebar-' + uniquePopupId;
+
+
+	if(params.titleBar)
+	{
+		this.titleBar = BX.create('div', {
+			props : {
+				className : 'popup-window-titlebar',
+				id : titleBarID
+			}
+		});
+	}
+
+	if (params.closeIcon)
+	{
+		this.closeIcon = BX.create("a", {
+			props : { className: "popup-window-close-icon" + (params.titleBar ? " popup-window-titlebar-close-icon" : ""), href : ""},
+			style : (typeof(params.closeIcon) == "object" ? params.closeIcon : {} ),
+			events : { click : BX.proxy(this._onCloseIconClick, this) }
+		});
+
+		if (BX.browser.IsIE())
+			BX.adjust(this.closeIcon, { attrs: { hidefocus: "true" } });
+	}
+
+	this.contentContainer = BX.create('div',{
+		props:{
+			id: 'popup-window-content-' +  uniquePopupId,
+			className: 'popup-window-content'
+		}
+	});
+
+
 
 	BX.adjust(this.popupContainer, {
 		props : {
-			id : uniquePopupId
+			id : uniquePopupId,
+			className : popupClassName
 		},
 		style : {
 			zIndex: this.getZindex(),
@@ -126,60 +188,14 @@ BX.PopupWindow = function(uniquePopupId, bindElement, params)
 			display: "none",
 			top: "0px",
 			left: "0px"
-		}
+		},
+		children : [this.titleBar, this.contentContainer, this.closeIcon]
 	});
 
-	if (params.darkMode)
-	{
-		BX.addClass(this.popupContainer, 'popup-window-dark');
-	}
-
-	var tableClassName = "popup-window";
-	if (params.lightShadow)
-		tableClassName += " popup-window-light";
-	if (params.titleBar)
-		tableClassName += params.lightShadow ? " popup-window-titlebar-light" : " popup-window-titlebar";
-	if (params.className && BX.type.isNotEmptyString(params.className))
-		tableClassName += " " + params.className;
-
-	this.popupContainer.innerHTML = ['<table class="', tableClassName,'" cellspacing="0"> \
-		<tr class="popup-window-top-row"> \
-			<td class="popup-window-left-column"><div class="popup-window-left-spacer"></div></td> \
-			<td class="popup-window-center-column">', (params.titleBar ? '<div class="popup-window-titlebar" id="popup-window-titlebar-' + uniquePopupId + '"></div>' : ""),'</td> \
-			<td class="popup-window-right-column"><div class="popup-window-right-spacer"></div></td> \
-		</tr> \
-		<tr class="popup-window-content-row"> \
-			<td class="popup-window-left-column"></td> \
-			<td class="popup-window-center-column"><div class="popup-window-content" id="popup-window-content-', uniquePopupId ,'"> \
-			</div></td> \
-			<td class="popup-window-right-column"></td> \
-		</tr> \
-		<tr class="popup-window-bottom-row"> \
-			<td class="popup-window-left-column"></td> \
-			<td class="popup-window-center-column"></td> \
-			<td class="popup-window-right-column"></td> \
-		</tr> \
-	</table>'].join("");
 
 	this.appendContainer.appendChild(this.popupContainer);
 
-	if (params.closeIcon)
-	{
-		this.popupContainer.appendChild(
-			(this.closeIcon = BX.create("a", {
-				props : { className: "popup-window-close-icon" + (params.titleBar ? " popup-window-titlebar-close-icon" : ""), href : ""},
-				style : (typeof(params.closeIcon) == "object" ? params.closeIcon : {} ),
-				events : { click : BX.proxy(this._onCloseIconClick, this) } } )
-			)
-		);
-
-		if (BX.browser.IsIE())
-			BX.adjust(this.closeIcon, { attrs: { hidefocus: "true" } });
-	}
-
-	this.contentContainer = BX("popup-window-content-" +  uniquePopupId);
-	this.titleBar = BX("popup-window-titlebar-" +  uniquePopupId);
-	this.buttonsContainer = this.buttonsHr = null;
+	this.buttonsContainer = null;
 
 	if (params.angle)
 		this.setAngle(params.angle);
@@ -223,8 +239,6 @@ BX.PopupWindow.prototype.setButtons = function(buttons)
 {
 	this.buttons = buttons && BX.type.isArray(buttons) ? buttons : [];
 
-	if (this.buttonsHr)
-		BX.remove(this.buttonsHr);
 	if (this.buttonsContainer)
 		BX.remove(this.buttonsContainer);
 
@@ -240,13 +254,6 @@ BX.PopupWindow.prototype.setButtons = function(buttons)
 			button.popupWindow = this;
 			newButtons.push(button.render());
 		}
-
-		this.buttonsHr = this.contentContainer.parentNode.appendChild(
-			BX.create("div",{
-				props : { className : "popup-window-hr popup-window-buttons-hr" },
-				children : [ BX.create("i", {}) ]
-			})
-		);
 
 		this.buttonsContainer = this.contentContainer.parentNode.appendChild(
 			BX.create("div",{
@@ -308,7 +315,8 @@ BX.PopupWindow.prototype.getBindElementPos = function(bindElement)
 
 BX.PopupWindow.prototype.setAngle = function(params)
 {
-	var className = this.params.lightShadow ? "popup-window-light-angly" : "popup-window-angly";
+
+	var className = "popup-window-angly";
 	if (this.angle == null)
 	{
 		var position = this.bindOptions.position && this.bindOptions.position == "top" ? "bottom" : "top";
@@ -348,7 +356,7 @@ BX.PopupWindow.prototype.setAngle = function(params)
 
 			this.angle.offset = Math.min(Math.max(minOffset, offset), maxOffset);
 			this.angle.element.style.left = this.angle.offset + "px";
-			this.angle.element.style.marginLeft = "auto";
+			this.angle.element.style.marginLeft = 0;
 		}
 		else if (this.angle.position == "bottom")
 		{
@@ -358,7 +366,7 @@ BX.PopupWindow.prototype.setAngle = function(params)
 
 			this.angle.offset = Math.min(Math.max(minOffset, offset), maxOffset);
 			this.angle.element.style.marginLeft = this.angle.offset + "px";
-			this.angle.element.style.left = "auto";
+			this.angle.element.style.left = 0;
 		}
 		else if (this.angle.position == "right")
 		{
@@ -411,20 +419,31 @@ BX.PopupWindow.prototype.setOffset = function(params)
 
 	if (params.offsetTop && BX.type.isNumber(params.offsetTop))
 		this.offsetTop = params.offsetTop + BX.PopupWindow.getOption("offsetTop");
+
 };
 
 BX.PopupWindow.prototype.setTitleBar = function(params)
 {
-	if (!this.titleBar || typeof(params) != "object" || !BX.type.isDomNode(params.content))
+	if (!this.titleBar)
 		return;
 
-	this.titleBar.innerHTML = "";
-	this.titleBar.appendChild(params.content);
+	if (typeof(params) == "object" && BX.type.isDomNode(params.content))
+	{
+		this.titleBar.innerHTML = "";
+		this.titleBar.appendChild(params.content);
+	}
+	else if (typeof(params) == "string")
+	{
+		this.titleBar.innerHTML = "";
+		this.titleBar.appendChild(
+				BX.create("span", { props : { className: "popup-window-titlebar-text" }, text : params })
+		);
+	}
 
 	if (this.params.draggable)
 	{
-		this.titleBar.parentNode.style.cursor = "move";
-		BX.bind(this.titleBar.parentNode, "mousedown", BX.proxy(this._startDrag, this));
+		this.titleBar.style.cursor = "move";
+		BX.bind(this.titleBar, "mousedown", BX.proxy(this._startDrag, this));
 	}
 };
 
@@ -757,6 +776,7 @@ BX.PopupWindow.prototype.adjustPosition = function(bindOptions)
 
 	if (this.bindOptions.position && this.bindOptions.position == "top")
 	{
+
 		top = this.bindElementPos.top - popupHeight - this.offsetTop - (this.isBottomAngle() ? angleTopOffset : 0);
 		if (top < 0 || (!this.bindOptions.forceTop && top < windowScroll.scrollTop))
 		{
@@ -779,13 +799,16 @@ BX.PopupWindow.prototype.adjustPosition = function(bindOptions)
 	}
 	else
 	{
+
 		top = this.bindElementPos.bottom + this.offsetTop + this.getAngleHeight();
+
 		if ( !this.bindOptions.forceTop &&
 			(top + popupHeight) > (windowSize.innerHeight + windowScroll.scrollTop) &&
 			(this.bindElementPos.top - popupHeight - this.getAngleHeight()) >= 0) //Can we place the PopupWindow above the bindElement?
 		{
 			//The PopupWindow doesn't place below the bindElement. We should place it above.
 			top = this.bindElementPos.top - popupHeight;
+
 			if (this.isTopOrBottomAngle())
 			{
 				top -= angleTopOffset;
@@ -793,6 +816,7 @@ BX.PopupWindow.prototype.adjustPosition = function(bindOptions)
 			}
 
 			top += BX.PopupWindow.getOption("positionTopXOffset");
+
 		}
 		else if (this.isBottomAngle())
 		{
@@ -924,10 +948,11 @@ BX.PopupWindow.prototype._stopDrag = function(event)
 BX.PopupWindow.options = {};
 BX.PopupWindow.defaultOptions = {
 
-	angleLeftOffset : 15,
+	angleLeftOffset : 40, /*left offset for popup about target */
 
-	positionTopXOffset : 0,
-	angleTopOffset : 8,
+	positionTopXOffset : -11, /* when popup position is 'top' offset distance between popup body and target node */
+
+	angleTopOffset : 10,    /* offset distance between popup body and target node if use angle, sum with positionTopXOffset  */
 
 	popupZindex : 1000,
 	popupOverlayZindex : 1100,
@@ -938,10 +963,10 @@ BX.PopupWindow.defaultOptions = {
 	angleMinRight : 10,
 	angleMaxRight : 10,
 
-	angleMinBottom : 7,
+	angleMinBottom : 23, /**/
 	angleMaxBottom : 25,
 
-	angleMinTop : 7,
+	angleMinTop : 23,
 	angleMaxTop : 25,
 
 	offsetLeft : 0,
@@ -984,17 +1009,12 @@ BX.PopupWindowButton = function(params)
 	for (var eventName in this.events)
 		this.contextEvents[eventName] = BX.proxy(this.events[eventName], this);
 
-	this.nameNode = BX.create("span", { props : { className : "popup-window-button-text"}, text : this.text } );
 	this.buttonNode = BX.create(
 		"span",
 		{
 			props : { className : "popup-window-button" + (this.className.length > 0 ? " " + this.className : ""), id : this.id },
-			children : [
-				BX.create("span", { props : { className : "popup-window-button-left"} } ),
-				this.nameNode,
-				BX.create("span", { props : { className : "popup-window-button-right"} } )
-			],
-			events : this.contextEvents
+			events : this.contextEvents,
+			text : this.text
 		}
 	);
 };
@@ -1007,10 +1027,10 @@ BX.PopupWindowButton.prototype.render = function()
 BX.PopupWindowButton.prototype.setName = function(name)
 {
 	this.text = name || "";
-	if (this.nameNode)
+	if (this.buttonNode)
 	{
-		BX.cleanNode(this.nameNode);
-		BX.adjust(this.nameNode, { text : this.text} );
+		BX.cleanNode(this.buttonNode);
+		BX.adjust(this.buttonNode, { text : this.text} );
 	}
 };
 
@@ -1031,12 +1051,12 @@ BX.PopupWindowButtonLink = function(params)
 {
 	BX.PopupWindowButtonLink.superclass.constructor.apply(this, arguments);
 
-	this.nameNode = BX.create("span", { props : { className : "popup-window-button-link-text" }, text : this.text, events : this.contextEvents });
 	this.buttonNode = BX.create(
 		"span",
 		{
 			props : { className : "popup-window-button popup-window-button-link" + (this.className.length > 0 ? " " + this.className : ""), id : this.id },
-			children : [this.nameNode]
+			text : this.text,
+			events : this.contextEvents
 		}
 	);
 
@@ -1114,16 +1134,11 @@ BX.PopupMenuWindow = function(id, bindElement, menuItems, params)
 	this.popupWindow = this.__createPopup();
 };
 
-BX.PopupMenuWindow.prototype.__createItem = function(item, position)
+BX.PopupMenuWindow.prototype.__createItem = function(item)
 {
-	if (position > 0)
-	{
-		item.layout.hr = BX.create("div", { props : { className : "popup-window-hr" }, children : [ BX.create("i", {}) ]});
-	}
-
 	if (item.delimiter)
 	{
-		item.layout.item = BX.create("span", { props: { className: "popup-window-delimiter" },  html: "<i></i>" });
+		item.layout.item = BX.create("span", { props: { className: "popup-window-delimiter" }});
 	}
 	else
 	{
@@ -1132,10 +1147,8 @@ BX.PopupMenuWindow.prototype.__createItem = function(item, position)
 			attrs : { title : item.title ? item.title : "", onclick: item.onclick && BX.type.isString(item.onclick) ? item.onclick : "", target : item.target ? item.target : "" },
 			events : item.onclick && BX.type.isFunction(item.onclick) ? { click : BX.proxy(this.onItemClick, {obj : this, item : item }) } : null,
 			children : [
-				BX.create("span", { props : { className: "menu-popup-item-left"} }),
 				BX.create("span", { props : { className: "menu-popup-item-icon"} }),
-				(item.layout.text = BX.create("span", { props : { className: "menu-popup-item-text"}, html : item.text })),
-				BX.create("span", { props : { className: "menu-popup-item-right"} })
+				(item.layout.text = BX.create("span", { props : { className: "menu-popup-item-text"}, html : item.text }))
 			]
 		});
 
@@ -1151,7 +1164,7 @@ BX.PopupMenuWindow.prototype.__createPopup = function()
 	var domItems = [];
 	for (var i = 0; i < this.menuItems.length; i++)
 	{
-		this.__createItem(this.menuItems[i], i);
+		this.__createItem(this.menuItems[i]);
 		if (this.menuItems[i].layout.hr != null)
 		{
 			domItems.push(this.menuItems[i].layout.hr);
@@ -1169,8 +1182,8 @@ BX.PopupMenuWindow.prototype.__createPopup = function()
 		autoHide : typeof(this.params.autoHide) != "undefined" ? this.params.autoHide : true,
 		offsetTop : this.params.offsetTop ? this.params.offsetTop : 1,
 		offsetLeft : this.params.offsetLeft ? this.params.offsetLeft : 0,
-
-		lightShadow : typeof(this.params.lightShadow) != "undefined" ? this.params.lightShadow : true,
+		
+		noAllPaddings : true,
 
 		content : BX.create("div", { props : { className : "menu-popup" }, children: [
 			(this.itemsContainer = BX.create("div", { props : { className : "menu-popup-items" }, children: domItems}))
@@ -1205,7 +1218,7 @@ BX.PopupMenuWindow.prototype.addMenuItem = function(menuItem, refItemId)
 		return false;
 	}
 
-	this.__createItem(menuItem, position);
+	this.__createItem(menuItem);
 	var refItem = this.getMenuItem(refItemId);
 	if (refItem != null)
 	{

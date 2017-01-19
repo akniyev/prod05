@@ -29,6 +29,7 @@ $MESS['SOA_NUM_STEP'] = "не соответствует шагу";
 $MESS['SOA_LESS'] = "не менее";
 $MESS['SOA_MORE'] = "не более";
 $MESS['SOA_SYMBOLS'] = "символов";
+$MESS['SOA_INVALID_PATTERN'] = "не соответствует шаблону";
 $MESS['SOA_PROP_NEW_PROFILE'] = "Новый профиль";
 $MESS['SOA_PAY_SYSTEM'] = "Платежная система";
 $MESS['SOA_PAY_ACCOUNT3'] = "Средств достаточно для полной оплаты заказа.";
@@ -109,13 +110,22 @@ $MESS['USE_COUPON_DEFAULT'] = "Применить купон";
 $MESS['COUPON_DEFAULT'] = "Купон";
 $MESS['PERSON_TYPE_DEFAULT'] = "Тип плательщика";
 $MESS['SELECT_PROFILE_DEFAULT'] = "Выберите профиль";
-$MESS['REGION_REFERENCE_DEFAULT'] = "Выберите свой городе в списке. Если вы не нашли свой город, выберите \"другое местоположение\", а город впишите в поле \"Город\"";
+$MESS['REGION_REFERENCE_DEFAULT'] = "Выберите свой город в списке. Если вы не нашли свой город, выберите \"другое местоположение\", а город впишите в поле \"Город\"";
 $MESS['PICKUP_LIST_DEFAULT'] = "Пункты самовывоза:";
 $MESS['NEAREST_PICKUP_LIST_DEFAULT'] = "Ближайшие пункты:";
 $MESS['SELECT_PICKUP_DEFAULT'] = "Выбрать";
 $MESS['INNER_PS_BALANCE_DEFAULT'] = "На вашем пользовательском счете:";
 $MESS['ORDER_DESC_DEFAULT'] = "Комментарии к заказу:";
 $MESS['SELECT_FILE_DEFAULT'] = "Выбрать";
+$MESS["SUCCESS_PRELOAD_TEXT_DEFAULT"] = "
+Вы заказывали в нашем интернет-магазине, поэтому мы заполнили все данные автоматически.<br />
+Если все заполнено верно, нажмите кнопку \"#ORDER_BUTTON#\".
+";
+$MESS["FAIL_PRELOAD_TEXT_DEFAULT"] = "
+Вы заказывали в нашем интернет-магазине, поэтому мы заполнили все данные автоматически.<br />
+Обратите внимание на развернутый блок с информацией о заказе. Здесь вы можете внести необходимые изменения или 
+оставить как есть и нажать кнопку \"#ORDER_BUTTON#\".
+";
 $MESS['DELIVERY_CALC_ERROR_TITLE_DEFAULT'] = "Не удалось рассчитать стоимость доставки.";
 $MESS['DELIVERY_CALC_ERROR_TEXT_DEFAULT'] = "Вы можете продолжить оформление заказа, а чуть позже менеджер магазина свяжется с вами и уточнит информацию по доставке.";
 $MESS['EMPTY_BASKET_TITLE'] = "Ваша корзина пуста";

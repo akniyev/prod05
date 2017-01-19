@@ -121,4 +121,13 @@ $MESS["EMPTY_BASKET_TITLE"] = "Your cart is empty";
 $MESS["EMPTY_BASKET_HINT"] = "#A1#Click here#A2# to continue shopping";
 $MESS["SOA_BAD_EXTENSION"] = "Invalid file type";
 $MESS["SOA_MAX_SIZE"] = "Max. file size exceeded";
+$MESS["SUCCESS_PRELOAD_TEXT_DEFAULT"] = "
+You previously shopped with us and we remember you, so we have taken the liberty to fill in the fields for you.<br />
+If the information is correct, click \"#ORDER_BUTTON#\".
+";
+$MESS["FAIL_PRELOAD_TEXT_DEFAULT"] = "
+You previously shopped with us and we remember you, so we have taken the liberty to fill in the fields for you.<br />
+Check the order information thoroughly and edit your order if required. Once you see everything is good, click \"#ORDER_BUTTON#\".
+";
+$MESS["SOA_INVALID_PATTERN"] = "does not match the pattern";
 ?>

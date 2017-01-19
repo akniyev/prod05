@@ -16,6 +16,8 @@ Loc::loadMessages(__FILE__);
  * <li> VAT_ID int optional
  * <li> PRODUCT_IBLOCK_ID int mandatory
  * <li> SKU_PROPERTY_ID int mandatory
+ * <li> IBLOCK reference to {@link \Bitrix\Iblock\IblockTable}
+ * <li> PRODUCT_IBLOCK reference to {@link \Bitrix\Iblock\IblockTable}
  * </ul>
  *
  * @package Bitrix\Catalog
@@ -72,6 +74,12 @@ class CatalogIblockTable extends Main\Entity\DataManager
 				'Bitrix\Iblock\Iblock',
 				array('=this.IBLOCK_ID' => 'ref.ID'),
 				array('join_type' => 'INNER')
+			),
+			'PRODUCT_IBLOCK' => new Main\Entity\ReferenceField(
+				'PRODUCT_IBLOCK',
+				'Bitrix\Iblock\Iblock',
+				array('=this.PRODUCT_IBLOCK_ID' => 'ref.ID'),
+				array('join_type' => 'LEFT')
 			)
 		);
 	}

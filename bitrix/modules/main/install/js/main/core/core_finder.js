@@ -65,7 +65,7 @@ BX.Finder = function(container, context, panels, lang)
 	{
 		BX.addCustomEvent("initFinderDb", BX.Finder.checkInitFinderDb);
 	}
-}
+};
 
 BX.Finder.onAddItem = function(provider, type, element)
 {
@@ -160,14 +160,15 @@ BX.Finder.onAfterPopupShow = function()
 
 		BX.addCustomEvent(BX.Access, "onDeleteItem", BX.Finder.onDeleteItem);
 	}
-}
+};
+
 BX.Finder.onSelectProvider = function(arParams)
 {
 	if (!BX.Finder.searchBox[arParams['provider']])
 		BX.Finder.searchBox[arParams['provider']] = BX.findChild(BX('access_provider_'+arParams['provider']), { tagName : "input", className : "bx-finder-box-search-textbox" }, true);
 
 	BX.focus(BX.Finder.searchBox[arParams['provider']]);
-}
+};
 
 BX.Finder.onDisableItem = function(mapId)
 {
@@ -195,7 +196,7 @@ BX.Finder.onDisableItem = function(mapId)
 			BX.Finder.disabledElement.push(element);
 		}
 	}
-}
+};
 
 BX.Finder.onUnDisableItem = function()
 {
@@ -213,7 +214,7 @@ BX.Finder.onUnDisableItem = function()
 		delete BX.Finder.disabledId[i];
 		delete BX.Finder.disabledElement[i];
 	}
-}
+};
 
 BX.Finder.SwitchTab = function(currentTab, bSearchFocus)
 {
@@ -223,7 +224,9 @@ BX.Finder.SwitchTab = function(currentTab, bSearchFocus)
 	);
 
 	if (!tabsContent)
+	{
 		return false;
+	}
 
 	if (bSearchFocus !== false)
 		bSearchFocus = true;
@@ -251,7 +254,7 @@ BX.Finder.SwitchTab = function(currentTab, bSearchFocus)
 			BX.removeClass(tabsContent[i], "bx-finder-box-tab-content-selected");
 	}
 	return false;
-}
+};
 
 BX.Finder.OpenCompanyDepartment = function(provider, id, department)
 {
@@ -265,11 +268,14 @@ BX.Finder.OpenCompanyDepartment = function(provider, id, department)
 	{
 		BX.Finder.loadPlace[id] = BX.findChild(nextDiv, { className : "bx-finder-company-department-employees" });
 
+		var ajaxSendUrl = null;
 		if (BX.Finder.context == 'access')
-			var ajaxSendUrl = '/bitrix/tools/access_dialog.php';
+		{
+			ajaxSendUrl = '/bitrix/tools/access_dialog.php';
+		}
 		else
 		{
-			var ajaxSendUrl = location.href.split('#');
+			ajaxSendUrl = location.href.split('#');
 			ajaxSendUrl = ajaxSendUrl[0];
 		}
 		BX.ajax({
@@ -295,7 +301,7 @@ BX.Finder.OpenCompanyDepartment = function(provider, id, department)
 	}
 
 	return false;
-}
+};
 
 BX.Finder.OpenItemFolder = function(department)
 {
@@ -306,7 +312,7 @@ BX.Finder.OpenItemFolder = function(department)
 		BX.toggleClass(nextDiv, "bx-finder-company-department-children-opened");
 
 	return false;
-}
+};
 
 BX.Finder.Search = function(element, provider)
 {
@@ -320,11 +326,14 @@ BX.Finder.Search = function(element, provider)
 	if (!BX.Finder.searchPanel[provider])
 		BX.Finder.searchPanel[provider] = BX.findChild(element.parentNode.parentNode, { className : "bx-finder-box-tab-content-selected" }, true);
 
+	var ajaxSendUrl = null;
 	if (BX.Finder.context == 'access')
-		var ajaxSendUrl = '/bitrix/tools/access_dialog.php';
+	{
+		ajaxSendUrl = '/bitrix/tools/access_dialog.php';
+	}
 	else
 	{
-		var ajaxSendUrl = location.href.split('#');
+		ajaxSendUrl = location.href.split('#');
 		ajaxSendUrl = ajaxSendUrl[0];
 	}
 
@@ -372,7 +381,7 @@ BX.Finder.Search = function(element, provider)
 			});
 		}, 500);
 	}
-}
+};
 
 BX.Finder.checkInitFinderDb = function(obDestination, name, version)
 {
@@ -429,7 +438,7 @@ BX.Finder.checkInitFinderDb = function(obDestination, name, version)
 			}
 		}
 	});
-}
+};
 
 BX.Finder.initFinderDb = function(obDestination)
 {
@@ -461,7 +470,7 @@ BX.Finder.initFinderDb = function(obDestination)
 			}
 		}
 	});
-}
+};
 
 BX.Finder.addSearchIndex = function(obDestination, ob)
 {
@@ -478,12 +487,12 @@ BX.Finder.addSearchIndex = function(obDestination, ob)
 			obDestination.obClientDbDataSearchIndex[partsSearchText[i]].push(ob.id);
 		}
 	}
-}
+};
 
 BX.Finder.findEntityByName = function(obDestination, obSearch, oParams, oResult)
 {
 	var keysFiltered = Object.keys(obDestination.obClientDbDataSearchIndex).filter(function(key) {
-		return (key.indexOf(obSearch.searchString) === 0);
+		return (key.indexOf(obSearch.searchString.toLowerCase()) === 0);
 	});
 	if (
 		keysFiltered.length <= 0
@@ -493,18 +502,21 @@ BX.Finder.findEntityByName = function(obDestination, obSearch, oParams, oResult)
 	{
 		obSearch.searchString = BX.correctText(obSearch.searchString);
 		keysFiltered = Object.keys(obDestination.obClientDbDataSearchIndex).filter(function(key) {
-			return (key.indexOf(obSearch.searchString) === 0);
+			return (key.indexOf(obSearch.searchString.toLowerCase()) === 0);
 		});
 	}
 
 	var arResult = [];
 	for (var key in keysFiltered)
 	{
-		BX.util.array_merge(arResult, obDestination.obClientDbDataSearchIndex[keysFiltered[key]]);
+		if (keysFiltered.hasOwnProperty(key))
+		{
+			BX.util.array_merge(arResult, obDestination.obClientDbDataSearchIndex[keysFiltered[key]]);
+		}
 	}
 
-	oResult[obSearch.searchString] = BX.util.array_unique(arResult);
-}
+	oResult[obSearch.searchString.toLowerCase()] = BX.util.array_unique(arResult);
+};
 
 BX.Finder.onFinderAjaxSuccess = function(data, obDestination)
 {
@@ -512,40 +524,43 @@ BX.Finder.onFinderAjaxSuccess = function(data, obDestination)
 	{
 		for (var key in data.USERS)
 		{
-			oUser = data.USERS[key];
-
-			if (
-				typeof obDestination.obClientDbData.users == 'undefined'
-				|| typeof obDestination.obClientDbData.users[oUser.id] == 'undefined'
-				|| obDestination.obClientDbData.users[oUser.id].checksum != oUser.checksum
-			)
+			if (data.USERS.hasOwnProperty(key))
 			{
-				if (typeof obDestination.obClientDbData.users == 'undefined')
+				oUser = data.USERS[key];
+
+				if (
+					typeof obDestination.obClientDbData.users == 'undefined'
+					|| typeof obDestination.obClientDbData.users[oUser.id] == 'undefined'
+					|| obDestination.obClientDbData.users[oUser.id].checksum != oUser.checksum
+				)
 				{
-					obDestination.obClientDbData.users = [];
-				}
-
-				BX.indexedDB.updateValue(obDestination.obClientDb, 'users', oUser, key, {
-					error: function(event, key) {
-						if (
-							typeof event != 'undefined'
-							&& typeof event.srcElement != 'undefined'
-							&& typeof event.srcElement.error != 'undefined'
-							&& typeof event.srcElement.error.name != 'undefined'
-							&& event.srcElement.error.name == 'ConstraintError'
-						)
-						{
-							BX.indexedDB.deleteValueByIndex(obDestination.obClientDb, 'users', 'id', key, {});
-						}
+					if (typeof obDestination.obClientDbData.users == 'undefined')
+					{
+						obDestination.obClientDbData.users = [];
 					}
-				});
 
-				obDestination.obClientDbData.users[oUser.id] = oUser;
-				BX.Finder.addSearchIndex(obDestination, oUser);
+					BX.indexedDB.updateValue(obDestination.obClientDb, 'users', oUser, key, {
+						error: function(event, key) {
+							if (
+								typeof event != 'undefined'
+								&& typeof event.srcElement != 'undefined'
+								&& typeof event.srcElement.error != 'undefined'
+								&& typeof event.srcElement.error.name != 'undefined'
+								&& event.srcElement.error.name == 'ConstraintError'
+							)
+							{
+								BX.indexedDB.deleteValueByIndex(obDestination.obClientDb, 'users', 'id', key, {});
+							}
+						}
+					});
+
+					obDestination.obClientDbData.users[oUser.id] = oUser;
+					BX.Finder.addSearchIndex(obDestination, oUser);
+				}
 			}
 		}
 	}
-}
+};
 
 BX.Finder.onFinderAjaxLoadAll = function(data, obDestination)
 {
@@ -553,12 +568,14 @@ BX.Finder.onFinderAjaxLoadAll = function(data, obDestination)
 	{
 		for (var key in data.USERS)
 		{
-			oUser = data.USERS[key];
-			BX.indexedDB.updateValue(obDestination.obClientDb, 'users', oUser);
+			if (data.USERS.hasOwnProperty(key))
+			{
+				oUser = data.USERS[key];
+				BX.indexedDB.updateValue(obDestination.obClientDb, 'users', oUser);
+			}
 		}
 	}
-}
-
+};
 
 BX.Finder.syncClientDb = function(obDestination, name, oDbData, oAjaxData)
 {
@@ -569,7 +586,10 @@ BX.Finder.syncClientDb = function(obDestination, name, oDbData, oAjaxData)
 	{
 		for (var key in oDbData)
 		{
-			if (!BX.util.in_array(oDbData[key], oAjaxData))
+			if (
+				oDbData.hasOwnProperty(key)
+				&& !BX.util.in_array(oDbData[key], oAjaxData)
+			)
 			{
 				BX.indexedDB.deleteValueByIndex(obDestination.obClientDb, 'users', 'id', oDbData[key], {});
 				delete obDestination.obItems[name].users[oDbData[key]];
@@ -577,7 +597,7 @@ BX.Finder.syncClientDb = function(obDestination, name, oDbData, oAjaxData)
 			}
 		}
 	}
-}
+};
 
 BX.Finder.removeClientDbObject = function(obDestination, id, type)
 {
@@ -588,7 +608,7 @@ BX.Finder.removeClientDbObject = function(obDestination, id, type)
 	{
 		BX.indexedDB.deleteValueByIndex(obDestination.obClientDb, 'users', 'id', id, {});
 	}
-}
+};
 
 BX.Finder.loadAll = function(params)
 {

@@ -82,7 +82,7 @@ class CAllBlogPostCategory
 		return False;
 	}
 	
-	function DeleteByPostID($ID)
+	public static function DeleteByPostID($ID)
 	{
 		global $DB;
 

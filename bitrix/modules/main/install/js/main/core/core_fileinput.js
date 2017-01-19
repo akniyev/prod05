@@ -374,7 +374,7 @@ BX["UI"].FileInput.prototype = {
 			{
 				result.push({
 					name : BX.UploaderUtils.getFileNameOnly(data[ii]['src']),
-					description : data[ii]['name'],
+					description : data[ii]['description'],
 					type : data[ii]['type'] + '/medialib',
 					size : data[ii]['file_size'],
 					sizeFormatted : data[ii]['file_size'],
@@ -517,9 +517,8 @@ BX["UI"].FileInput.prototype = {
 				null,
 				{
 					autoHide : true,
-					titleBar: {
-						content: BX.create("span", {html: BX.message("JS_CORE_LOADING"),
-						draggable: true})},
+					titleBar: BX.message("JS_CORE_LOADING"),
+					contentColor : 'white',
 					closeIcon : true,
 					closeByEsc : true,
 					zIndex : getZIndex(1),
@@ -686,7 +685,7 @@ BX["UI"].FileInput.prototype = {
 				this.replaceHint(item);
 			}, this));
 		}
-
+		item.description = (BX.type.isNotEmptyString(item.file["description"]) ? item.file["description"] : "");
 		this.incrementFrameCounter(id, item);
 		for (var ii in this['fileEvents'])
 		{
@@ -1014,7 +1013,7 @@ BX["UI"].FileInput.prototype = {
 			hint +=  '<span class="adm-fileinput-drag-area-popup-param">' + BX.message('JS_CORE_FILE_DESCRIPTION') + ':&nbsp;<span>' + item.description + '</span></span>';
 		var path = (item["file"] ? (item["file"]["real_url"] || item["file"]["tmp_url"]) : '');
 		if (path)
-			hint +=  '<span class="adm-fileinput-drag-area-popup-param">' + BX.message('JS_CORE_FILE_INFO_LINK') + ':&nbsp;<span><a href="' + path + '">' + path + '</a></span></span>';
+			hint +=  '<span class="adm-fileinput-drag-area-popup-param">' + BX.message('JS_CORE_FILE_INFO_LINK') + ':&nbsp;<span><a target="_blank" href="' + path.replace(/[%]/g, "%25") + '">' + path + '</a></span></span>';
 
 		node.hint = new BX.CHint({
 				parent: node,

@@ -560,7 +560,7 @@ span.bxhtmled-top-bar-dd-active:before {
 	overflow: hidden;
 	padding-bottom: 1px;
 	position: relative;
-	vertical-align: top;
+	vertical-align: top !important;
 }
 
 .bxhtmled-split-btn-r {width: 21px;}
@@ -611,6 +611,7 @@ span.bxhtmled-top-bar-dd-active:before {
 .bxhtmled-split-btn-r .bxhtmled-split-btn-bg {
 	margin-left: -5px;
 	width: 24px;
+	vertical-align: middle;
 }
 
 .bxhtmled-split-btn-r .bxhtmled-split-btn-bg:before {
@@ -740,6 +741,8 @@ span.bxhtmled-top-bar-dd-active:before {
 .bxhtmled-textarea{
 	width: 100% !important;
 	height: 100% !important;
+	min-height: none!important;
+	max-height: none!important;
 	background-color: #fefefe !important;
 	color: #000000 !important;
 	cursor: text !important;
@@ -1427,9 +1430,8 @@ border-radius: 2px; cursor: pointer;
 /* Colorpicker END */
 
 .bxhtmled-inp-popup {padding: 2px;}
-.bxhtmled-inp-popup-item{padding: 4px 7px; cursor: pointer;border-radius: 2px;}
+.bxhtmled-inp-popup-item{padding: 4px 7px; cursor: pointer; border-radius: 1px; width:100%;}
 .bxhtmled-inp-popup-item:hover{background-color: #bfe2f1 !important;}
-
 
 
 /* ~~~ Popup with corner ~~~ */

@@ -100,6 +100,7 @@ BX.CTooltip = function(user_id, anchor, loader, rootClassName, bForceUseLoader, 
 	this.width = 393;
 	this.height = 302;
 
+	this.RealAnchor = null;
 	this.CoordsLeft = 0;
 	this.CoordsTop = 0;
 	this.AnchorRight = 0;
@@ -385,6 +386,8 @@ BX.CTooltip = function(user_id, anchor, loader, rootClassName, bForceUseLoader, 
 		document.getElementById('user_info_' + _this.USER_ID).onmouseout = function() {
 			_this.StopTrackMouse(this);
 		}
+
+		BX.onCustomEvent('onTooltipShow', [this]);
 	};
 
 	this.InsertData = function(data)
@@ -412,6 +415,8 @@ BX.CTooltip = function(user_id, anchor, loader, rootClassName, bForceUseLoader, 
 					eval(_this.INFO.RESULT.Scripts[i]);
 				}
 			}
+
+			BX.onCustomEvent('onTooltipInsertData', [_this]);
 		}
 	}
 
@@ -423,6 +428,7 @@ BX.CTooltip.prototype.StartTrackMouse = function(ob)
 	if(!this.tracking)
 	{
 		var elCoords = jsUtils.GetRealPos(ob);
+		this.RealAnchor = ob;
 		this.CoordsLeft = elCoords.left + 0;
 		this.CoordsTop = elCoords.top - 325;
 		this.AnchorRight = elCoords.right;
@@ -522,6 +528,11 @@ BX.CTooltip.prototype.ShowOpacityEffect = function(oCallback, bFade)
 					_this.DIV.style.filter = _this.filterFixed;
 					_this.DIV.className = _this.classNameFixed;
 					_this.DIV.innerHTML = ''+_this.DIV.innerHTML;
+				}
+
+				if(bFade)
+				{
+					BX.onCustomEvent('onTooltipHide', [_this]);
 				}
 			}
 		}

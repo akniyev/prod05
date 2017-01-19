@@ -27,6 +27,9 @@ class SqlExpression
 
 	protected $i;
 
+	/** @var  Connection */
+	protected $connection;
+
 	/**
 	 * @param string $expression Sql expression.
 	 * @param string,... $args Substitutes.
@@ -92,7 +95,7 @@ class SqlExpression
 	 */
 	protected function execPlaceholders($matches)
 	{
-		$sqlHelper = Application::getConnection()->getSqlHelper();
+		$sqlHelper = $this->getConnection()->getSqlHelper();
 
 		$this->i++;
 
@@ -129,5 +132,26 @@ class SqlExpression
 	public function __toString()
 	{
 		return $this->compile();
+	}
+
+	/**
+	 * @return Connection
+	 */
+	public function getConnection()
+	{
+		if ($this->connection === null)
+		{
+			$this->connection = Application::getConnection();
+		}
+
+		return $this->connection;
+	}
+
+	/**
+	 * @param Connection $connection
+	 */
+	public function setConnection($connection)
+	{
+		$this->connection = $connection;
 	}
 }

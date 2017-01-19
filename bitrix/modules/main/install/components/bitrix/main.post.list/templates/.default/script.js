@@ -77,7 +77,16 @@
 				}
 			}, this),
 			'onPullEvent-unicomments' : BX.delegate(function(command, params) {
-				if (this.ENTITY_XML_ID == params["ENTITY_XML_ID"] && (params["USER_ID"] + '') != (BX.message("USER_ID") + ''))
+				if (
+					this.ENTITY_XML_ID == params["ENTITY_XML_ID"]
+					&& (
+						(params["USER_ID"] + '') != (BX.message("USER_ID") + '')
+						|| (
+							typeof params["AUX"] != 'undefined'
+							&& BX.util.in_array(params["AUX"], ['createtask', 'fileversion'])
+						)
+					)
+				)
 				{
 					if (command == 'comment' && params["ID"])
 					{
@@ -112,10 +121,13 @@
 			}
 		}
 
-		if (location.hash && parseInt(location.hash.replace("#com", "")) > 0)
-			this.checkHash(parseInt(location.hash.replace("#com", "")));
+		var tw = /%23com(\d+)/gi.exec(location.href),
+			com = parseInt(location.hash && location.hash.indexOf("#com") >= 0 ?
+				location.hash.replace("#com", "") : (tw ? tw[1] : 0));
+		if (com > 0)
+			this.checkHash(com);
 
-		if (this.params["BIND_VIEWER"] == "Y")
+		if (this.params["BIND_VIEWER"] == "Y" && BX["viewElementBind"])
 		{
 			BX.viewElementBind(
 				BX('record-' + this.ENTITY_XML_ID + '-new').parentNode, {},
@@ -127,6 +139,21 @@
 
 		this.init(params);
 
+		if (this.mid > 0 && BX('record-' + [this.ENTITY_XML_ID, this.mid].join('-') + '-cover'))
+		{
+			var n = BX('record-' + [this.ENTITY_XML_ID, this.mid].join('-') + '-cover').parentNode.firstChild,
+				r = new RegExp("record-(" + this.ENTITY_XML_ID + ")-([0-9]+)-cover", "gi");
+			while (BX(n))
+			{
+				if (n["hasAttribute"] && n.hasAttribute("id") && r.test(n.getAttribute("id")))
+				{
+					(n.getAttribute("id") + "").replace(r, function(str, ENTITY_XML_ID, mid) {
+						traceForReading([ENTITY_XML_ID, mid]);
+					});
+				}
+				n = n.nextSibling;
+			}
+		}
 		if (repo[this.ENTITY_XML_ID])
 			repo[this.ENTITY_XML_ID].destroy();
 		repo[this.ENTITY_XML_ID] = this;
@@ -286,10 +313,11 @@
 						el.style.maxHeight = state.height + "px";
 						el.style.opacity = state.opacity / 100;
 					},
-					complete : function(){
+					complete : BX.proxy(function(){
 						el.style.cssText = '';
 						el.style.display = "none";
-					}
+						BX.onCustomEvent(this, 'OnUCListWasHidden', [this, [], el]);
+					}, this)
 				})).animate();
 			}
 			else
@@ -312,10 +340,11 @@
 						el.style.maxHeight = state.height + "px";
 						el.style.opacity = state.opacity / 100;
 					},
-					complete : function(){
+					complete : BX.proxy(function(){
 						el.style.cssText = '';
 						el.style.maxHeight = 'none';
-					}
+						BX.onCustomEvent(this, 'OnUCListWasShown', [this, [], el]);
+					}, this)
 				})).animate();
 			}
 		},
@@ -474,7 +503,6 @@
 		add : function(id, data, edit, animation) {
 			if (!(!!data && !!id && parseInt(id[1]) > 0))
 				return false;
-
 			var
 				container = BX('record-' + id.join('-') + '-cover'),
 				html = (!!data["message"] ? data["message"] :  window.fcParseTemplate(
@@ -599,9 +627,10 @@
 						container.style.height = state.height + "px";
 						container.style.opacity = state.opacity / 100;
 					},
-					complete : function() {
+					complete : BX.proxy(function() {
 						container.style.cssText = '';
-					}
+						BX.onCustomEvent(this, 'OnUCRecordWasShown', [this.ENTITY_XML_ID, id, container]);
+					}, this)
 				})).animate();
 			}
 
@@ -836,7 +865,7 @@
 		},
 		closeWait : function(id)
 		{
-			window.fcCloseWait((BX('record-' + this.ENTITY_XML_ID + '-' + id) ? BX('record-' + this.ENTITY_XML_ID + '-' + id).firstChild : null));
+			window.fcCloseWait(BX('record-' + this.ENTITY_XML_ID + '-' + id + '-actions')||null);
 		}
 	};
 
@@ -880,6 +909,7 @@
 			complete : function(){
 				el.style.cssText = '';
 				el.style.maxHeight = 'none';
+				BX.onCustomEvent(window, 'OnUCRecordWasExpanded', [el]);
 				BX.LazyLoad.showImages(true);
 			}
 		})).animate();
@@ -1042,6 +1072,7 @@
 			});
 		}
 		if (el.getAttribute('bx-mpl-delete-show') == 'Y')
+		{
 			panels.push({
 				text : BX.message("BPC_MES_DELETE"),
 				onclick : function() {
@@ -1050,6 +1081,24 @@
 					this.popupWindow.close(); return false;
 				}
 			});
+		}
+
+		if (
+			el.getAttribute('bx-mpl-createtask-show') == 'Y'
+			&& typeof oLF != 'undefined'
+		)
+		{
+			panels.push({
+				text : BX.message("BPC_MES_CREATE_TASK"),
+				onclick : function() {
+					oLF.createTask({
+						entityType: 'BLOG_COMMENT',
+						entityId: ID
+					});
+					this.popupWindow.close(); return false;
+				}
+			});
+		}
 
 		if (panels.length > 0) {
 			for (var ii in panels)
@@ -1196,6 +1245,7 @@
 				"MODERATE_SHOW" : 'N',
 				"DELETE_URL" : '',
 				"DELETE_SHOW" : 'N',
+				"CREATETASK_SHOW" : 'N',
 				"BEFORE_HEADER" : '',
 				"BEFORE_ACTIONS" : '',
 				"AFTER_ACTIONS" : '',
@@ -1242,6 +1292,12 @@
 			{
 				authorStyle = ' feed-com-name-extranet';
 			}
+			var commentText = (
+				!!res.AUX
+				&& res.AUX.length > 0
+					? BX.CommentAux.getLiveText(res.AUX, (!!res.AUX_LIVE_PARAMS ? res.AUX_LIVE_PARAMS : {} ))
+					: res["POST_MESSAGE_TEXT"].replace(/\001/gi, "").replace(/#/gi, "\001")
+			);
 
 			replacement = {
 				"ID" : res["ID"],
@@ -1253,19 +1309,39 @@
 					dateFormat,
 					timestamp, false, true
 				),
-				"TEXT" : res["POST_MESSAGE_TEXT"],
+				"TEXT" : commentText,
 				"CLASSNAME" : (res["CLASSNAME"] ? " " + res["CLASSNAME"] : ""),
 				"VIEW_URL" : params["VIEW_URL"].replace("#ID#", res["ID"]).replace("#id#", res["ID"]),
 				"VIEW_SHOW" : (params["VIEW_URL"] !== '' ? "Y" : "N"),
 				"EDIT_URL" : params["EDIT_URL"].replace("#ID#", res["ID"]).replace("#id#", res["ID"]),
-				"EDIT_SHOW" : (params["RIGHTS"]["EDIT"] == "Y" || params["RIGHTS"]["EDIT"] == "ALL" ||
-					params["RIGHTS"]["EDIT"] == "OWN" && BX.message("USER_ID") == res["AUTHOR"]["ID"] ? "Y" : "N"),
+				"EDIT_SHOW" : (
+					(
+						!res.AUX
+						|| res.AUX.length <= 0
+					)
+					&& (
+						params["RIGHTS"]["EDIT"] == "Y"
+						|| params["RIGHTS"]["EDIT"] == "ALL"
+						|| (
+							params["RIGHTS"]["EDIT"] == "OWN"
+							&& BX.message("USER_ID") == res["AUTHOR"]["ID"]
+						)
+					)
+						? "Y"
+						: "N"
+				),
 				"MODERATE_URL" : params["MODERATE_URL"].replace("#ID#", res["ID"]).replace("#id#", res["ID"]),
 				"MODERATE_SHOW" : (params["RIGHTS"]["MODERATE"] == "Y" || params["RIGHTS"]["MODERATE"] == "ALL" ||
 					params["RIGHTS"]["MODERATE"] == "OWN" && BX.message("USER_ID") == res["AUTHOR"]["ID"] ? "Y" : "N"),
 				"DELETE_URL" : params["DELETE_URL"].replace("#ID#", res["ID"]).replace("#id#", res["ID"]),
 				"DELETE_SHOW" : (params["RIGHTS"]["DELETE"] == "Y" || params["RIGHTS"]["DELETE"] == "ALL" ||
 					params["RIGHTS"]["DELETE"] == "OWN" && BX.message("USER_ID") == res["AUTHOR"]["ID"] ? "Y" : "N"),
+				"CREATETASK_SHOW" : (
+					(!res.AUX || res.AUX.length <= 0)
+					&& params["RIGHTS"]["CREATETASK"] == "Y"
+						? "Y"
+						: "N"
+				),
 				"BEFORE_HEADER" : res['BEFORE_HEADER'],
 				"BEFORE_ACTIONS" : res['BEFORE_ACTIONS'],
 				"AFTER_ACTIONS" : res['AFTER_ACTIONS'],
@@ -1317,10 +1393,10 @@
 		{
 			if (replacement.hasOwnProperty(ij))
 			{
-				txt = txt.replace(RegExp('#' + ij + '#', "g"), replacement[ij]);
+				txt = txt.replace(new RegExp('#' + ij + '#', "g"), replacement[ij]);
 			}
 		}
-		return txt;
+		return txt.replace("background:url('') no-repeat center;", "").replace(/\001/gi, "#");
 	};
 
 	window["fcPull"] = function(ENTITY_XML_ID, data) {
@@ -1337,66 +1413,68 @@
 		});
 	};
 
-	BX.addCustomEvent(window, 'OnUCCommentWasPulled', function(id) {
-		window["UC"]["PULLED"] = (!!window["UC"]["PULLED"] ? window["UC"]["PULLED"] : []);
-		window["UC"]["PULLED"].push(id);
-		if (!window["UC"]["PULLEDScreenData"]) {
-			var scroll = BX.GetWindowScrollPos();
-			window["UC"]["PULLEDScreenData"] = {
-				scrollTop : scroll.scrollTop,
-				time : new Date().getTime()
-			};
-		}
-		window["UC"]["PULLEDScreenData"]["checked"] = false;
-		window["UC"]["PULLEDTimeout"] = (!!window["UC"]["PULLEDTimeout"] ? window["UC"]["PULLEDTimeout"] : 0);
-		if (window["UC"]["PULLEDTimeout"] <= 0)
-			window["UC"]["PULLEDTimeout"] = setTimeout(window.markReadComments, 1000);
-	});
+	var newCommentsToCheckForReading = { data : [], screen : {}, timeout : 0 },
+		traceForReading = function(id) {
+		newCommentsToCheckForReading.data.push(id);
+		newCommentsToCheckForReading.screen = (newCommentsToCheckForReading.screen || {
+			scrollTop : BX.GetWindowScrollPos().scrollTop,
+			time : new Date().getTime()
+		});
+		newCommentsToCheckForReading.screen["checked"] = false;
+		newCommentsToCheckForReading.timeout = (newCommentsToCheckForReading.timeout || setTimeout(markReadComments, 1000));
+	};
+	BX.addCustomEvent(window, 'OnUCRecordHasDrawn', function(ENTITY_XML_ID, id){traceForReading(id);});
 
-	window.markReadComments = function() {
+	var markReadComments = function() {
 		var scroll = BX.GetWindowScrollPos();
-		if(scroll.scrollTop != window["UC"]["PULLEDScreenData"]["scrollTop"])
+		if(scroll.scrollTop != newCommentsToCheckForReading.screen["scrollTop"])
 		{
-			window["UC"]["PULLEDScreenData"]["time"] = new Date().getTime();
-			window["UC"]["PULLEDScreenData"]["scrollTop"] = scroll.scrollTop;
-			window["UC"]["PULLEDScreenData"]["checked"] = false;
+			newCommentsToCheckForReading.screen["time"] = new Date().getTime();
+			newCommentsToCheckForReading.screen["scrollTop"] = scroll.scrollTop;
+			newCommentsToCheckForReading.screen["checked"] = false;
 		}
-		else if(!window["UC"]["PULLEDScreenData"]["checked"] &&
-			(new Date().getTime() - window["UC"]["PULLEDScreenData"]["time"] > 3000))
+		else if(!newCommentsToCheckForReading.screen["checked"] &&
+			(new Date().getTime() - newCommentsToCheckForReading.screen["time"] > 3000))
 		{
-			window["UC"]["PULLEDScreenData"]["time"] = new Date().getTime();
-			window["UC"]["PULLEDScreenData"]["checked"] = true;
+			newCommentsToCheckForReading.screen["time"] = new Date().getTime();
+			newCommentsToCheckForReading.screen["checked"] = true;
 
 			var commentsReadToCounter = 0,
 				size = BX.GetWindowInnerSize(),
 				res = [],
-				node, pos, node1;
-			for(var i = 0; i < window["UC"]["PULLED"].length; i++)
+				node, pos, node1, i;
+			for (i = 0; i < newCommentsToCheckForReading.data.length; i++)
 			{
-				node = BX('record-' + window["UC"]["PULLED"][i].join('-') + '-cover');
-				pos = BX.pos(node);
-				if (pos.top >= scroll.scrollTop && pos.top <= (scroll.scrollTop +size.innerHeight - 20))
+				node = BX('record-' + newCommentsToCheckForReading.data[i].join('-') + '-cover');
+				if (node)
 				{
-					BX.removeClass(node, 'comment-new-answer');
-					node1 = BX.findChild(node, {className: 'feed-com-block'}, true, false);
-					BX.removeClass(node1, 'feed-com-block-pointer-to-new feed-com-block-new');
-					BX.addClass(node1, 'feed-com-block-read');
-					commentsReadToCounter++;
-				}
-				else
-				{
-					res.push(window["UC"]["PULLED"][i]);
+					pos = BX.pos(node);
+					if (pos.top >= scroll.scrollTop && pos.top <= (scroll.scrollTop +size.innerHeight - 20))
+					{
+						BX.onCustomEvent(window, 'OnUCCommentWasRead', [newCommentsToCheckForReading.data[i], node]);
+						BX.removeClass(node, 'comment-new-answer');
+						node1 = BX.findChild(node, {className: 'feed-com-block'}, true, false);
+						BX.removeClass(node1, 'feed-com-block-pointer-to-new feed-com-block-new');
+						BX.addClass(node1, 'feed-com-block-read');
+						commentsReadToCounter++;
+					}
+					else
+					{
+						res.push(newCommentsToCheckForReading.data[i]);
+					}
 				}
 			}
-			window["UC"]["PULLED"] = res;
+			newCommentsToCheckForReading.data = res;
 			if(commentsReadToCounter > 0)
 				BX.onCustomEvent(window, 'onCounterDecrement', [commentsReadToCounter]);
 		}
 
-		if (window["UC"]["PULLED"].length > 0)
-			window["UC"]["PULLEDTimeout"] = setTimeout(window.markReadComments, 1000);
+		if (newCommentsToCheckForReading.data.length > 0)
+			newCommentsToCheckForReading.timeout = setTimeout(markReadComments, 1000);
 		else
-			window["UC"]["PULLEDTimeout"] = 0;
+		{
+			newCommentsToCheckForReading.timeout = 0;
+		}
 	};
 
 	var MPLQuote = function(params) {

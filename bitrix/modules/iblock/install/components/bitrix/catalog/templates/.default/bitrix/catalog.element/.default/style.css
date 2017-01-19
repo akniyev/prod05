@@ -233,6 +233,12 @@
 	padding: 5px 15px;
 	margin-bottom: 10px;
 }
+.bx_notavailable_subscribe
+{
+	background: none !important;
+	border: none !important;
+	padding-left: 0 !important;
+}
 
 .bx_item_detail .bx_bt_button,
 .bx_item_detail .bx_bt_button_type_2{

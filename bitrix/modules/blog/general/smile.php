@@ -105,7 +105,7 @@ class CAllBlogSmile
 		}
 		return False;
 	}
-	function GetSmilesList()
+	public static function GetSmilesList()
 	{
 		$cache = new CPHPCache;
 		$cache_id = "blog_smiles_".LANGUAGE_ID;

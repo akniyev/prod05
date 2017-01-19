@@ -61,7 +61,6 @@ BXEditorView.prototype = {
 	}
 };
 
-
 function BXEditorTextareaView(parent, textareaElement, container)
 {
 	// Call parrent constructor
@@ -570,7 +569,6 @@ var focusWithoutScrolling = function(element)
  * - Dispatch proprietary newword:composer event
  * - Keyboard shortcuts
  */
-
 	BXEditorIframeView.prototype.InitEventHandlers = function()
 	{
 		var
@@ -794,25 +792,26 @@ var focusWithoutScrolling = function(element)
 			IMG: BX.message.SrcTitle + ": ",
 			A: BX.message.UrlTitle + ": "
 		};
+
 		BX.bind(element, "mouseover", function(e)
 		{
 			var
 				target = e.target || e.srcElement,
+				value = (target.getAttribute("href") || target.getAttribute("src")),
 				nodeName = target.nodeName;
 
-			if (!nodeTitles[nodeName])
+			if (nodeTitles[nodeName]
+					&& !target.hasAttribute("title")
+					&& value
+					&& value.indexOf('data:image/') === -1
+			)
 			{
-				return;
-			}
-
-			if(!target.hasAttribute("title"))
-			{
-				target.setAttribute("title", nodeTitles[nodeName] + (target.getAttribute("href") || target.getAttribute("src")));
+				target.setAttribute("title", nodeTitles[nodeName] + value);
 				target.setAttribute("data-bx-clean-attribute", "title");
 			}
 		});
 
-		this.InitClipboardHandler();
+		this.editor.InitClipboardHandler();
 	};
 
 	BXEditorIframeView.prototype.KeyDown = function(e)
@@ -1723,8 +1722,11 @@ var focusWithoutScrolling = function(element)
 
 				// Paste control: show menu after pasting content
 				// to let user select weather insert rich content or plain text
-				_this.editor.pasteControl.SaveIframeContent(_this.GetValue());
-				_this.editor.pasteControl.Show();
+				if (!_this.editor.skipPasteControl)
+				{
+					_this.editor.pasteControl.SaveIframeContent(_this.GetValue());
+					_this.editor.pasteControl.CheckAndShow();
+				}
 
 				_this.editor.synchro.FromIframeToTextarea(true, true);
 
@@ -2018,58 +2020,6 @@ var focusWithoutScrolling = function(element)
 			element.appendChild(this.editor.util.GetInvisibleTextNode());
 		}
 	};
-
-	BXEditorIframeView.prototype.InitClipboardHandler = function()
-	{
-		var
-			_this = this;
-
-		// Chrome
-		BX.bind(this.element, 'paste', function (e)
-		{
-			var clipboard = e.clipboardData;
-
-			if (clipboard && clipboard.items)
-			{
-				var item = clipboard.items[0];
-
-				if (item && item.type.indexOf('image/') > -1)
-				{
-					var blob = item.getAsFile();
-
-					if (blob)
-					{
-						var reader = new FileReader();
-						reader.readAsDataURL(blob);
-						reader.onload = function (event)
-						{
-							var img = new Image();
-							img.src = event.target.result;
-							_this.element.appendChild(img);
-							_this.HandleImageDataUri(img);
-						}
-					}
-				}
-			}
-		});
-	};
-
-	BXEditorIframeView.prototype.HandleImageDataUri = function(image)
-	{
-		this.editor.On('OnImageDataUriHandle', [this,
-			{
-				src: image.src,
-				title: image.title || ''
-			},
-			BX.proxy(this.HandleImageDataUriCallback, this)]
-		);
-	};
-
-	BXEditorIframeView.prototype.HandleImageDataUriCallback = function(image)
-	{
-
-	};
-
 
 /**
  * Class _this takes care that the value of the composer and the textarea is always in sync

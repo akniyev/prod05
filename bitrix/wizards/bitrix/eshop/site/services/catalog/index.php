@@ -29,6 +29,14 @@ if (CModule::IncludeModule("catalog"))
 		$dbStores = CCatalogStore::GetList(array(), array("ACTIVE" => 'Y'));
 		if(!$dbStores->Fetch())
 		{
+			$storeImageId = 0;
+			$storeImage = CFile::MakeFileArray(WIZARD_SERVICE_RELATIVE_PATH.'/images/storepoint.jpg');
+			if (!empty($storeImage) && is_array($storeImage))
+			{
+				$storeImage['MODULE_ID'] = 'catalog';
+				$storeImageId =  CFile::SaveFile($storeImage, 'catalog');
+			}
+
 			$arStoreFields = array(
 				"TITLE" => GetMessage("CAT_STORE_NAME"),
 				"ADDRESS" => GetMessage("STORE_ADR_1"),
@@ -37,6 +45,7 @@ if (CModule::IncludeModule("catalog"))
 				"GPS_S" => GetMessage("STORE_GPS_S_1"),
 				"PHONE" => GetMessage("STORE_PHONE_1"),
 				"SCHEDULE" => GetMessage("STORE_PHONE_SCHEDULE"),
+				"IMAGE_ID" => $storeImageId
 			);
 			$newStoreId = CCatalogStore::Add($arStoreFields);
 			if($newStoreId)
@@ -45,24 +54,6 @@ if (CModule::IncludeModule("catalog"))
 			}
 		}
 	}
-	/*$arStores = array();
-	$dbStore= CCatalogStore::GetList(array(), array("XML_ID" => "mebel"), false, false, array("ID"));
-	if (!$arStore = $dbStore->Fetch())
-	{
-		$arNewStore =  array(
-			"TITLE" => GetMessage("STORE_NAME_1"),
-			"ACTIVE" => "N",
-			"ADDRESS" => GetMessage("STORE_ADR_1"),
-			"DESCRIPTION" => GetMessage("STORE_DESCR_1"),
-			"USER_ID" => $USER->GetID(),
-			"GPS_N" => GetMessage("STORE_GPS_N_1"),
-			"GPS_S" => GetMessage("STORE_GPS_S_1"),
-			"PHONE" => GetMessage("STORE_PHONE_1"),
-			"SCHEDULE" => "24/7",
-			"XML_ID" => "mebel",
-		);
-		CCatalogStore::Add($arNewStore);
-	}  */
 }
 
 if(COption::GetOptionString("eshop", "wizard_installed", "N", WIZARD_SITE_ID) == "Y" && !WIZARD_INSTALL_DEMO_DATA)
@@ -71,4 +62,3 @@ if(COption::GetOptionString("eshop", "wizard_installed", "N", WIZARD_SITE_ID) ==
 COption::SetOptionString("catalog", "allow_negative_amount", "Y");
 COption::SetOptionString("catalog", "default_can_buy_zero", "Y");
 COption::SetOptionString("catalog", "default_quantity_trace", "Y");
-?>

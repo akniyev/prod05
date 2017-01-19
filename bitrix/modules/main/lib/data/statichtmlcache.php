@@ -98,6 +98,15 @@ class StaticHtmlCache
 
 		return null;
 	}
+
+	/*
+	 * Returns private cache key
+	 */
+	public static function getPrivateKey()
+	{
+		$cacheProvider = static::getCacheProvider();
+		return $cacheProvider !== null ? $cacheProvider->getCachePrivateKey() : null;
+	}
 	/**
 	 * Converts request uri into path safe file with .html extention.
 	 * Returns empty string if fails.
@@ -111,6 +120,14 @@ class StaticHtmlCache
 		return \CHTMLPagesCache::convertUriToPath($uri, $host, $privateKey);
 	}
 
+	/**
+	 * Returns cache key
+	 * @return string
+	 */
+	public function getCacheKey()
+	{
+		return $this->cacheKey;
+	}
 	/**
 	 * Writes the content to the storage
 	 * @param string $content the string that is to be written
@@ -127,10 +144,15 @@ class StaticHtmlCache
 
 		$this->writeDebug();
 
+		$cacheSize = $this->storage->getSize();
 		$written = $this->storage->write($content."<!--".$md5."-->", $md5);
 		if ($written !== false && $this->storage->shouldCountQuota())
 		{
-			\CHTMLPagesCache::writeStatistic(0, 1, 0, 0, $written);
+			$delta = $cacheSize !== false ? $written - $cacheSize : $written;
+			if ($delta !== 0)
+			{
+				\CHTMLPagesCache::writeStatistic(0, 1, 0, 0, $delta);
+			}
 		}
 
 		return $written;
@@ -193,6 +215,20 @@ class StaticHtmlCache
 		}
 
 		return true;
+	}
+
+	/**
+	 * Returns the time the cache was last modified
+	 * @return int|false
+	 */
+	public function getLastModified()
+	{
+		if ($this->storage !== null)
+		{
+			return $this->storage->getLastModified();
+		}
+
+		return false;
 	}
 
 	/**

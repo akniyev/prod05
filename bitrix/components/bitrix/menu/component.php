@@ -152,7 +152,7 @@ if($USER->IsAuthorized())
 				break;
 			}
 	
-			$position = strrpos($currentAddDir, "/");
+			$position = bxstrrpos($currentAddDir, "/");
 			if ($position === false)
 				break;
 	

@@ -121,11 +121,20 @@ final class StaticHtmlMemcachedStorage extends StaticHtmlStorage
 	}
 
 	/**
+	 * Returns the time the cache was last modified
+	 * @return int|false
+	 */
+	public function getLastModified()
+	{
+		return $this->getProp("mtime");
+	}
+	
+	/**
 	 * Returns the size of the cache
 	 *
 	 * @return int|false
 	 */
-	protected function getSize()
+	public function getSize()
 	{
 		return $this->getProp("size");
 	}

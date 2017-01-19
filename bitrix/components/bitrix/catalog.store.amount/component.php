@@ -1,7 +1,8 @@
 <?
 if (!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED !== true) die();
 
-use Bitrix\Main\Loader;
+use Bitrix\Main,
+	Bitrix\Main\Loader;
 
 global $USER_FIELD_MANAGER, $APPLICATION;
 
@@ -19,17 +20,13 @@ if (!function_exists("getStringCatalogStoreAmount"))
 		return $message;
 	}
 }
-if (!Loader::includeModule('catalog'))
-{
-	ShowError(GetMessage('CATALOG_MODULE_NOT_INSTALL'));
-	return;
-}
 
 if (!isset($arParams['CACHE_TIME']))
 	$arParams['CACHE_TIME'] = 360000;
 
 $arParams['ELEMENT_ID']     = (int)(isset($arParams['ELEMENT_ID']) ? $arParams['ELEMENT_ID'] : 0);
 $arParams['ELEMENT_CODE']   = (isset($arParams['ELEMENT_CODE']) ? $arParams['ELEMENT_CODE'] : '');
+$arParams['OFFER_ID']     = (int)(isset($arParams['OFFER_ID']) ? $arParams['OFFER_ID'] : 0);
 $arParams['MAIN_TITLE']     = trim($arParams['MAIN_TITLE']);
 $arParams['STORE_PATH']     = trim($arParams['STORE_PATH']);
 $arParams['USE_MIN_AMOUNT'] = (isset($arParams['USE_MIN_AMOUNT']) && $arParams['USE_MIN_AMOUNT'] == 'N' ? 'N' : 'Y');
@@ -53,36 +50,45 @@ if (isset($arParams['SCHEDULE']) && $arParams['SCHEDULE'] == 'Y')
 	$arParams['FIELDS'][] = "SCHEDULE";
 $arParams['SHOW_EMPTY_STORE'] = (isset($arParams['SHOW_EMPTY_STORE']) && $arParams['SHOW_EMPTY_STORE'] == 'N' ? 'N' : 'Y');
 
-if ($arParams["ELEMENT_ID"] <= 0 && $arParams["ELEMENT_CODE"] != '')
-{
-	$res = CIBlockElement::GetList(
-		array(),
-		array('=CODE' => $arParams['ELEMENT_CODE']),
-		false,
-		false,
-		array('ID')
-	);
-	if ($elementId = $res->Fetch())
-		$arParams["ELEMENT_ID"] = $elementId['ID'];
-}
-
-$siteId             = \Bitrix\Main\Application::getInstance()->getContext()->getSite();
 $quantity           = 0;
 $productId          = 0;
 $iblockId           = 0;
-$arResult["IS_SKU"] = true;
-$lang               = \Bitrix\Main\Application::getInstance()->getContext()->getLanguage();
 
-if ($arParams["ELEMENT_ID"] <= 0)
+if ($this->startResultCache())
 {
-	ShowError(GetMessage("PRODUCT_NOT_EXIST"));
-	return;
-}
+	if (!Loader::includeModule('catalog'))
+	{
+		$this->abortResultCache();
+		ShowError(GetMessage('CATALOG_MODULE_NOT_INSTALL'));
+		return;
+	}
 
-if ($this->StartResultCache())
-{
+	if ($arParams["ELEMENT_ID"] <= 0 && $arParams["ELEMENT_CODE"] != '')
+	{
+		$res = CIBlockElement::GetList(
+			array(),
+			array('=CODE' => $arParams['ELEMENT_CODE']),
+			false,
+			false,
+			array('ID')
+		);
+		if ($elementId = $res->Fetch())
+			$arParams["ELEMENT_ID"] = $elementId['ID'];
+	}
+
+	if ($arParams["ELEMENT_ID"] <= 0)
+	{
+		$this->abortResultCache();
+		ShowError(GetMessage("PRODUCT_NOT_EXIST"));
+		return;
+	}
+
+	$context = Main\Application::getInstance()->getContext();
+
+	$arResult['IS_SKU'] = false;
 	$arResult['STORES'] = array();
-	$isProductExistSKU = CCatalogSKU::IsExistOffers($arParams['ELEMENT_ID'], $iblockId);
+	$isProductExistSKU = CCatalogSku::IsExistOffers($arParams['ELEMENT_ID'], $iblockId);
+	$productSku = array();
 	if ($isProductExistSKU)
 	{
 		$res = CIBlockElement::GetList(
@@ -98,7 +104,7 @@ if ($this->StartResultCache())
 			$iblockId   = $productInfo['IBLOCK_ID'];
 		}
 
-		$skuInfo = CCatalogSKU::GetInfoByProductIBlock($iblockId);
+		$skuInfo = CCatalogSku::GetInfoByProductIBlock($iblockId);
 		$skuIterator = CIBlockElement::GetList(
 			array('ID' => 'DESC'),
 			array('IBLOCK_ID' => $skuInfo['IBLOCK_ID'], 'PROPERTY_'.$skuInfo['SKU_PROPERTY_ID'] => $productId),
@@ -107,9 +113,9 @@ if ($this->StartResultCache())
 			array('ID')
 		);
 
-		$productSku = array();
 		while ($sku = $skuIterator->Fetch())
 		{
+			$arResult['IS_SKU'] = true;
 			$amount = array();
 			$sum = 0;
 			$filter = array('PRODUCT_ID' => $sku['ID']);
@@ -134,6 +140,9 @@ if ($this->StartResultCache())
 				$productSku[$sku['ID']] = $amount;
 			$arParams["ELEMENT_ID"] = $sku['ID'];
 		}
+		unset($sku, $skuIterator);
+		if ($arParams['OFFER_ID'] > 0 && isset($productSku[$arParams['OFFER_ID']]))
+			$arParams['ELEMENT_ID'] = $arParams['OFFER_ID'];
 	}
 
 	$res = CCatalogProduct::GetList(
@@ -170,7 +179,7 @@ if ($this->StartResultCache())
 		$filter = array(
 			"ACTIVE" => "Y",
 			"PRODUCT_ID" => $arParams["ELEMENT_ID"],
-			"+SITE_ID" => $siteId,
+			"+SITE_ID" => $context->getSite(),
 			"ISSUING_CENTER" => 'Y'
 		);
 
@@ -194,7 +203,7 @@ if ($this->StartResultCache())
 				$quantity += $amount;
 				continue;
 			}
-			$storeURL = CComponentEngine::MakePathFromTemplate($arParams["STORE_PATH"], array("store_id" => $prop["ID"]));
+			$storeURL = CComponentEngine::makePathFromTemplate($arParams["STORE_PATH"], array("store_id" => $prop["ID"]));
 
 			if ($prop["TITLE"] == '' && $prop["ADDRESS"] != '')
 				$storeName = $prop["ADDRESS"];
@@ -241,7 +250,7 @@ if ($this->StartResultCache())
 
 			$arResult["USER_FIELDS"] = $arParams["USER_FIELDS"];
 
-			$userFields = $USER_FIELD_MANAGER->GetUserFields('CAT_STORE', 0, $lang);
+			$userFields = $USER_FIELD_MANAGER->GetUserFields('CAT_STORE', 0, $context->getLanguage());
 
 			foreach ($arResult["USER_FIELDS"] as $userField)
 			{
@@ -296,5 +305,7 @@ if ($this->StartResultCache())
 			foreach ($arResult['STORES'] as $store)
 				$arResult['JS']['STORES'][] = $store['ID'];
 	}
-	$this->IncludeComponentTemplate();
+	$this->includeComponentTemplate();
+
+	unset($context);
 }

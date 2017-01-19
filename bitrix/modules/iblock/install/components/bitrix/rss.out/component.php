@@ -354,7 +354,6 @@ if(!$bDesignMode)
 {
 	$r = $APPLICATION->EndBufferContentMan();
 	echo $r;
-	if(defined("HTML_PAGES_FILE") && !defined("ERROR_404")) CHTMLPagesCache::writeFile(HTML_PAGES_FILE, $r);
 	die();
 }
 else

@@ -101,7 +101,7 @@ if($arUserField["USER_TYPE"])
 			&& ($arUserField["SETTINGS"]["DISPLAY"] != "CHECKBOX" || $arUserField["MULTIPLE"] <> "Y")
 		)
 		{
-			$enum = array(null => ($arUserField["SETTINGS"]["CAPTION_NO_VALUE"] <> ''? $arUserField["SETTINGS"]["CAPTION_NO_VALUE"] : GetMessage("MAIN_NO")));
+			$enum = array(null => ($arUserField["SETTINGS"]["CAPTION_NO_VALUE"] <> ''? htmlspecialcharsbx($arUserField["SETTINGS"]["CAPTION_NO_VALUE"]) : GetMessage("MAIN_NO")));
 		}
 
 		$rsEnum = call_user_func_array(

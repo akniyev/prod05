@@ -10,7 +10,7 @@ use Bitrix\Sale\Order;
 
 Loc::loadMessages(__FILE__);
 
-class PersonType extends Base
+class ByPersonType extends Base
 {
 	/**
 	 * @param $personTypeId
@@ -65,7 +65,7 @@ class PersonType extends Base
 	 * @return array
 	 * @throws \Bitrix\Main\ArgumentException
 	 */
-	public static function getParamsStructure($deliveryId = null)
+	public static function getParamsStructure($deliveryId = 0)
 	{
 		$personTypeList = array();
 
@@ -93,3 +93,5 @@ class PersonType extends Base
 		return Manager::SEVERITY_STRICT;
 	}
 }
+
+class_alias('Bitrix\Sale\Delivery\Restrictions\ByPersonType', 'Bitrix\Sale\Delivery\Restrictions\PersonType');

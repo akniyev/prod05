@@ -322,7 +322,7 @@
 
 							var tdTitle = BX.create('td', {props : {'width': '40%'}});
 							BX.addClass(tdTitle, 'adm-detail-content-cell-l');
-							tdTitle.innerHTML = BX.message('SALE_PS_MODE');
+							tdTitle.innerHTML = BX.message('SALE_PS_MODE')+':';
 
 							var tdContent = BX.create('td', {props : {'width': '60%'}});
 							BX.addClass(tdContent, 'adm-detail-content-cell-r');
@@ -363,6 +363,7 @@
 						if (result.SORT)
 							BX('SORT').value = result.SORT;
 
+						var id = BX('ID').value;
 						var logo = BX('LOGOTIP');
 						var parent = BX.findParent(logo, {tag : 'div'});
 						var img = BX.findChild(parent.parentNode, {tag : 'img'});
@@ -390,13 +391,12 @@
 								BX.insertAfter(BX.create('br'), parent);
 							}
 						}
-						else
+						else if (id <= 0)
 						{
 							if (img)
 								BX.remove(img);
 
 							logo.previousElementSibling.innerHTML = BX.message('JSADM_FILE');
-
 						}
 					}
 					else

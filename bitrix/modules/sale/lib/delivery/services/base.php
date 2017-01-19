@@ -1,6 +1,7 @@
 <?php
 namespace Bitrix\Sale\Delivery\Services;
 
+use Bitrix\Main\Error;
 use Bitrix\Main\Event;
 use Bitrix\Sale\Result;
 use Bitrix\Sale\Delivery;
@@ -44,6 +45,9 @@ abstract class Base
 	protected static $whetherAdminExtraServicesShow = false;
 
 	const EVENT_ON_CALCULATE = "onSaleDeliveryServiceCalculate";
+
+	/** @var bool  */
+	protected $isClone = false;
 
 	/**
 	 * Constructor
@@ -120,7 +124,11 @@ abstract class Base
 	public function calculate(\Bitrix\Sale\Shipment $shipment = null, $extraServices = array()) // null for compability with old configurable services api
 	{
 		if($shipment && !$shipment->getCollection())
-			return false;
+		{
+			$result = new Delivery\CalculationResult();
+			$result->addError(new Error('\Bitrix\Sale\Delivery\Services\Base::calculate() can\'t calculate empty shipment!'));
+			return $result;
+		}
 
 		$result = $this->calculateConcrete($shipment);
 
@@ -131,7 +139,7 @@ abstract class Base
 
 			$this->extraServices->setValues($extraServices);
 			$this->extraServices->setOperationCurrency($shipment->getCurrency());
-			$extraServicePrice = $this->extraServices->getTotalCost();
+			$extraServicePrice = $this->extraServices->getTotalCostShipment($shipment);
 
 			if(floatval($extraServicePrice) > 0)
 				$result->setExtraServicesPrice($extraServicePrice);
@@ -139,7 +147,8 @@ abstract class Base
 
 		$eventParams = array(
 			"RESULT" => $result,
-			"SHIPMENT" => $shipment
+			"SHIPMENT" => $shipment,
+			"DELIVERY_ID" => $this->id
 		);
 
 		$event = new Event('sale', self::EVENT_ON_CALCULATE, $eventParams);
@@ -519,7 +528,7 @@ abstract class Base
 	}
 
 	/**
-	 * @return array
+	 * @return array Profiles list
 	 */
 	public function getProfilesList()
 	{
@@ -652,6 +661,69 @@ abstract class Base
 	 * @return array
 	 */
 	public function getAdditionalInfoShipmentView(Shipment $shipment)
+	{
+		return array();
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return EmptyDeliveryService
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$deliveryServiceClone = clone $this;
+		$deliveryServiceClone->isClone = true;
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $deliveryServiceClone;
+		}
+
+		/** @var Delivery\ExtraServices\Manager $extraServices */
+		if ($extraServices = $this->getExtraServices())
+		{
+			if (!$cloneEntity->contains($extraServices))
+			{
+				$cloneEntity[$extraServices] = $extraServices->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($extraServices))
+			{
+				$deliveryServiceClone->extraServices = $cloneEntity[$extraServices];
+			}
+		}
+		
+		return $deliveryServiceClone;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isClone()
+	{
+		return $this->isClone;
+	}
+
+	/**
+	 * Returns names of supported delivery services
+	 * @return array
+	 */
+	public static function getSupportedServicesList()
+	{
+		return array();
+	}
+
+	/**
+	 * @return array Additional tabs to show on edit admin page.
+	 */
+	public function getAdminAdditionalTabs()
 	{
 		return array();
 	}

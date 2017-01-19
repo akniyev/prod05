@@ -1071,6 +1071,15 @@ abstract class CAllMain
 		return end($this->__componentStack);
 	}
 
+	/**
+	 * Returns a current component stack.
+	 * @return array
+	 */
+	public function getComponentStack()
+	{
+		return $this->__componentStack;
+	}
+
 	public function AddViewContent($view, $content, $pos = 500)
 	{
 		if(!is_array($this->__view[$view]))
@@ -3216,15 +3225,8 @@ abstract class CAllMain
 		}
 
 		$asset = Asset::getInstance();
-		if (Frame::getUseAppCache())
-		{
-			$asset->addString(CJSCore::GetCoreMessagesScript(), false, AssetLocation::AFTER_CSS, AssetMode::ALL);
-		}
-		else
-		{
-			$asset->addString(CJSCore::GetCoreMessagesScript(), false, AssetLocation::AFTER_CSS, AssetMode::STANDARD);
-			$asset->addString(CJSCore::GetCoreMessagesScript(true), false, AssetLocation::AFTER_CSS, AssetMode::COMPOSITE);
-		}
+		$asset->addString(CJSCore::GetCoreMessagesScript(), false, AssetLocation::AFTER_CSS, AssetMode::STANDARD);
+		$asset->addString(CJSCore::GetCoreMessagesScript(true), false, AssetLocation::AFTER_CSS, AssetMode::COMPOSITE);
 
 		$asset->addString($this->GetSpreadCookieHTML(), false, AssetLocation::AFTER_JS, AssetMode::STANDARD);
 		if ($asset->canMoveJsToBody() && \CJSCore::IsCoreLoaded())
@@ -3564,13 +3566,15 @@ abstract class CAllMain
 	public static function EpilogActions()
 	{
 		global $DB;
+
+		$DB->StartUsingMasterOnly();
+
 		//send email events
 		if(COption::GetOptionString("main", "check_events", "Y") !== "N")
 		{
-			$DB->StartUsingMasterOnly();
 			CEvent::CheckEvents();
-			$DB->StopUsingMasterOnly();
 		}
+
 		//files cleanup
 		CMain::FileAction();
 
@@ -3578,6 +3582,8 @@ abstract class CAllMain
 		{
 			CUserCounterPage::checkSendCounter();
 		}
+
+		$DB->StopUsingMasterOnly();
 	}
 
 	public static function ForkActions($func = false, $args = array())

@@ -21,4 +21,11 @@ $MESS["SALE_PS_MANAGER_GROUP_CONNECT_SETTINGS_BILLLA"] = "Invoice preferences (S
 $MESS["SALE_PS_MANAGER_GROUP_GENERAL_SETTINGS"] = "More payment system preferences";
 $MESS["SALE_PS_MANAGER_GROUP_PAYMENT"] = "Payments";
 $MESS["SALE_PS_MANAGER_INNER_NAME"] = "Internal account";
+$MESS["SALE_PS_MANAGER_GROUP_CONNECT_SETTINGS_ALFABANK"] = "Alfa Bank connection parameters";
+$MESS["SALE_PS_MANAGER_GROUP_CONNECT_SETTINGS_AUTHORIZE"] = "Authorize.net connection parameters";
+$MESS["SALE_PS_MANAGER_GROUP_CONNECT_SETTINGS_YANDEX_INVOICE"] = "Yandex.Money connection parameters";
+$MESS["SALE_PS_MANAGER_GROUP_VISUAL_SETTINGS"] = "Customize styles";
+$MESS["SALE_PS_MANAGER_GROUP_HEADER_SETTINGS"] = "Document header parameters";
+$MESS["SALE_PS_MANAGER_GROUP_FOOTER_SETTINGS"] = "Document footer parameters";
+$MESS["SALE_PS_MANAGER_GROUP_COLUMN_SETTINGS"] = "Column parameters";
 ?>

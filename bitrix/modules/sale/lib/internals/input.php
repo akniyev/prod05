@@ -2,9 +2,12 @@
 
 namespace Bitrix\Sale\Internals\Input;
 
+use Bitrix\Main\Event;
 use	Bitrix\Main\EventManager,
 	Bitrix\Main\SystemException,
 	Bitrix\Main\Localization\Loc;
+use Bitrix\Main\EventResult;
+use Bitrix\Sale\ResultError;
 
 Loc::loadMessages(__FILE__);
 
@@ -257,8 +260,26 @@ class Manager
 	{
 		static::$initialized = true;
 
-		foreach (EventManager::getInstance()->findEventHandlers('sale', 'registerInputTypes') as $handler)
-			ExecuteModuleEventEx($handler); // TODO modern api
+		/** @var Event $event */
+		$event = new Event('sale', 'registerInputTypes', static::$types);
+		$event->send();
+
+		if ($event->getResults())
+		{
+			foreach($event->getResults() as $eventResult)
+			{
+				if ($eventResult->getType() != EventResult::SUCCESS)
+					continue;
+
+				if ($params = $eventResult->getParameters())
+				{
+					if(!empty($params) && is_array($params))
+					{
+						static::$types = array_merge(static::$types, $params);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -334,7 +355,13 @@ abstract class Base
 
 	public static function getViewHtmlSingle(array $input, $value)
 	{
-		return htmlspecialcharsbx($value);
+		$output = $valueText = htmlspecialcharsbx($value);
+		if ($input['IS_EMAIL'] == 'Y')
+		{
+			$output = '<a href="mailto:'.$valueText.'">'.$valueText.'</a>';
+		}
+
+		return $output;
 	}
 
 	public static function getEditHtml($name, array $input, $value = null)
@@ -698,6 +725,17 @@ class StringInput extends Base // String reserved in php 7
 
 		return $settings;
 	}
+
+	/**
+	 * @param $value
+	 *
+	 * @return bool
+	 */
+	public static function isDeletedSingle($value)
+	{
+		return is_array($value) && $value['DELETE'];
+	}
+
 }
 
 Manager::register('STRING', array(
@@ -1465,6 +1503,7 @@ class Location extends Base
 		$html = '';
 
 		$selector = md5("location input selector $name");
+		$input["LOCATION_SELECTOR"] = $selector;
 
 		if ($onChange = $input['ONCHANGE'])
 		{
@@ -1486,14 +1525,14 @@ class Location extends Base
 
 			foreach (static::asMultiple($value) as $value)
 				$html .= $startTag
-					.static::getEditHtmlSingle($name.'['.(++$index).']', $input, $value, $selector)
+					.static::getEditHtmlSingle($name.'['.(++$index).']', $input, $value)
 					.$endTag;
 
 			$replace = '##INPUT##NAME##';
 
 			if ($input['DISABLED'] !== 'Y') // TODO
 				$html .= static::getEditHtmlInsert($tag, $replace, $name
-					, static::getEditHtmlSingle($replace, $input, null, $selector)
+					, static::getEditHtmlSingle($replace, $input, null)
 					, "var location = BX.locationSelectors['$selector'].spawn(container, {selectedItem: false, useSpawn: false});"
 					."location.clearSelected();"
 					//."location.focus();" // TODO
@@ -1501,13 +1540,13 @@ class Location extends Base
 		}
 		else
 		{
-			$html .= static::getEditHtmlSingle($name, $input, static::asSingle($value), $selector);
+			$html .= static::getEditHtmlSingle($name, $input, static::asSingle($value));
 		}
 
 		return $html;
 	}
 
-	public static function getEditHtmlSingle($name, array $input, $value, $selector)
+	public static function getEditHtmlSingle($name, array $input, $value)
 	{
 		$filterMode = isset($input['IS_FILTER_FIELD']) && $input['IS_FILTER_FIELD'] === true;
 		$parameters = array(
@@ -1518,7 +1557,7 @@ class Location extends Base
 			'FILTER_BY_SITE' => 'N',
 			'SHOW_DEFAULT_LOCATIONS' => 'N',
 			'SEARCH_BY_PRIMARY' => 'N',
-			'JS_CONTROL_GLOBAL_ID' => $selector,
+			'JS_CONTROL_GLOBAL_ID' => $input["LOCATION_SELECTOR"],
 			'JS_CALLBACK' => $input['JS_CALLBACK']
 		);
 

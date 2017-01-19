@@ -85,3 +85,21 @@ $MESS["SALE_HPS_BILL_LA_LOGO_DPI_96"] = "100% (96 dpi)";
 $MESS["SALE_HPS_BILL_LA_LOGO_DPI_150"] = "64% (150 dpi)";
 $MESS["SALE_HPS_BILL_LA_LOGO_DPI_300"] = "32% (300 dpi)";
 $MESS["SALE_HPS_BILL_LA_LOGO_DPI_600"] = "16% (600 dpi)";
+
+$MESS["SALE_HPS_BILL_LA_TOTAL_SHOW"] = "Показывать итоговую информацию";
+
+$MESS["SALE_HPS_BILL_LA_COLUMN_NUMBER_SHOW"] = "Отображать колонку с номером";
+$MESS["SALE_HPS_BILL_LA_COLUMN_NUMBER_TITLE"] = "Заголовок для колонки с номером";
+$MESS["SALE_HPS_BILL_LA_COLUMN_NAME_SHOW"] = "Отображать колонку с наименованием";
+$MESS["SALE_HPS_BILL_LA_COLUMN_NAME_TITLE"] = "Заголовок для колонки с именем";
+$MESS["SALE_HPS_BILL_LA_COLUMN_QUANTITY_SHOW"] = "Отображать колонку с количеством";
+$MESS["SALE_HPS_BILL_LA_COLUMN_QUANTITY_TITLE"] = "Заголовок для колонки с количеством";
+$MESS["SALE_HPS_BILL_LA_COLUMN_MEASURE_SHOW"] = "Отображать колонку с ед. измерения";
+$MESS["SALE_HPS_BILL_LA_COLUMN_MEASURE_TITLE"] = "Заголовок для колонки с ед. измерения";
+$MESS["SALE_HPS_BILL_LA_COLUMN_PRICE_SHOW"] = "Отображать колонку с ценой";
+$MESS["SALE_HPS_BILL_LA_COLUMN_PRICE_TITLE"] = "Заголовок для колонки с ценой";
+$MESS["SALE_HPS_BILL_LA_COLUMN_SUM_SHOW"] = "Отображать колонку с суммой";
+$MESS["SALE_HPS_BILL_LA_COLUMN_SUM_TITLE"] = "Заголовок для колонки с суммой";
+$MESS["SALE_HPS_BILL_LA_COLUMN_VAT_RATE_SHOW"] = "Отображать колонку со ставкой НДС";
+$MESS["SALE_HPS_BILL_LA_COLUMN_VAT_RATE_TITLE"] = "Заголовок для колонки с ставкой НДС";
+$MESS["SALE_HPS_BILL_LA_HEADER"] = "Заголовок счета";

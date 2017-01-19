@@ -364,6 +364,11 @@ class Automatic extends Base
 					$result["TYPE"] = 'ENUM';
 					break;
 
+				case 'RADIO':
+					$result["TYPE"] = 'ENUM';
+					$result["MULTIELEMENT"] = 'Y';
+					break;
+
 				case 'CHECKBOX':
 					$result["TYPE"] = 'Y/N';
 					break;
@@ -851,19 +856,10 @@ class Automatic extends Base
 
 	protected function getMarginPrice($price)
 	{
-		$marginPrice = 0;
-
-		if(floatval($this->config["MAIN"]["MARGIN_VALUE"]) > 0)
-		{
-			if($this->config["MAIN"]["MARGIN_TYPE"] == "%")
-			{
-				$marginPrice = $price * floatval($this->config["MAIN"]["MARGIN_VALUE"]) / 100;
-			}
-			else
-			{
-				$marginPrice = floatval($this->config["MAIN"]["MARGIN_VALUE"]);
-			}
-		}
+		if($this->config["MAIN"]["MARGIN_TYPE"] == "%")
+			$marginPrice = $price * floatval($this->config["MAIN"]["MARGIN_VALUE"]) / 100;
+		else
+			$marginPrice = floatval($this->config["MAIN"]["MARGIN_VALUE"]);
 
 		return $marginPrice;
 	}

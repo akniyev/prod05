@@ -7,4 +7,6 @@ $MESS["BLG_NS_SHARE"] = "Your post was shared with more users";
 $MESS["BLG_NS_SHARE2USERS"] = "A post was shared with you";
 $MESS["BLG_NS_MENTION_COMMENT"] = "You were mentioned in comment";
 $MESS["BLG_NS_POST_MAIL"] = "Your message has been posted to Activity Stream.";
+$MESS["BLG_NS_BROADCAST_POST"] = "Send new message to all users";
+$MESS["BLG_NS_BROADCAST_COMMENT"] = "Add comment for message to all users";
 ?>

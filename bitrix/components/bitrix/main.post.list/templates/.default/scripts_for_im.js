@@ -280,7 +280,7 @@
 	};
 
 	SPC.prototype.check = function(id, data, tag, text) {
-		if (id[1] <= 0 || !window["UC"]["Informer"])
+		if (id[1] <= 0 || !window["UC"]["Informer"] || !BX.type.isNotEmptyString(text))
 			return;
 		var entityId = /(\d+)/g.exec(id[0]),
 			node = BX('record-' + id.join('-') + '-cover');

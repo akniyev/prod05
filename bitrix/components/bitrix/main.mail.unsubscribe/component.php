@@ -8,6 +8,8 @@ $messageDictionary = array(
 	'1001' => GetMessage('MAIN_MAIL_UNSUBSCRIBE_ERROR_NOT_SELECTED'),
 );
 
+$this->setFrameMode(false);
+
 try
 {
 	$arTag = \Bitrix\Main\Mail\Tracking::parseSignedTag(is_string($_REQUEST['tag']) ? $_REQUEST['tag'] : '');

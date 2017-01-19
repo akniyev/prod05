@@ -194,6 +194,14 @@ if ($saleModulePermissions >= "W" && isset($_REQUEST['unlock']) && 'Y' == $_REQU
 // include functions
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/sale/general/admin_tool.php");
 
+
+$callbackList = array(
+	'CALLBACK_FUNC',
+	'ORDER_CALLBACK_FUNC',
+	'CANCEL_CALLBACK_FUNC',
+	'PAY_CALLBACK_FUNC',
+	'PRODUCT_PROVIDER_CLASS'
+);
 /*****************************************************************************/
 /**************************** SAVE ORDER *************************************/
 /*****************************************************************************/
@@ -703,10 +711,59 @@ if (
 
 		foreach ($arOrderProductPrice as &$arItem)
 		{
+			if ($arItem['BASKET_ID'] > 0)
+			{
+				$basketIdList[] = $arItem['BASKET_ID'];
+			}
+			else
+			{
+				if (empty($arItem['BASKET_ID']) && empty($arItem['ID']))
+				{
+					foreach ($callbackList as $callbackName)
+					{
+						$arItem[$callbackName] = '';
+					}
+				}
+			}
 			$arItem["ID_TMP"] = $arItem["ID"];
 			unset($arItem["ID"]);
 		}
 		unset($arItem);
+
+		if (!empty($basketIdList))
+		{
+			$basketRes = Sale\Basket::getList(
+				array(
+					'filter' => array(
+						'=ID' => $basketIdList
+					),
+					'select' => array(
+						'ID',
+						'CALLBACK_FUNC',
+						'ORDER_CALLBACK_FUNC',
+						'CANCEL_CALLBACK_FUNC',
+						'PAY_CALLBACK_FUNC',
+						'PRODUCT_PROVIDER_CLASS'
+					)
+				)
+			);
+			while($data = $basketRes->fetch())
+			{
+				$basketList[$data['ID']] = $data;
+			}
+		
+			foreach ($arOrderProductPrice as &$itemData)
+			{
+				if (!empty($basketList[$itemData['BASKET_ID']]))
+				{
+					foreach ($callbackList as $callbackName)
+					{
+						$itemData[$callbackName] = $basketList[$itemData['BASKET_ID']][$callbackName];
+					}
+				}
+			}
+			unset($itemData);
+		}
 
 		$tmpOrderId = ($ID == 0) ? 0 : $ID;
 
@@ -3166,6 +3223,12 @@ if ((isset($_REQUEST["PRODUCT"]) AND is_array($_REQUEST["PRODUCT"]) AND !empty($
 
 		if ($arParent)
 			$arElementId[] = $arParent["ID"];
+
+		foreach ($callbackList as $callbackName)
+		{
+			$arBasketItem[$callbackName] = '';
+		}
+
 	}
 }
 elseif (isset($ID) AND $ID > 0)

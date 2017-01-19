@@ -19,6 +19,7 @@ $boolExportExec = false;
 $boolImportEdit = false;
 $boolImportExec = false;
 $discountView = false;
+$catalogSubscribeEnabled = false;
 
 $catalogInstalled = \Bitrix\Main\ModuleManager::isModuleInstalled('catalog');
 if ($catalogInstalled)
@@ -34,6 +35,7 @@ if ($catalogInstalled)
 	$boolImportEdit = $USER->CanDoOperation('catalog_import_edit');
 	$boolImportExec = $USER->CanDoOperation('catalog_import_exec');
 	$discountView = $USER->CanDoOperation('catalog_discount');
+	$catalogSubscribeEnabled = class_exists('\Bitrix\Catalog\SubscribeTable');
 }
 
 global $adminMenu;
@@ -209,6 +211,16 @@ if ($APPLICATION->GetGroupRight("sale")!="D")
 			"title" => GetMessage("SM_CCARDS"),
 			"url" => "sale_ccards_admin.php?lang=".LANGUAGE_ID,
 			"more_url" => array("sale_ccards_edit.php"),
+		);
+	}
+
+	if($bViewAll && $catalogSubscribeEnabled)
+	{
+		$arMenu["items"][] = array(
+			"text" => GetMessage("SALE_MENU_SUBSCRIPTION_PRODUCT"),
+			"title" => GetMessage("SALE_MENU_SUBSCRIPTION_PRODUCT"),
+			"url" => "cat_subscription_list.php?lang=".LANGUAGE_ID,
+			"more_url" => array("cat_subscription_list.php"),
 		);
 	}
 
@@ -442,7 +454,7 @@ if ($APPLICATION->GetGroupRight("sale") == "W" ||
 				"text" => GetMessage("SALE_PAY_SYS"),
 				"title" => GetMessage("SALE_PAY_SYS_DESCR"),
 				"url" => "sale_pay_system.php?lang=".LANGUAGE_ID,
-				"more_url" => array("sale_pay_system_edit.php"),
+				"more_url" => array("sale_pay_system_edit.php", "sale_yandex_return_settings.php"),
 			);
 		
 	}

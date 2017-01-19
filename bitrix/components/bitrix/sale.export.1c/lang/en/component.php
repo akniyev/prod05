@@ -126,4 +126,11 @@ $MESS["CC_BSC1_DI_NAME"] = "Name";
 $MESS["CP_BCI1_CHANGE_STATUS_FROM_1C"] = "Use 1C data to set order status ";
 $MESS["CC_BSC1_1C_STATUS_ID"] = "Order status ID";
 $MESS["CC_BSC1_SALE_ALLOW_DEDUCTION_ON_DELIVERY_ERROR"] = "Please got to eShop module and turn process automation off - Approve fulfillment upon approval of delivery";
+$MESS["CC_BSC1_PROP_BASKET"] = "ShoppingCartProperty";
+$MESS["CC_BSC1_PAYMENT_ERROR_9"] = "Document ID #XML_1C_DOCUMENT_ID#. Error deleting item. Payment for order ##ORDER_ID# was not found.";
+$MESS["CC_BSC1_PAYMENT_ERROR_10"] = "Document ID #XML_1C_DOCUMENT_ID#. Payment for order ##ORDER_ID# cannot be created or changed because underlying document is in final status.";
+$MESS["CC_BSC1_SHIPMENT_ERROR_15"] = "Document ID: #XML_1C_DOCUMENT_ID#. Error loading order ##ORDER_ID#";
+$MESS["CC_BSC1_SHIPMENT_ERROR_16"] = "Document ID #XML_1C_DOCUMENT_ID#. Error deleting item. Shipment for order ##ORDER_ID# was not found.";
+$MESS["CC_BSC1_SHIPMENT_ERROR_17"] = "Document ID #XML_1C_DOCUMENT_ID#: shipment was not created. The new shipment was marked for deletion.";
+$MESS["CC_BSC1_SHIPMENT_ERROR_18"] = "Document ID #XML_1C_DOCUMENT_ID#. Shipment for order ##ORDER_ID# cannot be created or changed because underlying document is in final status.";
 ?>

@@ -14,10 +14,26 @@ $compositeStub = (isset($arResult['COMPOSITE_STUB']) && $arResult['COMPOSITE_STU
 			<a href="<?=$arParams['PATH_TO_PROFILE']?>"><?=htmlspecialcharsbx($name)?></a>
 			&nbsp;
 			<a href="?logout=yes"><?=GetMessage('TSB1_LOGOUT')?></a>
-		<?else:?>
-			<a href="<?=$arParams['PATH_TO_REGISTER']?>?login=yes"><?=GetMessage('TSB1_LOGIN')?></a>
+		<?else:
+			$arParamsToDelete = array(
+				"login",
+				"login_form",
+				"logout",
+				"register",
+				"forgot_password",
+				"change_password",
+				"confirm_registration",
+				"confirm_code",
+				"confirm_user_id",
+				"logout_butt",
+				"auth_service_id",
+			);
+
+			$currentUrl = urlencode($APPLICATION->GetCurPageParam("", $arParamsToDelete));
+			?>
+			<a href="<?=$arParams['PATH_TO_REGISTER']?>?login=yes&backurl=<?=$currentUrl; ?>"><?=GetMessage('TSB1_LOGIN')?></a>
 			&nbsp;
-			<a href="<?=$arParams['PATH_TO_REGISTER']?>?register=yes"><?=GetMessage('TSB1_REGISTER')?></a>
+			<a href="<?=$arParams['PATH_TO_REGISTER']?>?register=yes&backurl=<?=$currentUrl; ?>"><?=GetMessage('TSB1_REGISTER')?></a>
 		<?endif?>
 	</div>
 <?endif?>

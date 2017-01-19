@@ -189,7 +189,7 @@
 	 * @caller {BX.Uploader}
 	 * You should work with params["fields"] in case you want to change visual part
 	 */
-
+var mobileNames = {};
 	BX.UploaderFile = function (file, params, limits, caller)
 	{
 		this.dialogName = (this.dialogName ? this.dialogName : "BX.UploaderFile");
@@ -215,6 +215,16 @@
 		this.preview = '<span id="' + this.id + 'Canvas" class="bx-bxu-canvas"></span>';
 		this.nameWithoutExt = (this.name.lastIndexOf('.') > 0 ? this.name.substr(0, this.name.lastIndexOf('.')) : this.name);
 		this.ext = this.name.substr(this.nameWithoutExt.length + 1);
+
+		if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && this.nameWithoutExt == "image")
+		{
+			var nameWithoutExt = 'mobile_' + BX.date.format("Ymd_His");
+			mobileNames[nameWithoutExt] = (mobileNames[nameWithoutExt] || 0);
+			this.nameWithoutExt = nameWithoutExt + (mobileNames[nameWithoutExt] > 0 ? ("_" + mobileNames[nameWithoutExt]) : "");
+			this.name = this.nameWithoutExt + (BX.type.isNotEmptyString(this.ext) ? ("." + this.ext) : "");
+			mobileNames[nameWithoutExt]++;
+		}
+
 		this.size = '';
 		if (file.size)
 			this.size = BX.UploaderUtils.getFormattedSize(file.size, 0);

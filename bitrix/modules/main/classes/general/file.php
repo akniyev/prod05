@@ -126,7 +126,7 @@ class CAllFile
 		return "";
 	}
 
-	public static function SaveFile($arFile, $strSavePath, $bForceMD5=false, $bSkipExt=false)
+	public static function SaveFile($arFile, $strSavePath, $bForceMD5=false, $bSkipExt=false, $dirAdd='')
 	{
 		$strFileName = GetFileName($arFile["name"]);	/* filename.gif */
 
@@ -185,7 +185,7 @@ class CAllFile
 		$bExternalStorage = false;
 		foreach(GetModuleEvents("main", "OnFileSave", true) as $arEvent)
 		{
-			if(ExecuteModuleEventEx($arEvent, array(&$arFile, $strFileName, $strSavePath, $bForceMD5, $bSkipExt)))
+			if(ExecuteModuleEventEx($arEvent, array(&$arFile, $strFileName, $strSavePath, $bForceMD5, $bSkipExt, $dirAdd)))
 			{
 				$bExternalStorage = true;
 				break;
@@ -198,9 +198,9 @@ class CAllFile
 			$io = CBXVirtualIo::GetInstance();
 			if($bForceMD5 != true && COption::GetOptionString("main", "save_original_file_name", "N")=="Y")
 			{
-				$dir_add = '';
+				$dir_add = $dirAdd;
 				$i=0;
-				while(true)
+				while(true && empty($dir_add))
 				{
 					$dir_add = substr(md5(uniqid("", true)), 0, 3);
 					if(!$io->FileExists($_SERVER["DOCUMENT_ROOT"]."/".$upload_dir."/".$strSavePath."/".$dir_add."/".$strFileName))
@@ -294,7 +294,7 @@ class CAllFile
 
 				if($imgArray[2] == IMAGETYPE_JPEG)
 				{
-					$exifData = CFile::ExtractImageExif($io->GetPhysicalName($strDbFileNameX));
+					$exifData = CFile::ExtractImageExif($strPhysicalFileNameX);
 					if ($exifData  && isset($exifData['Orientation']))
 					{
 						//swap width and height
@@ -310,7 +310,10 @@ class CAllFile
 							$jpgQuality = intval(COption::GetOptionString('main', 'image_resize_quality', '95'));
 							if($jpgQuality <= 0 || $jpgQuality > 100)
 								$jpgQuality = 95;
-							imagejpeg($properlyOriented, $io->GetPhysicalName($strDbFileNameX), $jpgQuality);
+
+							imagejpeg($properlyOriented, $strPhysicalFileNameX, $jpgQuality);
+							clearstatcache(true, $strPhysicalFileNameX);
+							$arFile['size'] = filesize($strPhysicalFileNameX);
 						}
 					}
 				}
@@ -325,7 +328,7 @@ class CAllFile
 		if($arFile["WIDTH"] == 0 || $arFile["HEIGHT"] == 0)
 		{
 			//mock image because we got false from CFile::GetImageSize()
-			if(strpos($arFile["type"], "image/") === 0)
+			if(strpos($arFile["type"], "image/") === 0 && $arFile["type"] <> 'image/svg+xml')
 			{
 				$arFile["type"] = "application/octet-stream";
 			}
@@ -852,8 +855,12 @@ class CAllFile
 		if($ext <> '')
 		{
 			if(in_array($ext, explode(",", CFile::GetImageExtensions())))
+			{
 				if($mime_type === false || strpos($mime_type, "image/") === 0)
+				{
 					return true;
+				}
+			}
 		}
 		return false;
 	}
@@ -2092,7 +2099,7 @@ function ImgShw(ID, width, height, alt)
 		if (class_exists("imagick") && function_exists('memory_get_usage'))
 		{
 			//When memory limit reached we'll try to use ImageMagic
-			$memoryNeeded = $arSourceFileSizeTmp[0] * $arSourceFileSizeTmp[1] * 4 * 2;
+			$memoryNeeded = $arSourceFileSizeTmp[0] * $arSourceFileSizeTmp[1] * 4 * 3;
 			$memoryLimit = CUtil::Unformat(ini_get('memory_limit'));
 			if ((memory_get_usage() + $memoryNeeded) > $memoryLimit)
 			{
@@ -2156,13 +2163,18 @@ function ImgShw(ID, width, height, alt)
 
 					if ($orientation > 1)
 					{
-						CFile::ImageHandleOrientation($orientation, $sourceImage);
+						$properlyOriented = CFile::ImageHandleOrientation($orientation, $sourceImage);
 
 						if($jpgQuality === false)
 							$jpgQuality = intval(COption::GetOptionString('main', 'image_resize_quality', '95'));
 						if($jpgQuality <= 0 || $jpgQuality > 100)
 							$jpgQuality = 95;
-						imagejpeg($sourceImage, $io->GetPhysicalName($destinationFile), $jpgQuality);
+
+						if ($properlyOriented)
+						{
+							imagejpeg($properlyOriented, $io->GetPhysicalName($destinationFile), $jpgQuality);
+							$sourceImage = $properlyOriented;
+						}
 					}
 					$bHasAlpha = false;
 					break;
@@ -3199,6 +3211,20 @@ function ImgShw(ID, width, height, alt)
 				foreach ($arr as $k => $val)
 					if (is_string($val) && $val != '')
 						$arr[strtolower($k)] = $APPLICATION->ConvertCharset($val, ini_get('exif.encode_unicode'), SITE_CHARSET);
+			}
+		}
+		elseif (class_exists("imagick"))
+		{
+			$im = new Imagick();
+			try
+			{
+				$im->readImage($src);
+				$arr['Orientation'] = $im->getImageOrientation();
+				$im->destroy();
+			}
+			catch (ImagickException $e)
+			{
+				$new_image = "";
 			}
 		}
 		return $arr;

@@ -3,6 +3,7 @@ namespace Bitrix\Sale\Delivery\Restrictions;
 
 use Bitrix\Sale\Delivery\Restrictions\Base;
 use \Bitrix\Main\Localization\Loc;
+use Bitrix\Sale\Internals\CollectableEntity;
 
 Loc::loadMessages(__FILE__);
 
@@ -35,12 +36,12 @@ class BySite extends Base
 		return $result;
 	}
 
-	protected static function extractParams(\Bitrix\Sale\Shipment $shipment)
+	protected static function extractParams(CollectableEntity $entity)
 	{
-		return $shipment->getCollection()->getOrder()->getSiteId();
+		return $entity->getCollection()->getOrder()->getSiteId();
 	}
 
-	public static function getParamsStructure()
+	public static function getParamsStructure($entityId = 0)
 	{
 		$siteList = array();
 

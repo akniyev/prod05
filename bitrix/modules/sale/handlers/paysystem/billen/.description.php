@@ -16,7 +16,7 @@ $data = array(
 			'GROUP' => 'PAYMENT',
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_EN_DATE_DESC'),
 			'DEFAULT' => array(
-				'PROVIDER_VALUE' => 'DATE_BILL',
+				'PROVIDER_VALUE' => 'DATE_BILL_DATE',
 				'PROVIDER_KEY' => 'PAYMENT'
 			)
 		),
@@ -27,7 +27,7 @@ $data = array(
 			'GROUP' => 'PAYMENT',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => 'DATE_PAY_BEFORE',
-				'PROVIDER_KEY' => 'PAYMENT'
+				'PROVIDER_KEY' => 'ORDER'
 			)
 		),
 		'SELLER_COMPANY_NAME' => array(
@@ -188,7 +188,7 @@ $data = array(
 		),
 		'BILLEN_COMMENT1' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_COMMENT1'),
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'FOOTER_SETTINGS',
 			'SORT' => 2000,
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => Loc::getMessage('SALE_HPS_BILL_EN_COMMENT1_VALUE'),
@@ -197,14 +197,14 @@ $data = array(
 		),
 		'BILLEN_COMMENT2' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_COMMENT2'),
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'FOOTER_SETTINGS',
 			'SORT' => 2100,
 		),
 		'BILLEN_PATH_TO_LOGO' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_LOGO'),
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_EN_LOGO_DESC'),
 			'SORT' => 2200,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'INPUT' => array(
 				'TYPE' => 'FILE'
 			)
@@ -212,7 +212,7 @@ $data = array(
 		'BILLEN_LOGO_DPI' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_LOGO_DPI'),
 			'SORT' => 2300,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'TYPE' => 'SELECT',
 			'INPUT' => array(
 				'TYPE' => 'ENUM',
@@ -228,7 +228,7 @@ $data = array(
 		'BILLEN_PATH_TO_STAMP' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_PRINT'),
 			'SORT' => 2400,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'SELLER_COMPANY',
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_EN_PRINT_DESC'),
 			'INPUT' => array(
 				'TYPE' => 'FILE'
@@ -255,7 +255,7 @@ $data = array(
 		'BILLEN_BACKGROUND' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_BACKGROUND'),
 			'SORT' => 2700,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DESCRIPTION' => Loc::getMessage('SALE_HPS_BILL_EN_BACKGROUND_DESC'),
 			'INPUT' => array(
 				'TYPE' => 'FILE'
@@ -265,7 +265,7 @@ $data = array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_BACKGROUND_STYLE'),
 			'SORT' => 2800,
 			'TYPE' => 'SELECT',
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'INPUT' => array(
 				'TYPE' => 'ENUM',
 				'OPTIONS' => array(
@@ -277,7 +277,7 @@ $data = array(
 		'BILLEN_MARGIN_TOP' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_MARGIN_TOP'),
 			'SORT' => 2900,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '15',
 				'PROVIDER_KEY' => 'VALUE'
@@ -286,7 +286,7 @@ $data = array(
 		'BILLEN_MARGIN_RIGHT' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_MARGIN_RIGHT'),
 			'SORT' => 3000,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '15',
 				'PROVIDER_KEY' => 'VALUE'
@@ -295,7 +295,7 @@ $data = array(
 		'BILLEN_MARGIN_BOTTOM' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_MARGIN_BOTTOM'),
 			'SORT' => 3100,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '15',
 				'PROVIDER_KEY' => 'VALUE'
@@ -304,11 +304,191 @@ $data = array(
 		'BILLEN_MARGIN_LEFT' => array(
 			'NAME' => Loc::getMessage('SALE_HPS_BILL_EN_MARGIN_LEFT'),
 			'SORT' => 3200,
-			'GROUP' => 'CONNECT_SETTINGS_BILLEN',
+			'GROUP' => 'VISUAL_SETTINGS',
 			'DEFAULT' => array(
 				'PROVIDER_VALUE' => '20',
 				'PROVIDER_KEY' => 'VALUE'
 			)
-		)
+		),
+		"BILLEN_PAYER_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_PAYER_SHOW"),
+			'SORT' => 3300,
+			'GROUP' => 'BUYER_PERSON_COMPANY',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_TOTAL_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_TOTAL_SHOW"),
+			'SORT' => 3400,
+			'GROUP' => 'FOOTER_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_NUMBER_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_NUMBER_SHOW"),
+			'SORT' => 3500,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_NUMBER_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_NUMBER_TITLE"),
+			'SORT' => 3600,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_NUMBER_VALUE"),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLEN_COLUMN_NAME_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_NAME_SHOW"),
+			'SORT' => 3700,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_NAME_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_NAME_TITLE"),
+			'SORT' => 3800,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_NAME_VALUE"),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLEN_COLUMN_QUANTITY_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_QUANTITY_SHOW"),
+			'SORT' => 3900,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_QUANTITY_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_QUANTITY_TITLE"),
+			'SORT' => 4000,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_QUANTITY_VALUE"),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLEN_COLUMN_MEASURE_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_MEASURE_SHOW"),
+			'SORT' => 4100,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_MEASURE_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_MEASURE_SHOW"),
+			'SORT' => 4200,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage('SALE_HPS_BILL_EN_COLUMN_MEASURE_VALUE'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLEN_COLUMN_PRICE_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_PRICE_SHOW"),
+			'SORT' => 4300,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_PRICE_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_PRICE_TITLE"),
+			'SORT' => 4400,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_PRICE_VALUE"),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLEN_COLUMN_SUM_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_SUM_SHOW"),
+			'SORT' => 4500,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_SUM_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_SUM_TITLE"),
+			'SORT' => 4600,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_SUM_VALUE"),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLEN_COLUMN_VAT_RATE_SHOW" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_VAT_RATE_SHOW"),
+			'SORT' => 4700,
+			'GROUP' => 'COLUMN_SETTINGS',
+			"INPUT" => array(
+				'TYPE' => 'Y/N'
+			),
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => "Y",
+				"PROVIDER_KEY" => "INPUT"
+			)
+		),
+		"BILLEN_COLUMN_VAT_RATE_TITLE" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_COLUMN_VAT_RATE_TITLE"),
+			'SORT' => 4800,
+			'GROUP' => 'COLUMN_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage('SALE_HPS_BILL_EN_COLUMN_VAT_RATE_VALUE'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
+		"BILLEN_HEADER" => array(
+			"NAME" => Loc::getMessage("SALE_HPS_BILL_EN_HEADER"),
+			'SORT' => 4900,
+			'GROUP' => 'HEADER_SETTINGS',
+			'DEFAULT' => array(
+				"PROVIDER_VALUE" => Loc::getMessage('SALE_HPS_BILL_EN_HEADER_VALUE'),
+				"PROVIDER_KEY" => "VALUE"
+			)
+		),
 	)
 );

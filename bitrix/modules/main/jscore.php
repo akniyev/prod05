@@ -158,6 +158,11 @@ $arJSCoreConfig = array(
 		'lang' => $pathLang.'/js_core_fileinput.php',
 		'rel' => array("ajax", "window", "popup", "uploader", "canvas", "dd")
 	),
+	'clipboard' => array(
+		'js' => $pathJS.'/core_clipboard.js',
+		'lang' => $pathLang.'/js_core_clipboard.php',
+		'rel' => array("popup")
+	),
 
 	/* external libs */
 
@@ -227,6 +232,10 @@ $arJSCoreConfig = array(
 		'js' => '/bitrix/js/main/helper/helper.js',
 		'css' => '/bitrix/js/main/helper/css/helper.css',
 	),
+	'pin' => array(
+		'js' => '/bitrix/js/main/pin/pin.js',
+		'css' => '/bitrix/js/main/pin/css/pin.css'
+	)
 );
 
 foreach ($arJSCoreConfig as $ext => $arExt)

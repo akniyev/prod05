@@ -17,6 +17,11 @@ if (!empty($arParams["RATING_TYPE_ID"]))
 }
 
 CUtil::InitJSCore(array("date", "fx", "popup", "viewer", "tooltip"));
+if (CModule::IncludeModule('socialnetwork'))
+{
+	CUtil::InitJSCore(array("comment_aux"));
+}
+
 $tooltip_ajax_page = (
 	isset($arParams["AUTHOR_URL"])
 	&& $arParams["AUTHOR_URL"] != ""
@@ -62,6 +67,7 @@ ob_start();
 					?>bx-mpl-edit-url="#EDIT_URL#" bx-mpl-edit-show="#EDIT_SHOW#" <?
 					?>bx-mpl-moderate-url="#MODERATE_URL#" bx-mpl-moderate-show="#MODERATE_SHOW#" bx-mpl-moderate-approved="#APPROVED#" <?
 					?>bx-mpl-delete-url="#DELETE_URL###ID#" bx-mpl-delete-show="#DELETE_SHOW#" <?
+					?>bx-mpl-createtask-show="#CREATETASK_SHOW#" <?
 					?>onclick="fcShowActions('#ENTITY_XML_ID#', '#ID#', this); return BX.PreventDefault(this);" <?
 					?>class="feed-post-more-link feed-post-more-link-#VIEW_SHOW#-#EDIT_SHOW#-#MODERATE_SHOW#-#DELETE_SHOW#"><?
 					?><span class="feed-post-more-text"><?=GetMessage("BLOG_C_BUTTON_MORE")?></span><?
@@ -163,7 +169,8 @@ BX.ready(function(){
 			rights : {
 				MODERATE : '<?=$arParams["RIGHTS"]["MODERATE"]?>',
 				EDIT : '<?=$arParams["RIGHTS"]["EDIT"]?>',
-				DELETE : '<?=$arParams["RIGHTS"]["DELETE"]?>'
+				DELETE : '<?=$arParams["RIGHTS"]["DELETE"]?>',
+				CREATETASK : '<?=$arParams["RIGHTS"]["CREATETASK"]?>'
 			},
 			sign : '<?=$arParams["SIGN"]?>'
 		},

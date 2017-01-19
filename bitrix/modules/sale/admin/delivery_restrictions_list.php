@@ -59,6 +59,12 @@ namespace Bitrix\Sale\Delivery\AdminPage\DeliveryRestrictions
 
 	while ($record = $dbRecords->Fetch())
 	{
+		if(empty($record['CLASS_NAME']) || !class_exists($record['CLASS_NAME']))
+			continue;
+
+		if(!is_subclass_of($record['CLASS_NAME'], 'Bitrix\Sale\Delivery\Restrictions\Base'))
+			continue;
+
 		if(strlen($record['CLASS_NAME']) > 0)
 		{
 			$restrictionClassNamesUsed[] = $record['CLASS_NAME'];

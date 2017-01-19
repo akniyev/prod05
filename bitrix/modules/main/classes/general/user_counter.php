@@ -463,15 +463,15 @@ class CAllUserCounterPage
 {
 	protected static function setUserIdOption($value = false)
 	{
-		\Bitrix\Main\Config\Option::set('main', 'user_counter_pull_page_start', $value);
+//		\Bitrix\Main\Config\Option::set('main', 'user_counter_pull_page_start', $value);
 	}
 
 	protected static function getUserIdOption()
 	{
-		return \Bitrix\Main\Config\Option::get('main', 'user_counter_pull_page_start', false);
+//		return \Bitrix\Main\Config\Option::get('main', 'user_counter_pull_page_start', false);
 	}
 
-	private static function getPageSizeOption($defaultValue = 100)
+	public static function getPageSizeOption($defaultValue = 100)
 	{
 		$value = intval(\Bitrix\Main\Config\Option::get('main', 'user_counter_pull_page_size', $defaultValue));
 		if ($value <= 0)

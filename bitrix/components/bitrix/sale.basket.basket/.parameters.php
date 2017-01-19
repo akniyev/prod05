@@ -181,6 +181,14 @@ $arComponentParameters = Array(
 			"ADDITIONAL_VALUES"=>"N",
 			"PARENT" => "ADDITIONAL_SETTINGS",
 		),
+		"CORRECT_RATIO" => array(
+			"NAME" => GetMessage('SBB_CORRECT_RATIO'),
+			"TYPE" => "CHECKBOX",
+			"MULTIPLE" => "N",
+			"DEFAULT" => "N",
+			"ADDITIONAL_VALUES"=>"N",
+			"PARENT" => "ADDITIONAL_SETTINGS",
+		),
 		"AUTO_CALCULATION" => array(
 			"NAME" => GetMessage('SBB_AUTO_CALCULATION'),
 			"TYPE" => "CHECKBOX",

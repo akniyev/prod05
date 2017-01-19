@@ -208,7 +208,12 @@ class CAllIBlockProperty
 		$seq = new CIBlockSequence($arProperty["IBLOCK_ID"], $ID);
 		$seq->Drop();
 
-		return $DB->Query("DELETE FROM b_iblock_property WHERE ID=".$ID, true);
+		$res = $DB->Query("DELETE FROM b_iblock_property WHERE ID=".$ID, true);
+
+		foreach (GetModuleEvents("iblock", "OnAfterIBlockPropertyDelete", true) as $arEvent)
+			ExecuteModuleEventEx($arEvent, array($arProperty));
+
+		return $res;
 	}
 	///////////////////////////////////////////////////////////////////
 	// Update
@@ -787,7 +792,7 @@ class CAllIBlockProperty
 		$db_res = $this->GetPropertyEnum($ID);
 		while($res = $db_res->Fetch())
 		{
-			$ar_XML_ID[$res["XML_ID"]] = $res["ID"];
+			$ar_XML_ID[rtrim($res["XML_ID"], " ")] = $res["ID"];
 		}
 
 		$sqlWhere = "";
@@ -828,7 +833,7 @@ class CAllIBlockProperty
 
 			if(strlen($VAL)<=0)
 			{
-				unset($ar_XML_ID[$res["XML_ID"]]);
+				unset($ar_XML_ID[rtrim($res["XML_ID"], " ")]);
 
 				$strSql = "
 					DELETE FROM b_iblock_property_enum
@@ -854,14 +859,14 @@ class CAllIBlockProperty
 						$SORT = 0;
 
 					if(array_key_exists("XML_ID", $VALUE) && strlen($VALUE["XML_ID"]))
-						$XML_ID = substr($VALUE["XML_ID"], 0, 200);
+						$XML_ID = substr(rtrim($VALUE["XML_ID"], " "), 0, 200);
 					elseif(array_key_exists("EXTERNAL_ID", $VALUE) && strlen($VALUE["EXTERNAL_ID"]))
-						$XML_ID = substr($VALUE["EXTERNAL_ID"], 0, 200);
+						$XML_ID = substr(rtrim($VALUE["EXTERNAL_ID"], " "), 0, 200);
 				}
 
 				if($XML_ID)
 				{
-					unset($ar_XML_ID[$res["XML_ID"]]);
+					unset($ar_XML_ID[rtrim($res["XML_ID"], " ")]);
 					if(array_key_exists($XML_ID, $ar_XML_ID))
 						$XML_ID = md5(uniqid(""));
 					$ar_XML_ID[$XML_ID] = $res["ID"];
@@ -901,9 +906,9 @@ class CAllIBlockProperty
 						$SORT = 0;
 
 					if(array_key_exists("XML_ID", $VALUE) && strlen($VALUE["XML_ID"]))
-						$XML_ID = substr($VALUE["XML_ID"], 0, 200);
+						$XML_ID = substr(rtrim($VALUE["XML_ID"], " "), 0, 200);
 					elseif(array_key_exists("EXTERNAL_ID", $VALUE) && strlen($VALUE["EXTERNAL_ID"]))
-						$XML_ID = substr($VALUE["EXTERNAL_ID"], 0, 200);
+						$XML_ID = substr(rtrim($VALUE["EXTERNAL_ID"], " "), 0, 200);
 				}
 
 				if($XML_ID)
@@ -1117,6 +1122,7 @@ class CAllIBlockProperty
 			"GetPropertyFieldHtmlMulty" => array('CIBlockPropertyElementAutoComplete','GetPropertyFieldHtmlMulty'),
 			"GetAdminListViewHTML" => array("CIBlockPropertyElementAutoComplete","GetAdminListViewHTML"),
 			"GetPublicViewHTML" => array("CIBlockPropertyElementAutoComplete", "GetPublicViewHTML"),
+			"GetPublicEditHTML" => array("CIBlockPropertyElementAutoComplete", "GetPublicEditHTML"),
 			"GetAdminFilterHTML" => array('CIBlockPropertyElementAutoComplete','GetAdminFilterHTML'),
 			"GetSettingsHTML" => array('CIBlockPropertyElementAutoComplete','GetSettingsHTML'),
 			"PrepareSettings" => array('CIBlockPropertyElementAutoComplete','PrepareSettings'),
@@ -1133,6 +1139,7 @@ class CAllIBlockProperty
 			"GetPropertyFieldHtml" => array("CIBlockPropertySKU", "GetPropertyFieldHtml"),
 			"GetPropertyFieldHtmlMulty" => array("CIBlockPropertySKU", "GetPropertyFieldHtml"),
 			"GetPublicViewHTML" => array("CIBlockPropertySKU", "GetPublicViewHTML"),
+			"GetPublicEditHTML" => array("CIBlockPropertySKU", "GetPublicEditHTML"),
 			"GetAdminListViewHTML" => array("CIBlockPropertySKU","GetAdminListViewHTML"),
 			"GetAdminFilterHTML" => array('CIBlockPropertySKU','GetAdminFilterHTML'),
 			"GetSettingsHTML" => array('CIBlockPropertySKU','GetSettingsHTML'),
@@ -1151,6 +1158,7 @@ class CAllIBlockProperty
 			"GetPropertyFieldHtmlMulty" => array('CIBlockPropertySectionAutoComplete','GetPropertyFieldHtmlMulty'),
 			"GetAdminListViewHTML" => array("CIBlockPropertySectionAutoComplete","GetAdminListViewHTML"),
 			"GetPublicViewHTML" => array("CIBlockPropertySectionAutoComplete", "GetPublicViewHTML"),
+			"GetPublicEditHTML" => array("CIBlockPropertySectionAutoComplete", "GetPublicEditHTML"),
 			"GetAdminFilterHTML" => array('CIBlockPropertySectionAutoComplete','GetAdminFilterHTML'),
 			"GetSettingsHTML" => array('CIBlockPropertySectionAutoComplete','GetSettingsHTML'),
 			"PrepareSettings" => array('CIBlockPropertySectionAutoComplete','PrepareSettings'),

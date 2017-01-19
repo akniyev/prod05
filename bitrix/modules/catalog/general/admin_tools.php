@@ -670,6 +670,11 @@ class CCatalogAdminToolsAll
 	}
 }
 
+class CCatalogAdminTools extends CCatalogAdminToolsAll
+{
+
+}
+
 class CCatalogAdminProductSetEdit
 {
 	const NEW_ITEM_COUNT = 3;

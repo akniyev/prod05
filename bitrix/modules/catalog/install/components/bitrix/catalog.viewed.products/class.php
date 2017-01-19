@@ -37,7 +37,7 @@ class CCatalogViewedProductsComponent extends CBitrixComponent
 	 * Used in CIBlockElement::getList()
 	 * @var string[]
 	 */
-	private $filter = array();
+	protected $filter = array();
 
 	/**
 	 * Select fields for items.
@@ -119,15 +119,14 @@ class CCatalogViewedProductsComponent extends CBitrixComponent
 
 	protected function getUserId()
 	{
-		if (!empty($this->arParams['USER_ID']))
-		{
+		if (isset($this->arParams['USER_ID']))
 			return $this->arParams['USER_ID'];
-		}
-		else
-		{
-			global $USER;
-			return $USER->getId();
-		}
+
+		global $USER;
+		if (isset($USER) && $USER instanceof CUser)
+			return (int)$USER->getId();
+
+		return 0;
 	}
 
 	/**
@@ -586,6 +585,13 @@ class CCatalogViewedProductsComponent extends CBitrixComponent
 		$params['SECTION_ELEMENT_ID'] = (isset($params['SECTION_ELEMENT_ID']) ? (int)$params['SECTION_ELEMENT_ID'] : 0);
 		$params['SECTION_ELEMENT_CODE'] = (isset($params['SECTION_ELEMENT_CODE']) ? trim($params['SECTION_ELEMENT_CODE']) : '');
 
+		if (isset($params['USER_ID']))
+		{
+			$params['USER_ID'] = (int)$params['USER_ID'];
+			if ($params['USER_ID'] < 0)
+				$params['USER_ID'] = 0;
+		}
+
 		return $params;
 	}
 
@@ -689,7 +695,7 @@ class CCatalogViewedProductsComponent extends CBitrixComponent
 			if ($this->arParams['SECTION_ELEMENT_ID'] > 0)
 				$filter['!=ELEMENT_ID'] = $this->arParams['SECTION_ELEMENT_ID'];
 
-			$viewedIterator = Catalog\CatalogViewedProductTable::GetList(array(
+			$viewedIterator = Catalog\CatalogViewedProductTable::getList(array(
 				'select' => array('PRODUCT_ID', 'ELEMENT_ID'),
 				'filter' => $filter,
 				'order' => array('DATE_VISIT' => 'DESC'),
@@ -811,7 +817,7 @@ class CCatalogViewedProductsComponent extends CBitrixComponent
 	 *
 	 * @return array
 	 */
-	protected function getAdditionalRefereneces()
+	protected function getAdditionalReferences()
 	{
 		return array();
 	}
@@ -882,7 +888,7 @@ class CCatalogViewedProductsComponent extends CBitrixComponent
 			// Default Measure
 			$cached['DEFAULT_MEASURE'] = CCatalogMeasure::getDefaultMeasure(true, true);
 
-			$additionalCache = $this->getAdditionalRefereneces();
+			$additionalCache = $this->getAdditionalReferences();
 			if (!empty($additionalCache) && is_array($additionalCache))
 			{
 				foreach ($additionalCache as $cacheKey => $cacheData)

@@ -12,7 +12,8 @@ global $arBXRuntimeTemplateEngines;
 $arBXAvailableTemplateEngines = array(
 	"php" => array(
 		"templateExt" => array("php"),
-		"function" => ""
+		"function" => "",
+		"sort" => 100
 	)
 );
 
@@ -39,7 +40,7 @@ class CBitrixComponentTemplate
 	public $__bInited = false;
 	private $__view = array();
 	private $frames = array();
-	private $frameMode = false;
+	private $frameMode = null;
 
 	private $languageId = false;
 	private $externalCss = array();
@@ -275,14 +276,20 @@ class CBitrixComponentTemplate
 			{
 				foreach($arData["frames"] as $frameState)
 				{
-					\Bitrix\Main\Page\FrameHelper::applyCachedData($frameState);
+					\Bitrix\Main\Page\FrameStatic::applyCachedData($frameState);
 				}
 			}
 
-			if (array_key_exists("frameMode", $arData) && $arData["frameMode"] === false)
+			if (array_key_exists("frameMode", $arData))
 			{
-				$context = isset($arData["frameModeCtx"]) ? "(from component cache) ".$arData["frameModeCtx"] : "";
-				\Bitrix\Main\Data\StaticHtmlCache::applyComponentFrameMode($context);
+				$this->setFrameMode($arData["frameMode"]);
+
+				if ($this->getFrameMode() === false)
+				{
+					$context = isset($arData["frameModeCtx"]) ? "(from component cache) ".$arData["frameModeCtx"] : "";
+					\Bitrix\Main\Data\StaticHtmlCache::applyComponentFrameMode($context);
+				}
+
 			}
 
 			if (isset($arData["externalCss"]))
@@ -333,6 +340,8 @@ class CBitrixComponentTemplate
 		{
 			$arBXAvailableTemplateEngines = $arBXAvailableTemplateEngines + $arTemplateEngines;
 		}
+
+		\Bitrix\Main\Type\Collection::sortByColumn($arBXAvailableTemplateEngines, "sort", "", 200);
 
 		$arBXRuntimeTemplateEngines = array();
 
@@ -438,7 +447,7 @@ class CBitrixComponentTemplate
 			$this->InitTemplateEngines();
 
 		$filePath = $_SERVER["DOCUMENT_ROOT"].$path."/".$fileName.".php";
-		if (file_exists($filePath) && is_file($filePath))
+		if (count($arBXRuntimeTemplateEngines) === 1 && file_exists($filePath) && is_file($filePath))
 		{
 			return $fileName.".php";
 		}
@@ -446,9 +455,6 @@ class CBitrixComponentTemplate
 		{
 			foreach ($arBXRuntimeTemplateEngines as $templateExt => $engineID)
 			{
-				if ($templateExt == "php")
-					continue;
-
 				$filePath = $_SERVER["DOCUMENT_ROOT"].$path."/".$fileName.".".$templateExt;
 				if (file_exists($filePath) && is_file($filePath))
 				{
@@ -714,7 +720,7 @@ class CBitrixComponentTemplate
 				$frame->end();
 		}
 
-		if (!$this->frameMode)
+		if (!$this->getFrameMode())
 		{
 			\Bitrix\Main\Data\StaticHtmlCache::applyComponentFrameMode($this->__file);
 		}
@@ -1090,7 +1096,41 @@ class CBitrixComponentTemplate
 	 */
 	public function setFrameMode($mode)
 	{
-		$this->frameMode = ($mode === true);
+		if (in_array($mode, array(true, false, null), true))
+		{
+			$this->frameMode = $mode;
+		}
+	}
+
+	/**
+	 * Returns frame mode
+	 * @return bool
+	 */
+	public function getFrameMode()
+	{
+		if ($this->frameMode !== null)
+		{
+			return $this->frameMode;
+		}
+
+		if (!$this->__component)
+		{
+			//somebody has stolen the instance of component
+			return false;
+		}
+
+		$frameMode = $this->__component->getDefaultFrameMode();
+		if ($frameMode === null)
+		{
+			$frameMode = false;
+		}
+
+		return $frameMode;
+	}
+
+	public function getRealFrameMode()
+	{
+		return $this->frameMode;
 	}
 
 	/**
@@ -1113,7 +1153,7 @@ class CBitrixComponentTemplate
 		$this->frameMode = true;
 		if ($id === null)
 			$id = $this->randString();
-		$frame = new Bitrix\Main\Page\FrameHelper($id, $autoContainer);
+		$frame = new Bitrix\Main\Page\FrameBuffered($id, $autoContainer);
 		array_unshift($this->frames, $frame);
 		return $frame;
 	}

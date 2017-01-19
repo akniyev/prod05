@@ -173,6 +173,9 @@
 
 							for (var i in data['SCRIPT'])
 							{
+								if(!data['SCRIPT'].hasOwnProperty(i))
+									continue;
+
 								BX.evalGlobal(data['SCRIPT'][i]['JS']);
 								delete(data['SCRIPT'][i]);
 
@@ -359,7 +362,8 @@
 			container.innerHTML = data['HTML'];
 
 			for (var i in data['SCRIPT'])
-				BX.evalGlobal(data['SCRIPT'][i]['JS']);
+				if(data['SCRIPT'].hasOwnProperty(i))
+					BX.evalGlobal(data['SCRIPT'][i]['JS']);
 		},
 
 		resetRusPostSettings: function()

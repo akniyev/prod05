@@ -47,7 +47,17 @@ if ($boolStringValue)
 		}
 	}
 }
-?><div class="mli-layout" id="layout_<?=$control_id?>"><input type="hidden" name="<?echo $arParams['~INPUT_NAME']; ?>" value=""><?
+?><div class="mli-layout" id="layout_<?=$control_id?>">
+<div style="display:none" id="value_container_<?=$control_id?>">
+<?if ($INPUT_VALUE):?>
+	<?foreach ($INPUT_VALUE as $value):?>
+		<input type="hidden" name="<?echo $arParams['~INPUT_NAME']; ?>" value="<?echo $value["ID"]?>">
+	<?endforeach;?>
+<?else:?>
+	<input type="hidden" name="<?echo $arParams['~INPUT_NAME']; ?>" value="">
+<?endif;?>
+</div>
+<?
 if($arParams["MULTIPLE"]=="Y")
 {
 	?><textarea name="<?=$textarea_id?>" id="<?=$textarea_id?>" class="mli-field"><? echo ($boolStringValue ? htmlspecialcharsbx($arParams['INPUT_VALUE_STRING']) : '');?></textarea><?

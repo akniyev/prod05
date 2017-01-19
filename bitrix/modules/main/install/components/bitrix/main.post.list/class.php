@@ -273,6 +273,16 @@ HTML;
 
 	protected function buildUser($id)
 	{
+		static $extranetUserIdList = false;
+
+		if (
+			$extranetUserIdList === false
+			&& Loader::includeModule('socialnetwork')
+		)
+		{
+			$extranetUserIdList = \Bitrix\Socialnetwork\ComponentHelper::getExtranetUserIdList();
+		}
+
 		$res = $id;
 		if (is_integer($res))
 		{
@@ -295,22 +305,29 @@ HTML;
 		$res["NAME"] = htmlspecialcharsbx($res["NAME"]);
 		$res["LAST_NAME"] = htmlspecialcharsbx($res["LAST_NAME"]);
 		$res["SECOND_NAME"] = htmlspecialcharsbx($res["SECOND_NAME"]);
-		$res["IS_EXTRANET"] = is_array($GLOBALS["arExtranetUserID"]) && in_array($res["ID"], $GLOBALS["arExtranetUserID"]) ? "Y" : "N";
-		$res["TYPE"] = (
-			isset($res["TYPE"])
-				? $res["TYPE"]
-				: (
-					isset($res["EXTERNAL_AUTH_ID"])
-					&& $res["EXTERNAL_AUTH_ID"] == 'email'
-						? "EMAIL"
-						: (
-							is_array($GLOBALS["arExtranetUserID"]) && in_array($res["ID"], $GLOBALS["arExtranetUserID"])
-								? "EXTRANET"
-								: false
-						)
-				)
-		);
-
+		$res["IS_EXTRANET"] = is_array($extranetUserIdList) && in_array($res["ID"], $extranetUserIdList) ? "Y" : "N";
+		if (!isset($res["TYPE"]))
+		{
+			if (!empty($res["UF_USER_CRM_ENTITY"]))
+			{
+				$res["TYPE"] = "EMAILCRM";
+			}
+			elseif (
+				isset($res["EXTERNAL_AUTH_ID"])
+				&& $res["EXTERNAL_AUTH_ID"] == 'email'
+			)
+			{
+				$res["TYPE"] = "EMAIL";
+			}
+			elseif ($res["IS_EXTRANET"] == 'Y')
+			{
+				$res["TYPE"] = "EXTRANET";
+			}
+			else
+			{
+				$res["TYPE"] = false;
+			}
+		}
 		return $res;
 	}
 
@@ -324,6 +341,8 @@ HTML;
 			"ENTITY_XML_ID" => $arParams["ENTITY_XML_ID"], // string
 			"FULL_ID" => array($arParams["ENTITY_XML_ID"], $res["ID"]),
 			"NEW" => $res["NEW"], //"Y" | "N"
+			"AUX" => (isset($res["AUX"]) ? $res["AUX"] : ''),
+			"AUX_LIVE_PARAMS" => (isset($res["AUX_LIVE_PARAMS"]) ? $res["AUX_LIVE_PARAMS"] : array()),
 			"APPROVED" => $res["APPROVED"], //"Y" | "N"
 			"POST_TIMESTAMP" => ($res["POST_TIMESTAMP"] - CTimeZone::GetOffset()),
 			"~POST_MESSAGE_TEXT" => $res["~POST_MESSAGE_TEXT"],
@@ -495,7 +514,6 @@ HTML;
 				$res["MOBILE"]["AFTER"] .= ob_get_clean();
 			}
 		}
-
 		if (is_array($res["UF"]))
 		{
 			ob_start();
@@ -506,7 +524,7 @@ HTML;
 					$this->getApplication()->IncludeComponent(
 						"bitrix:system.field.view",
 						$arPostField["USER_TYPE"]["USER_TYPE_ID"],
-						 array(
+						array(
 							"arUserField" => $arPostField,
 							"TEMPLATE" => $this->getTemplateName(),
 							"LAZYLOAD" => (isset($arParams["LAZYLOAD"]) && $arParams["LAZYLOAD"] == "Y" ? "Y" : "N"),
@@ -520,7 +538,7 @@ HTML;
 			$result["WEB"]["AFTER"] = ob_get_clean().$result["WEB"]["AFTER"];
 
 			ob_start();
-			?><div class="post-item-attached-file-wrap" id="record-<?=$arParams["ENTITY_XML_ID"]?>-<?=$res["ID"]?>-uf"><?
+
 			foreach ($res["UF"] as $arPostField)
 			{
 				if(!empty($arPostField["VALUE"]))
@@ -539,18 +557,29 @@ HTML;
 					);
 				}
 			}
-			?></div><?
-			$result["MOBILE"]["AFTER"] = ob_get_clean().$result["MOBILE"]["AFTER"];
+			$html = ob_get_clean();
+			if (!empty($html))
+			{
+				$result["MOBILE"]["AFTER"] = '<div class="post-item-attached-file-wrap" id="record-'.$arParams["ENTITY_XML_ID"].'-'.$res["ID"].'-uf">'.$html.'</div>'.$result["MOBILE"]["AFTER"];
+			}
 			$result["CLASSNAME"] .= " feed-com-block-uf";
 		}
 		$result = array_merge($result, ($this->isWeb() ? $result["WEB"] : $result["MOBILE"]));
+
 		return $result;
 	}
 
 	public function parseTemplate(array $res, array $arParams, $template)
 	{
 		global $USER;
+		static $extranetSiteId = null;
+
 		$todayString = ConvertTimeStamp();
+
+		if ($extranetSiteId === null)
+		{
+			$extranetSiteId = (CModule::IncludeModule('extranet') ? CExtranet::GetExtranetSiteID() : false);
+		}
 
 		$authorUrl = str_replace(
 			array("#ID#", "#id#", "#USER_ID#", "#user_id#"),
@@ -562,6 +591,10 @@ HTML;
 
 		if (!empty($res["AUTHOR"]["TYPE"]))
 		{
+			if ($res["AUTHOR"]["TYPE"] == 'EMAILCRM')
+			{
+				$authorStyle = ' feed-com-name-emailcrm';
+			}
 			if ($res["AUTHOR"]["TYPE"] == 'EMAIL')
 			{
 				$authorStyle = ' feed-com-name-email';
@@ -580,7 +613,8 @@ HTML;
 			!empty($arParams["AUTHOR_URL_PARAMS"]) && is_array($arParams["AUTHOR_URL_PARAMS"])
 			&& (
 				(isset($arParams["bPublicPage"]) && $arParams["bPublicPage"])
-				|| (!empty($res["AUTHOR"]["TYPE"]) && $res["AUTHOR"]["TYPE"] == 'EMAIL')
+				|| SITE_ID == $extranetSiteId
+				|| (!empty($res["AUTHOR"]["TYPE"]) && in_array($res["AUTHOR"]["TYPE"], array('EMAIL', 'EMAILCRM', 'EXTRANET')))
 			)
 		)
 		{
@@ -612,8 +646,7 @@ HTML;
 			"#APPROVED#" =>
 				($res["APPROVED"] != "Y" ? "hidden" : "approved"),
 			"#DATE#" => (ConvertTimeStamp(($res["POST_TIMESTAMP"] + CTimeZone::GetOffset()), "SHORT") == $todayString ? $res["POST_TIME"] : $res["POST_DATE"]),
-			"#TEXT#" =>
-				$res["POST_MESSAGE_TEXT"],
+			"#TEXT#" => str_replace(array("\001", "#"), array("", "\001"), $res["POST_MESSAGE_TEXT"]),
 			"#CLASSNAME#" =>
 				(isset($res["CLASSNAME"]) ? " ".$res["CLASSNAME"] : ""),
 			"#VOTE_ID#" =>
@@ -624,9 +657,15 @@ HTML;
 				($arParams["VIEW_URL"] == "" ? "N" : "Y"),
 			"#EDIT_URL#" =>
 				str_replace(array("#ID#", "#id#"), $res["ID"], $arParams["EDIT_URL"]),
-			"#EDIT_SHOW#" =>
-				($arParams["RIGHTS"]["EDIT"] == "Y" || $arParams["RIGHTS"]["EDIT"] == "ALL" ||
-				$arParams["RIGHTS"]["EDIT"] == "OWN" && $USER->GetID() == intval($res["AUTHOR"]["ID"]) ? "Y" : "N"),
+			"#EDIT_SHOW#" => (
+				empty($res["AUX"])
+				&& (
+					$arParams["RIGHTS"]["EDIT"] == "Y" || $arParams["RIGHTS"]["EDIT"] == "ALL" ||
+					$arParams["RIGHTS"]["EDIT"] == "OWN" && $USER->GetID() == intval($res["AUTHOR"]["ID"])
+				)
+					? "Y"
+					: "N"
+			),
 			"#MODERATE_URL#" =>
 				str_replace(array("#ID#", "#id#"), $res["ID"], $arParams["MODERATE_URL"]),
 			"#MODERATE_SHOW#" =>
@@ -637,6 +676,12 @@ HTML;
 			"#DELETE_SHOW#" =>
 				($arParams["RIGHTS"]["DELETE"] == "Y" || $arParams["RIGHTS"]["DELETE"] == "ALL" ||
 				$arParams["RIGHTS"]["DELETE"] == "OWN" && $USER->GetID() == intval($res["AUTHOR"]["ID"]) ? "Y" : "N"),
+			"#CREATETASK_SHOW#" => (
+				empty($res["AUX"])
+				&& $arParams["RIGHTS"]["CREATETASK"] == "Y"
+					? "Y"
+					: "N"
+			),
 			"#BEFORE_HEADER#" => $res["BEFORE_HEADER"],
 			"#BEFORE_ACTIONS#" => $res["BEFORE_ACTIONS"],
 			"#AFTER_ACTIONS#" => $res["AFTER_ACTIONS"],
@@ -678,8 +723,7 @@ HTML;
 			"background:url('') no-repeat center;" =>
 				""
 		);
-
-		return str_replace(array_keys($replacement), array_values($replacement), $template);
+		return str_replace(array_merge(array_keys($replacement), array("\001")), array_merge(array_values($replacement), array("#")), $template);
 	}
 
 	protected function prepareParams(array &$arParams, array &$arResult)
@@ -696,7 +740,7 @@ HTML;
 		//$arParams["NAV_RESULT"] = (!!$arParams["NAV_STRING"] && is_object($arParams["NAV_RESULT"]) ? $arParams["NAV_RESULT"] : false);
 		$arParams["PREORDER"] = ($arParams["PREORDER"] == "Y" ? "Y" : "N");
 		$arParams["RIGHTS"] = (is_array($arParams["RIGHTS"]) ? $arParams["RIGHTS"] : array());
-		foreach (array("MODERATE", "EDIT", "DELETE") as $act)
+		foreach (array("MODERATE", "EDIT", "DELETE", "CREATETASK") as $act)
 			$arParams["RIGHTS"][$act] = in_array(strtoupper($arParams["RIGHTS"][$act]), array("Y", "ALL", "OWN", "OWNLAST")) ? $arParams["RIGHTS"][$act] : "N";
 		$arParams["LAST_RECORD"] = array();
 		// Answer params
@@ -718,11 +762,11 @@ HTML;
 		//$arParams["IMAGE_SIZE"] = ($arParams["IMAGE_SIZE"] > 0 ? $arParams["IMAGE_SIZE"] : 30);
 		$arParams['SHOW_MINIMIZED'] = ($arParams['SHOW_MINIMIZED'] == "Y" ? "Y" : "N");
 
-		$arParams["NAME_TEMPLATE"] = (!!$_REQUEST["NAME_TEMPLATE"] ? $_REQUEST["NAME_TEMPLATE"] : \CSite::GetNameFormat());
+		$arParams["NAME_TEMPLATE"] = (!!$_REQUEST["NAME_TEMPLATE"] ? $_REQUEST["NAME_TEMPLATE"] : (!!$arParams["NAME_TEMPLATE"] ? $arParams["NAME_TEMPLATE"] : \CSite::GetNameFormat()));
 		$arParams["SHOW_LOGIN"] = ($_REQUEST["SHOW_LOGIN"] == "Y" ? "Y" : ($arParams["SHOW_LOGIN"] == "Y" ? "Y" : "N"));
 		$arParams["DATE_TIME_FORMAT"] = trim($arParams["DATE_TIME_FORMAT"]);
 		$arParams["SHOW_POST_FORM"] = ($arParams["SHOW_POST_FORM"] == "Y" ? "Y" : "N");
-		$arParams["BIND_VIEWER"] = ($arParams["BIND_VIEWER"] == "Y" ? "Y" : "N");
+		$arParams["BIND_VIEWER"] = ($arParams["BIND_VIEWER"] == "N" ? "N" : "Y");
 		$arParams["SIGN"] = $this->sign->sign($arParams["ENTITY_XML_ID"], "main.post.list");
 
 		$arParams["VIEW_URL"] = trim($arParams["VIEW_URL"]);

@@ -2,15 +2,23 @@
 
 namespace Bitrix\Sale\PaySystem;
 
+use Bitrix\Crm\EntityRequisite;
+use Bitrix\Crm\Requisite\EntityLink;
 use Bitrix\Main\Entity\EntityError;
 use Bitrix\Main\Error;
+use Bitrix\Main\Event;
+use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\NotSupportedException;
 use Bitrix\Main\Request;
 use Bitrix\Main\SystemException;
+use Bitrix\Sale\BusinessValue;
+use Bitrix\Sale\Internals\CompanyTable;
+use Bitrix\Sale\Internals\OrderPropsValueTable;
 use Bitrix\Sale\Order;
 use Bitrix\Sale\Payment;
 use Bitrix\Sale\PaySystem;
+use Bitrix\Sale\PriceMaths;
 use Bitrix\Sale\Result;
 use Bitrix\Main\IO;
 use Bitrix\Sale\ResultError;
@@ -19,12 +27,18 @@ Loc::loadMessages(__FILE__);
 
 class Service
 {
-	/** @var ServiceHandler|IHold|IRefund|IPrePayable|ICheckable|IPayable $handler */
+	const EVENT_ON_BEFORE_PAYMENT_PAID = 'OnSalePsServiceProcessRequestBeforePaid';
+
+	/** @var ServiceHandler|IHold|IRefund|IPrePayable|ICheckable|IPayable $handler */	
 	private $handler = null;
+
 	/**
 	 * @var array
 	 */
 	private $fields = array();
+
+	/** @var bool  */
+	protected $isClone = false;
 
 	/**
 	 * @param $fields
@@ -49,6 +63,8 @@ class Service
 					$handlerType = $type;
 					break;
 				}
+
+				$className = '';
 			}
 		}
 
@@ -65,11 +81,40 @@ class Service
 	/**
 	 * @param Payment $payment
 	 * @param Request|null $request
-	 * @return mixed
+	 * @param int $mode
+	 * @return ServiceResult
 	 */
-	public function initiatePay(Payment $payment, Request $request = null)
+	public function initiatePay(Payment $payment, Request $request = null, $mode = BaseServiceHandler::STREAM)
 	{
-		return $this->handler->initiatePay($payment, $request);
+		$this->handler->setInitiateMode($mode);
+		$initResult = $this->handler->initiatePay($payment, $request);
+
+		$psData = $initResult->getPsData();
+		if ($psData)
+		{
+			$setResult = $payment->setFields($psData);
+			if ($setResult->isSuccess())
+			{
+				/** @var \Bitrix\Sale\PaymentCollection $paymentCollection */
+				$paymentCollection = $payment->getCollection();
+				if ($paymentCollection)
+				{
+					$order = $paymentCollection->getOrder();
+					if ($order)
+					{
+						$saveResult = $order->save();
+						if (!$saveResult->isSuccess())
+							$initResult->addErrors($saveResult->getErrors());
+					}
+				}
+			}
+			else
+			{
+				$initResult->addErrors($setResult->getErrors());
+			}
+		}
+
+		return $initResult;
 	}
 
 	/**
@@ -77,6 +122,9 @@ class Service
 	 */
 	public function isRefundable()
 	{
+		if ($this->handler instanceof IRefundExtended)
+			return $this->handler->isRefundableExtended();
+
 		return $this->handler instanceof IRefund;
 	}
 
@@ -212,6 +260,15 @@ class Service
 
 			if ($status !== null)
 			{
+				$event = new Event('sale', self::EVENT_ON_BEFORE_PAYMENT_PAID,
+					array(
+						'payment' => $payment,
+						'status' => $status,
+						'pay_system_id' => $this->getField('ID')
+					)
+				);
+				$event->send();
+
 				$paidResult = $payment->setPaid($status);
 				if (!$paidResult->isSuccess())
 				{
@@ -337,7 +394,7 @@ class Service
 
 	/**
 	 * @param Payment $payment
-	 * @return Result
+	 * @return ServiceResult
 	 */
 	public function creditNoDemand(Payment $payment)
 	{
@@ -346,7 +403,7 @@ class Service
 
 	/**
 	 * @param Payment $payment
-	 * @return Result
+	 * @return ServiceResult
 	 */
 	public function debitNoDemand(Payment $payment)
 	{
@@ -558,5 +615,268 @@ class Service
 		}
 
 		throw new NotSupportedException;
+	}
+
+	/**
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return Service
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$paySystemServiceClone = clone $this;
+		$paySystemServiceClone->isClone = true;
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $paySystemServiceClone;
+		}
+
+		if ($handler = $this->handler)
+		{
+			if (!$cloneEntity->contains($handler))
+			{
+				$cloneEntity[$handler] = $handler->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($handler))
+			{
+				$paySystemServiceClone->handler = $cloneEntity[$handler];
+			}
+		}
+
+		return $paySystemServiceClone;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isClone()
+	{
+		return $this->isClone;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isCustom()
+	{
+		return in_array($this->handler->getHandlerType(), array('CUSTOM', 'USER'));
+	}
+
+	/**
+	 * @param Payment $payment
+	 * @return array
+	 */
+	public function getParamsBusValue(Payment $payment)
+	{
+		return $this->handler->getParamsBusValue($payment);
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isRequested()
+	{
+		return $this->handler instanceof IRequested;
+	}
+
+	/**
+	 * @param string $requestId
+	 * @return array
+	 */
+	public function checkMovementListStatus($requestId)
+	{
+		if ($this->isRequested())
+			return $this->handler->getMovementListStatus($requestId);
+
+		return array();
+	}
+
+	/**
+	 * @param string $requestId
+	 * @return bool
+	 */
+	public function getMovementList($requestId)
+	{
+		if ($this->isRequested())
+			return $this->handler->getMovementList($requestId);
+
+		return false;
+	}
+
+	/**
+	 * @return ServiceResult
+	 */
+	public function processAccountMovementList()
+	{
+		$serviceResult = new ServiceResult();
+
+		if ($this->isRequested())
+		{
+			$requestId = $this->handler->createMovementListRequest();
+			if ($requestId !== false)
+			{
+				$result = $this->handler->getMovementListStatus($requestId);
+				if (!$result)
+				{
+					$serviceResult->addError(new Error(Loc::getMessage('SALE_PS_SERVICE_STATUS_ERROR')));
+					return $serviceResult;
+				}
+
+				if ($result['status'] == true)
+				{
+					$movementList = $this->handler->getMovementList($requestId);
+					return $this->applyAccountMovementList($movementList);
+				}
+				else
+				{
+					\CAgent::Add(array(
+						'NAME' => '\Bitrix\Sale\PaySystem\Manager::getMovementListStatus('.$this->getField('ID').',\''.$requestId.'\');',
+						'MODULE_ID' => 'sale',
+						'ACTIVE' => 'Y',
+						'NEXT_EXEC' => date('d.m.Y H:i:s', strtotime($result['estimatedTime'])),
+						'AGENT_INTERVAL' => 60,
+						'IS_PERIOD' => 'Y'
+					));
+				}
+			}
+		}
+
+		return $serviceResult;
+	}
+
+	/**
+	 * @param $movementList
+	 * @return ServiceResult
+	 * @throws \Bitrix\Main\ArgumentNullException
+	 * @throws \Bitrix\Main\ArgumentOutOfRangeException
+	 */
+	public function applyAccountMovementList($movementList)
+	{
+		$serviceResult = new ServiceResult();
+
+		if ($this->isRequested())
+		{
+			foreach ($movementList as $item)
+			{
+
+				if (strlen($item['PAYMENT_ID']) > 0)
+					list($orderId, $paymentId) = Manager::getIdsByPayment($item['PAYMENT_ID']);
+				else
+					list($orderId, $paymentId) = $this->findEntityIds($item);
+
+				if ($orderId > 0)
+				{
+					$order = Order::load($orderId);
+					if ($order)
+					{
+						$paymentCollection = $order->getPaymentCollection();
+						if ($paymentCollection && $paymentId > 0)
+						{
+							/** @var \Bitrix\Sale\Payment $payment */
+							$payment = $paymentCollection->getItemById($paymentId);
+							if ($payment)
+							{
+								$result = $payment->setPaid('Y');
+								if ($result->isSuccess())
+									$result = $order->save();
+
+								if (!$result->isSuccess())
+									$serviceResult->addErrors($result->getErrors());
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return $serviceResult;
+	}
+
+	private function findEntityIds($item)
+	{
+		$orderId = 0;
+		$paymentId = 0;
+		$personTypeList = Manager::getPersonTypeIdList($this->getField('ID'));
+
+		$map = BusinessValue::getMapping('BUYER_PERSON_COMPANY_INN', $this->getConsumerName(), array_shift($personTypeList));
+		if ($map)
+		{
+			$filter = array();
+			$runtimeFields = array();
+
+			$type = $map['PROVIDER_KEY'];
+			$value = $map['PROVIDER_VALUE'];
+
+			if ($type == 'PROPERTY')
+			{
+				$runtimeFields['PROP'] = array(
+					'data_type' => 'Bitrix\Sale\Internals\OrderPropsValueTable',
+					'reference' => array('ref.ORDER_ID' => 'this.ORDER_ID'),
+					'join_type' => 'inner'
+				);
+
+				$filter = array('PAID' => 'N', 'PROP.CODE' => $value, 'PROP.VALUE' => $item['CONTRACTOR_INN']);
+			}
+			elseif ($type == 'REQUISITE')
+			{
+				if (!Loader::includeModule('crm'))
+					return array($orderId, $paymentId);
+
+				$orderIds = array();
+
+				$requisite = new EntityRequisite();
+				$res = $requisite->getList(
+					array(
+						'select' => array('ID'),
+						'filter' => array(
+							'=ENTITY_TYPE_ID' => array(\CCrmOwnerType::Company, \CCrmOwnerType::Contact),
+							'=RQ_INN' => $item['CONTRACTOR_INN']
+						)
+					)
+				);
+
+				$rqIds = array();
+				while ($row = $res->fetch())
+					$rqIds[] = $row['ID'];
+
+				if ($rqIds)
+				{
+					$res = EntityLink::getList(
+						array(
+							'select' => array('ENTITY_ID'),
+							'filter' => array('=ENTITY_TYPE_ID' => \CCrmOwnerType::Invoice, '=REQUISITE_ID' => $rqIds)
+						)
+					);
+
+					while ($row = $res->fetch())
+						$orderIds[] = $row['ENTITY_ID'];
+				}
+
+				if ($orderIds)
+					$filter = array('ID' => $orderIds, 'PAID' => 'N');
+			}
+
+			if ($filter)
+			{
+				$dbRes = Payment::getList(array('select' => array('ID', 'ORDER_ID', 'SUM', 'CURRENCY'), 'filter' => $filter, 'runtime' => $runtimeFields));
+				while ($data = $dbRes->fetch())
+				{
+					if (PriceMaths::roundByFormatCurrency($data['SUM'], $data['CURRENCY']) == PriceMaths::roundByFormatCurrency($item['SUM'], $data['CURRENCY']))
+					{
+						list($orderId, $paymentId) = array($data['ORDER_ID'], $data['ID']);
+						break;
+					}
+				}
+			}
+		}
+
+		return array($orderId, $paymentId);
 	}
 }

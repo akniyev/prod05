@@ -151,7 +151,7 @@ class CAllBlogImage
 	}
 
 	//*************** SELECT *********************/
-	function GetByID($ID)
+	public static function GetByID($ID)
 	{
 		global $DB;
 
@@ -178,7 +178,7 @@ class CAllBlogImage
 		return False;
 	}
 
-	function AddImageResizeHandler($arParams)
+	public static function AddImageResizeHandler($arParams)
 	{
 		AddEventHandler('main',  "main.file.input.upload", array(__class__, 'ImageResizeHandler'));
 		$bNull = null;

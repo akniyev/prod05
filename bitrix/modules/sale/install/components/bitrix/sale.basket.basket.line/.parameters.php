@@ -55,7 +55,7 @@ $arComponentParameters = array(
 		"SHOW_PERSONAL_LINK" => array(
 			"NAME" => GetMessage("SBBL_SHOW_PERSONAL_LINK"),
 			"TYPE" => "CHECKBOX",
-			"DEFAULT" => "N",
+			"DEFAULT" => "Y",
 			"PARENT" => "PERSONAL",
 		),
 		"PATH_TO_PERSONAL" => array(

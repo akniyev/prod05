@@ -123,7 +123,7 @@ abstract class Entity
 			throw new Main\ArgumentOutOfRangeException("name=$name");
 
 		$oldValue = $this->fields->get($name);
-		if ($oldValue != $value)
+		if ($oldValue != $value || ($oldValue === null && $value !== null))
 		{
 			if ($eventName = static::getEntityEventName())
 			{
@@ -358,13 +358,11 @@ abstract class Entity
 			{
 				$result->addErrors($r->getErrors());
 			}
-			else
+
+			if (($data = $r->getData())
+				&& !empty($data) && is_array($data))
 			{
-				if (($data = $r->getData())
-					&& !empty($data) && is_array($data))
-				{
-					$result->setData($result->getData() + $data);
-				}
+				$result->setData(array_merge($result->getData(), $data));
 			}
 		}
 

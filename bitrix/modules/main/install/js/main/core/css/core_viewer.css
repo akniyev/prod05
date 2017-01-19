@@ -322,15 +322,10 @@
 
 .bx-viewer-file-last-v {
 	color: #979ca3;
-	cursor: pointer;
 	display: block;
 	font-size: 10px;
 	font-weight: bold;
 	line-height: 14px;
-}
-
-.bx-viewer-file-last-v:hover {
-	text-decoration:underline;
 }
 
 .bx-viewer-size {
@@ -680,27 +675,24 @@
 	background: url(../images/bx-viewer-icons.png?223) no-repeat 100px;
 	display: inline-block;
 	height: 29px;
-	margin:0;
 	vertical-align: top;
 	width: 26px;
 }
 
-.item-b24 .menu-popup-item-icon {background-position: center -1641px;}
-.item-download .menu-popup-item-icon {background-position: center -1673px;}
-.item-gdocs .menu-popup-item-icon {background-position: center -1578px;}
-.item-office .menu-popup-item-icon {background-position: center -1605px;}
-.item-view .menu-popup-item-icon {background-position: center -1776px;}
-.item-edit .menu-popup-item-icon {background-position: center -1812px;}
+.item-b24 .menu-popup-item-icon {background-position: center -1638px;}
+.item-download .menu-popup-item-icon {background-position: center -1672px;}
+.item-gdocs .menu-popup-item-icon {background-position: center -1575px;}
+.item-office .menu-popup-item-icon {background-position: center -1602px;}
+.item-view .menu-popup-item-icon {background-position: center -1773px;}
+.item-edit .menu-popup-item-icon {background-position: center -1809px;}
 .item-history .menu-popup-item-icon {background-position: center -1851px;}
-.item-local .menu-popup-item-icon {background-position: center -2071px;}
+.item-local .menu-popup-item-icon {background-position: center -2068px;}
 .item-b24-office .menu-popup-item-icon {background-position: center -2218px;}
-.item-office365 .menu-popup-item-icon {background-position: center -2257px}
-.item-setting .menu-popup-item-icon {background-position: center -2125px;}
+.item-office365 .menu-popup-item-icon {background-position: center -2254px}
+.item-setting .menu-popup-item-icon {background-position: center -2122px;}
 .item-toload .menu-popup-item-icon {background-position: center -2178px;}
 .item-enable-auto-comment .menu-popup-item-icon {background-position: center -2232px;}
 .item-disable-auto-comment .menu-popup-item-icon {background-position: center -2277px;}
-
-.bx-viewer-popup-item .menu-popup-item-text {margin: 0 0 0 4px;}
 
 .status-sky-drive,
 .status-google {

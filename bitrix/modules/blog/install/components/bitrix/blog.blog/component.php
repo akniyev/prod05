@@ -95,7 +95,7 @@ if(strlen($arParams["FILTER_NAME"])<=0 || !preg_match("/^[A-Za-z_][A-Za-z01-9_]*
 }
 else
 {
-	global $$arParams["FILTER_NAME"];
+	global ${$arParams["FILTER_NAME"]};
 	$arFilter = ${$arParams["FILTER_NAME"]};
 	if(!is_array($arFilter))
 		$arFilter = array();

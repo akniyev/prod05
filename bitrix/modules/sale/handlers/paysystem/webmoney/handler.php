@@ -8,6 +8,8 @@ use Bitrix\Main\Request;
 use Bitrix\Main\Type\DateTime;
 use Bitrix\Sale\Payment;
 use Bitrix\Sale\PaySystem;
+use Bitrix\Sale\PaySystem\ServiceResult;
+use Bitrix\Sale\PriceMaths;
 
 Loc::loadMessages(__FILE__);
 
@@ -133,11 +135,6 @@ class WebMoneyHandler extends PaySystem\ServiceHandler
 			}
 		}
 
-		PaySystem\ErrorLog::add(array(
-			'ACTION' => $request->get('LMI_PREREQUEST'),
-			'MESSAGE' => join(' ', $serviceResult->getErrorMessages())
-		));
-
 		return $serviceResult;
 	}
 
@@ -178,8 +175,8 @@ class WebMoneyHandler extends PaySystem\ServiceHandler
 	 */
 	protected function checkSum(Payment $payment, Request $request)
 	{
-		$paymentShouldPay = Payment::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
-		$lmiPaymentAmount = Payment::roundByFormatCurrency($request->get('LMI_PAYMENT_AMOUNT'), $payment->getField('CURRENCY'));
+		$paymentShouldPay = PriceMaths::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
+		$lmiPaymentAmount = PriceMaths::roundByFormatCurrency($request->get('LMI_PAYMENT_AMOUNT'), $payment->getField('CURRENCY'));
 
 		return $paymentShouldPay == $lmiPaymentAmount;
 	}
@@ -207,4 +204,23 @@ class WebMoneyHandler extends PaySystem\ServiceHandler
 	{
 		return array('RUB', 'USD', 'EUR', 'UAH');
 	}
+
+	/**
+	 * @param ServiceResult $result
+	 * @param Request $request
+	 * @return mixed
+	 */
+	public function sendResponse(ServiceResult $result, Request $request)
+	{
+		global $APPLICATION;
+
+		if ($result->isSuccess() && (int)$request->get('LMI_PREREQUEST') == 1)
+		{
+			$APPLICATION->RestartBuffer();
+
+			echo 'YES';
+			die();
+		}
+	}
+
 }

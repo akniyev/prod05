@@ -219,9 +219,9 @@ top.ReloadSubList();
 		else
 		{
 			if ((string)$request->getPost('apply') != '')
-				LocalRedirect('sale_discount_coupon_edit.php?lang='.LANGUAGE_ID.'&ID='.$couponID.GetFilterParams('filter_', false));
+				LocalRedirect('sale_discount_coupon_edit.php?lang='.LANGUAGE_ID.'&ID='.$couponID.'&'.$control->ActiveTabParam().GetFilterParams('filter_', false));
 			else
-				LocalRedirect('sale_discount_coupons.php?lang='.LANGUAGE_ID.'&'.$control->ActiveTabParam().GetFilterParams('filter_', false));
+				LocalRedirect('sale_discount_coupons.php?lang='.LANGUAGE_ID.GetFilterParams('filter_', false));
 		}
 	}
 }
@@ -313,7 +313,8 @@ if (!$multiCoupons)
 		'MAX_USE' => 0,
 		'USE_COUNT' => 0,
 		'USER_ID' => 0,
-		'DESCRIPTION' => ''
+		'DESCRIPTION' => '',
+		'DATE_APPLY' => null
 	);
 	$selectFields = array('ID', 'DISCOUNT_NAME' => 'DISCOUNT.NAME');
 	$selectFields = array_merge($selectFields, array_keys($defaultValues));
@@ -430,13 +431,43 @@ if ($multiCoupons)
 		true,
 		$couponTypes,
 		$coupon['COUPON']['TYPE'],
-		array('size="3"')
+		array('id="'.$prefix.'TYPE'.'"', 'size="3"')
 	);
-	$control->AddEditField($prefix.'MAX_USE', Loc::getMessage('BX_SALE_DISCOUNT_COUPON_FIELD_MAX_USE'), false, array(), ($coupon['COUPON']['MAX_USE'] > 0 ? $coupon['COUPON']['MAX_USE'] : ''));
+	$control->AddEditField(
+		$prefix.'MAX_USE',
+		Loc::getMessage('BX_SALE_DISCOUNT_COUPON_FIELD_MAX_USE'),
+		false,
+		array('id' => $prefix.'MAX_USE'),
+		($coupon['COUPON']['MAX_USE'] > 0 ? $coupon['COUPON']['MAX_USE'] : '')
+	);
 	$control->Buttons(false, '');
 	$control->Show();
 ?>
-<script type="text/javascript">top.BX.WindowManager.Get().adjustSizeEx();</script>
+<script type="text/javascript">
+	var couponType = BX('<?=$prefix.'TYPE'; ?>'),
+		maxUse = BX('<?=$prefix.'MAX_USE'; ?>'),
+		rowMaxUse;
+
+	rowMaxUse = BX.findParent(maxUse, { 'tagName': 'tr' });
+
+	BX.ready(function(){
+		BX.style(
+			rowMaxUse,
+			'display',
+			(couponType.value == '<?=Internals\DiscountCouponTable::TYPE_MULTI_ORDER; ?>' ? 'table-row' : 'none')
+		);
+		BX.bind(couponType, 'change', function ()
+		{
+			BX.style(
+				rowMaxUse,
+				'display',
+				(couponType.value == '<?=Internals\DiscountCouponTable::TYPE_MULTI_ORDER; ?>' ? 'table-row' : 'none')
+			);
+			top.BX.WindowManager.Get().adjustSizeEx();
+		});
+		top.BX.WindowManager.Get().adjustSizeEx();
+	});
+</script>
 <?
 }
 else
@@ -503,7 +534,12 @@ else
 	$control->EndCustomField('COUPON',
 		'<input type="hidden" name="COUPON" value="'.htmlspecialcharsbx($coupon['COUPON']).'">'
 	);
-	if ($couponID == 0 || $coupon['USE_COUNT'] == 0 || !isset($couponTypes[$coupon['TYPE']]))
+	$showTypeSelect = (
+		$couponID == 0
+		|| !isset($couponTypes[$coupon['TYPE']])
+		|| $coupon['DATE_APPLY'] == null
+	);
+	if ($showTypeSelect)
 	{
 		$control->AddDropDownField(
 			$prefix.'TYPE',
@@ -511,7 +547,7 @@ else
 			true,
 			$couponTypes,
 			$coupon['TYPE'],
-			array('size="3"')
+			array('id="'.$prefix.'TYPE'.'"', 'size="3"')
 		);
 	}
 	else
@@ -563,8 +599,28 @@ else
 		?></td>
 	</tr><?
 	$control->EndCustomField($prefix.'USER_ID');
-	$control->AddEditField($prefix.'MAX_USE', Loc::getMessage('BX_SALE_DISCOUNT_COUPON_FIELD_MAX_USE'), false, array(), ($coupon['MAX_USE'] > 0 ? $coupon['MAX_USE'] : ''));
-	$control->AddTextField($prefix.'DESCRIPTION', Loc::getMessage('BX_SALE_DISCOUNT_COUPON_FIELD_DESCRIPTION'), $coupon['DESCRIPTION'], array(), false);
+	if ($showTypeSelect || ($couponID > 0 && $coupon['TYPE'] == Internals\DiscountCouponTable::TYPE_MULTI_ORDER))
+		$control->AddEditField(
+			$prefix.'MAX_USE',
+			Loc::getMessage('BX_SALE_DISCOUNT_COUPON_FIELD_MAX_USE'),
+			false,
+			array('id' => $prefix.'MAX_USE'),
+			($coupon['MAX_USE'] > 0 ? $coupon['MAX_USE'] : '')
+		);
+	if ($couponID > 0 && $coupon['TYPE'] == Internals\DiscountCouponTable::TYPE_MULTI_ORDER && $coupon['USE_COUNT'] > 0)
+		$control->AddViewField(
+			$prefix.'USE_COUNT',
+			Loc::getMessage('BX_SALE_DISCOUNT_COUPON_FIELD_USE_COUNT'),
+			$coupon['USE_COUNT'],
+			false
+		);
+	$control->AddTextField(
+		$prefix.'DESCRIPTION',
+		Loc::getMessage('BX_SALE_DISCOUNT_COUPON_FIELD_DESCRIPTION'),
+		$coupon['DESCRIPTION'],
+		array(),
+		false
+	);
 	if ($subWindow)
 	{
 		$control->Buttons(false, '');
@@ -583,7 +639,11 @@ else
 <script type="text/javascript">
 BX.ready(function(){
 	var obCouponValue = BX('COUPON'),
-		obCouponBtn = BX('COUPON_GENERATE');
+		obCouponBtn = BX('COUPON_GENERATE'),
+		couponType = BX('<?=$prefix.'TYPE'; ?>'),
+		maxUse,
+		rowMaxUse;
+
 	if (!!obCouponValue && !!obCouponBtn)
 	{
 		BX.bind(obCouponBtn, 'click', function(){
@@ -650,6 +710,32 @@ BX.ready(function(){
 					}
 					BX.closeWait();
 				});
+		});
+	}
+	if (!!couponType)
+	{
+		maxUse = BX('<?=$prefix.'MAX_USE'; ?>');
+		rowMaxUse = BX.findParent(maxUse, { 'tagName': 'tr' });
+
+		BX.style(
+			rowMaxUse,
+			'display',
+			(couponType.value == '<?=Internals\DiscountCouponTable::TYPE_MULTI_ORDER; ?>' ? 'table-row' : 'none')
+		);
+		BX.bind(couponType, 'change', function ()
+		{
+			BX.style(
+				rowMaxUse,
+				'display',
+				(couponType.value == '<?=Internals\DiscountCouponTable::TYPE_MULTI_ORDER; ?>' ? 'table-row' : 'none')
+			);
+			<?
+			if ($subWindow)
+			{
+			?>top.BX.WindowManager.Get().adjustSizeEx();
+			<?
+			}
+			?>
 		});
 	}
 });

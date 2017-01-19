@@ -291,7 +291,7 @@ class HtmlParser extends Parser
 		$node = null;
 		$isSingleTag = true;
 
-		$tagsWithoutClose = array('INPUT', 'IMG', 'BR', 'HR', 'META', 'AREA', 'BASE', 'COL', 'EMBED', 'KEYGEN', 'LINK', 'PARAM', 'SOURCE', 'TRACK', 'WBR');
+		static $tagsWithoutClose = array('INPUT'=>1, 'IMG'=>1, 'BR'=>1, 'HR'=>1, 'META'=>1, 'AREA'=>1, 'BASE'=>1, 'COL'=>1, 'EMBED'=>1, 'KEYGEN'=>1, 'LINK'=>1, 'PARAM'=>1, 'SOURCE'=>1, 'TRACK'=>1, 'WBR'=>1);
 		$tagsCantHaveNestedTags = array();
 
 		$document = $parentNode->getOwnerDocument();
@@ -442,7 +442,7 @@ class HtmlParser extends Parser
 
 			$isDocType = substr($list['NAME'], 0, strlen('!DOCTYPE')) === '!DOCTYPE';
 
-			if(in_array($list['NAME'], $tagsWithoutClose) || $isDocType)
+			if(isset($tagsWithoutClose[$list['NAME']]) || $isDocType)
 			{
 				$bxNodeWithCloseTag = false;
 				$isSingleTag = true;

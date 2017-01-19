@@ -10,7 +10,7 @@ namespace Bitrix\Sale;
 
 use Bitrix\Main;
 use Bitrix\Sale\Compatible;
-use Bitrix\Sale\Internals\Fields;
+use Bitrix\Sale\Internals;
 
 Main\Localization\Loc::loadMessages(__FILE__);
 
@@ -36,6 +36,10 @@ class Notify
 	const EVENT_ORDER_STATUS_CHANGED_SEND_EMAIL_EVENT_NAME = "SALE_STATUS_CHANGED";
 	const EVENT_SHIPMENT_TRACKING_NUMBER_SEND_EMAIL_EVENT_NAME = "SALE_ORDER_TRACKING_NUMBER";
 
+	const EVENT_DEFAULT_STATUS_CHANGED_ID = "SALE_STATUS_CHANGED_";
+	const EVENT_SHIPMENT_STATUS_SEND_EMAIL = "OnSaleShipmentStatusSendEmail";
+	const EVENT_SHIPMENT_STATUS_EMAIL =	"OnSaleShipmentStatusEMail";
+
 	const EVENT_MOBILE_PUSH_ORDER_CREATED = "ORDER_CREATED";
 	const EVENT_MOBILE_PUSH_ORDER_STATUS_CHANGE = "ORDER_STATUS_CHANGED";
 	const EVENT_MOBILE_PUSH_ORDER_CANCELED = "ORDER_CANCELED";
@@ -54,13 +58,13 @@ class Notify
 	}
 
 	/**
-	 * @param Order $order
+	 * @param Internals\Entity $entity
 	 *
 	 * @return Result
-	 * @throws Main\ArgumentException
 	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
 	 */
-	public static function sendOrderNew(Order $order)
+	public static function sendOrderNew(Internals\Entity $entity)
 	{
 		$result = new Result();
 
@@ -69,19 +73,24 @@ class Notify
 			return $result;
 		}
 
-		if (static::hasSentEvent($order->getId(), static::EVENT_ORDER_NEW_SEND_EMAIL_EVENT_NAME))
+		if (!$entity instanceof Order)
+		{
+			throw new Main\ArgumentTypeException('entity', '\Bitrix\Sale\Order');
+		}
+
+		if (static::hasSentEvent($entity->getId(), static::EVENT_ORDER_NEW_SEND_EMAIL_EVENT_NAME))
 		{
 			return $result;
 		}
 
-		if (!$order->isNew())
+		if (!$entity->isNew())
 		{
 			return $result;
 		}
 
 		$basketList = '';
 		/** @var Basket $basket */
-		if ($basket = $order->getBasket())
+		if ($basket = $entity->getBasket())
 		{
 			if ($basketTextList = $basket->getListOfFormatText())
 			{
@@ -93,15 +102,17 @@ class Notify
 		}
 
 		$fields = Array(
-			"ORDER_ID" => $order->getField("ACCOUNT_NUMBER"),
-			"ORDER_DATE" => $order->getDateInsert()->toString(),
-			"ORDER_USER" => static::getUserName($order),
-			"PRICE" => SaleFormatCurrency($order->getPrice(), $order->getCurrency()),
+			"ORDER_ID" => $entity->getField("ACCOUNT_NUMBER"),
+			"ORDER_REAL_ID" => $entity->getField("ID"),
+			"ORDER_ACCOUNT_NUMBER_ENCODE" => urlencode(urlencode($entity->getField("ACCOUNT_NUMBER"))),
+			"ORDER_DATE" => $entity->getDateInsert()->toString(),
+			"ORDER_USER" => static::getUserName($entity),
+			"PRICE" => SaleFormatCurrency($entity->getPrice(), $entity->getCurrency()),
 			"BCC" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER["SERVER_NAME"]),
-			"EMAIL" => static::getUserEmail($order),
+			"EMAIL" => static::getUserEmail($entity),
 			"ORDER_LIST" => $basketList,
 			"SALE_EMAIL" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER["SERVER_NAME"]),
-			"DELIVERY_PRICE" => $order->getDeliveryPrice(),
+			"DELIVERY_PRICE" => $entity->getDeliveryPrice(),
 		);
 
 		$eventName = static::EVENT_ORDER_NEW_SEND_EMAIL_EVENT_NAME;
@@ -109,7 +120,7 @@ class Notify
 
 		foreach(GetModuleEvents("sale", static::EVENT_ON_ORDER_NEW_SEND_EMAIL, true) as $oldEvent)
 		{
-			if (ExecuteModuleEventEx($oldEvent, array($order->getId(), &$eventName, &$fields)) === false)
+			if (ExecuteModuleEventEx($oldEvent, array($entity->getId(), &$eventName, &$fields)) === false)
 			{
 				$send = false;
 			}
@@ -118,23 +129,24 @@ class Notify
 		if($send)
 		{
 			$event = new \CEvent;
-			$event->Send($eventName, $order->getField('LID'), $fields, "N");
+			$event->Send($eventName, $entity->getField('LID'), $fields, "N");
 		}
 
-		static::addSentEvent($order->getId(), static::EVENT_ORDER_NEW_SEND_EMAIL_EVENT_NAME);
+		static::addSentEvent($entity->getId(), static::EVENT_ORDER_NEW_SEND_EMAIL_EVENT_NAME);
 
-		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_CREATED, array("ORDER" => static::getOrderFields($order)));
+		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_CREATED, array("ORDER" => static::getOrderFields($entity)));
 
 		return $result;
 	}
 
 	/**
-	 * @param Order $order
+	 * @param Internals\Entity $entity
 	 *
 	 * @return Result
 	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
 	 */
-	public static function sendOrderCancel(Order $order)
+	public static function sendOrderCancel(Internals\Entity $entity)
 	{
 		$result = new Result();
 
@@ -143,21 +155,29 @@ class Notify
 			return $result;
 		}
 
-		if (static::hasSentEvent($order->getId(), static::EVENT_ORDER_CANCEL_SEND_EMAIL_EVENT_NAME))
+
+		if (!$entity instanceof Order)
+		{
+			throw new Main\ArgumentTypeException('entity', '\Bitrix\Sale\Order');
+		}
+
+		if (static::hasSentEvent($entity->getId(), static::EVENT_ORDER_CANCEL_SEND_EMAIL_EVENT_NAME))
 		{
 			return $result;
 		}
 
-		if (!$order->isCanceled())
+		if (!$entity->isCanceled())
 		{
 			return $result;
 		}
 
 		$fields = Array(
-			"ORDER_ID" => $order->getField("ACCOUNT_NUMBER"),
-			"ORDER_DATE" => $order->getDateInsert()->toString(),
-			"EMAIL" => static::getUserEmail($order),
-			"ORDER_CANCEL_DESCRIPTION" => $order->getField('REASON_CANCELED'),
+			"ORDER_ID" => $entity->getField("ACCOUNT_NUMBER"),
+			"ORDER_REAL_ID" => $entity->getField("ID"),
+			"ORDER_ACCOUNT_NUMBER_ENCODE" => urlencode(urlencode($entity->getField("ACCOUNT_NUMBER"))),
+			"ORDER_DATE" => $entity->getDateInsert()->toString(),
+			"EMAIL" => static::getUserEmail($entity),
+			"ORDER_CANCEL_DESCRIPTION" => $entity->getField('REASON_CANCELED'),
 			"SALE_EMAIL" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
 		);
 
@@ -166,7 +186,7 @@ class Notify
 
 		foreach(GetModuleEvents("sale", static::EVENT_ON_ORDER_CANCEL_SEND_EMAIL, true) as $oldEvent)
 		{
-			if (ExecuteModuleEventEx($oldEvent, array($order->getId(), &$eventName, &$fields)) === false)
+			if (ExecuteModuleEventEx($oldEvent, array($entity->getId(), &$eventName, &$fields)) === false)
 			{
 				$send = false;
 			}
@@ -175,23 +195,24 @@ class Notify
 		if($send)
 		{
 			$event = new \CEvent;
-			$event->Send($eventName, $order->getField('LID'), $fields, "N");
+			$event->Send($eventName, $entity->getField('LID'), $fields, "N");
 		}
 
-		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_CANCELED, array("ORDER" => static::getOrderFields($order)));
+		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_CANCELED, array("ORDER" => static::getOrderFields($entity)));
 
-		static::addSentEvent($order->getId(), static::EVENT_ORDER_CANCEL_SEND_EMAIL_EVENT_NAME);
+		static::addSentEvent($entity->getId(), static::EVENT_ORDER_CANCEL_SEND_EMAIL_EVENT_NAME);
 
 		return $result;
 	}
 
 	/**
-	 * @param Order $order
+	 * @param Internals\Entity $entity
 	 *
 	 * @return Result
 	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
 	 */
-	public static function sendOrderPaid(Order $order)
+	public static function sendOrderPaid(Internals\Entity $entity)
 	{
 		$result = new Result();
 
@@ -200,20 +221,27 @@ class Notify
 			return $result;
 		}
 
-		if (static::hasSentEvent($order->getId(), static::EVENT_ORDER_PAID_SEND_EMAIL_EVENT_NAME))
+		if (!$entity instanceof Order)
+		{
+			throw new Main\ArgumentTypeException('entity', '\Bitrix\Sale\Order');
+		}
+
+		if (static::hasSentEvent($entity->getId(), static::EVENT_ORDER_PAID_SEND_EMAIL_EVENT_NAME))
 		{
 			return $result;
 		}
 
-		if (!$order->isPaid())
+		if (!$entity->isPaid())
 		{
 			return $result;
 		}
 
 		$fields = Array(
-			"ORDER_ID" => $order->getField("ACCOUNT_NUMBER"),
-			"ORDER_DATE" => $order->getDateInsert()->toString(),
-			"EMAIL" => static::getUserName($order),
+			"ORDER_ID" => $entity->getField("ACCOUNT_NUMBER"),
+			"ORDER_REAL_ID" => $entity->getField("ID"),
+			"ORDER_ACCOUNT_NUMBER_ENCODE" => urlencode(urlencode($entity->getField("ACCOUNT_NUMBER"))),
+			"ORDER_DATE" => $entity->getDateInsert()->toString(),
+			"EMAIL" => static::getUserEmail($entity),
 			"SALE_EMAIL" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
 		);
 
@@ -222,7 +250,7 @@ class Notify
 
 		foreach(GetModuleEvents("sale", static::EVENT_ON_ORDER_PAID_SEND_EMAIL, true) as $oldEvent)
 		{
-			if (ExecuteModuleEventEx($oldEvent, array($order->getId(), &$eventName, &$fields)) === false)
+			if (ExecuteModuleEventEx($oldEvent, array($entity->getId(), &$eventName, &$fields)) === false)
 			{
 				$send = false;
 			}
@@ -231,23 +259,24 @@ class Notify
 		if($send)
 		{
 			$event = new \CEvent;
-			$event->Send($eventName, $order->getField('LID'), $fields, "N");
+			$event->Send($eventName, $entity->getField('LID'), $fields, "N");
 		}
 
-		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_PAID, array("ORDER" => static::getOrderFields($order)));
+		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_PAID, array("ORDER" => static::getOrderFields($entity)));
 
-		static::addSentEvent($order->getId(), static::EVENT_ORDER_PAID_SEND_EMAIL_EVENT_NAME);
+		static::addSentEvent($entity->getId(), static::EVENT_ORDER_PAID_SEND_EMAIL_EVENT_NAME);
 
 		return $result;
 	}
 
 	/**
-	 * @param Order $order
+	 * @param Internals\Entity $entity
 	 *
 	 * @return Result
 	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
 	 */
-	public static function sendOrderStatusChange(Order $order)
+	public static function sendOrderStatusChange(Internals\Entity $entity)
 	{
 		$result = new Result();
 
@@ -256,41 +285,48 @@ class Notify
 			return $result;
 		}
 
-		$statusEventName = "SALE_STATUS_CHANGED_".$order->getField("STATUS_ID");
+		if (!$entity instanceof Order)
+		{
+			throw new Main\ArgumentTypeException('entity', '\Bitrix\Sale\Order');
+		}
 
-		if (static::hasSentEvent($order->getId(), $statusEventName))
+		$statusEventName = static::EVENT_DEFAULT_STATUS_CHANGED_ID.$entity->getField("STATUS_ID");
+
+		if (static::hasSentEvent($entity->getId(), $statusEventName))
 		{
 			return $result;
 		}
 
-		/** @var Fields $fields */
-		$fields = $order->getFields();
+		/** @var Internals\Fields $fields */
+		$fields = $entity->getFields();
 		$originalValues = $fields->getOriginalValues();
 
-		if (array_key_exists('STATUS_ID', $originalValues) && $originalValues['STATUS_ID'] == $order->getField("STATUS_ID"))
+		if (array_key_exists('STATUS_ID', $originalValues) && $originalValues['STATUS_ID'] == $entity->getField("STATUS_ID"))
 		{
 			return $result;
 		}
 
 		static $cacheSiteData = array();
 
-		if (!isset($cacheSiteData[$order->getSiteId()]))
+		if (!isset($cacheSiteData[$entity->getSiteId()]))
 		{
-			$siteRes = \CSite::GetByID($order->getSiteId());
+			$siteRes = \CSite::GetByID($entity->getSiteId());
 			$siteData = $siteRes->Fetch();
 		}
 		else
 		{
-			$siteData = $cacheSiteData[$order->getSiteId()];
+			$siteData = $cacheSiteData[$entity->getSiteId()];
 		}
 
-		if (($statusData = \CSaleStatus::GetByID($order->getField("STATUS_ID"), $siteData['LANGUAGE_ID'])) && $statusData['NOTIFY'] == "Y")
+		if (($statusData = \CSaleStatus::GetByID($entity->getField("STATUS_ID"), $siteData['LANGUAGE_ID'])) && $statusData['NOTIFY'] == "Y")
 		{
 			$fields = Array(
-				"ORDER_ID" => $order->getField("ACCOUNT_NUMBER"),
-				"ORDER_DATE" => $order->getField("DATE_INSERT")->toString(),
+				"ORDER_ID" => $entity->getField("ACCOUNT_NUMBER"),
+				"ORDER_REAL_ID" => $entity->getField("ID"),
+				"ORDER_ACCOUNT_NUMBER_ENCODE" => urlencode(urlencode($entity->getField("ACCOUNT_NUMBER"))),
+				"ORDER_DATE" => $entity->getField("DATE_INSERT")->toString(),
 				"ORDER_STATUS" => $statusData["NAME"],
-				"EMAIL" => static::getUserEmail($order),
+				"EMAIL" => static::getUserEmail($entity),
 				"ORDER_DESCRIPTION" => $statusData["DESCRIPTION"],
 				"TEXT" => "",
 				"SALE_EMAIL" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
@@ -298,7 +334,7 @@ class Notify
 
 			foreach(GetModuleEvents("sale", static::EVENT_ORDER_STATUS_EMAIL, true) as $oldEvent)
 			{
-				$fields["TEXT"] = ExecuteModuleEventEx($oldEvent, array($order->getId(), $statusData["ID"]));
+				$fields["TEXT"] = ExecuteModuleEventEx($oldEvent, array($entity->getId(), $statusData["ID"]));
 			}
 
 			$eventName = $statusEventName;
@@ -306,7 +342,7 @@ class Notify
 			$isSend = true;
 			foreach(GetModuleEvents("sale", static::EVENT_ORDER_STATUS_SEND_EMAIL, true) as $oldEvent)
 			{
-				if (ExecuteModuleEventEx($oldEvent, Array($order->getId(), &$eventName, &$fields, $order->getField("STATUS_ID")))===false)
+				if (ExecuteModuleEventEx($oldEvent, Array($entity->getId(), &$eventName, &$fields, $entity->getField("STATUS_ID")))===false)
 				{
 					$isSend = false;
 				}
@@ -322,35 +358,36 @@ class Notify
 					$o,
 					array(
 						"EVENT_NAME" => $eventName,
-						"SITE_ID" => $order->getSiteId(),
+						"SITE_ID" => $entity->getSiteId(),
 						'ACTIVE' => 'Y'
 					)
 				);
 				if (!($eventMessageData = $eventMessageRes->Fetch()))
 				{
-					$eventName = static::EVENT_ORDER_STATUS_CHANGED_SEND_EMAIL_EVENT_NAME;
+					$eventName = static::EVENT_DEFAULT_STATUS_CHANGED_ID.$entity->getField("STATUS_ID");
 				}
 
 				unset($o, $b);
 				$event = new \CEvent;
-				$event->Send($eventName, $order->getSiteId(), $fields, "N");
+				$event->Send($eventName, $entity->getSiteId(), $fields, "N");
 			}
 		}
 
-		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_STATUS_CHANGE, array("ORDER" => static::getOrderFields($order)));
+		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_ORDER_STATUS_CHANGE, array("ORDER" => static::getOrderFields($entity)));
 
-		static::addSentEvent($order->getId(), $statusEventName);
+		static::addSentEvent($entity->getId(), $statusEventName);
 
 		return $result;
 	}
 
 	/**
-	 * @param Shipment $shipment
+	 * @param Internals\Entity $entity
 	 *
-	 * @return bool
+	 * @return Result
 	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
 	 */
-	public static function sendShipmentTrackingNumberChange(Shipment $shipment)
+	public static function sendShipmentStatusChange(Internals\Entity $entity)
 	{
 		$result = new Result();
 
@@ -359,13 +396,31 @@ class Notify
 			return $result;
 		}
 
-		if (static::hasSentEvent('s'.$shipment->getId(), static::EVENT_SHIPMENT_TRACKING_NUMBER_SEND_EMAIL_EVENT_NAME))
+		if (!$entity instanceof Shipment)
+		{
+			throw new Main\ArgumentTypeException('entity', '\Bitrix\Sale\Shipment');
+		}
+
+		$statusEventName = static::EVENT_DEFAULT_STATUS_CHANGED_ID.$entity->getField("STATUS_ID");
+
+		if (static::hasSentEvent('s'.$entity->getId(), $statusEventName))
 		{
 			return $result;
 		}
 
+		/** @var Internals\Fields $fields */
+		$fields = $entity->getFields();
+		$originalValues = $fields->getOriginalValues();
+
+		if (array_key_exists('STATUS_ID', $originalValues) && $originalValues['STATUS_ID'] == $entity->getField("STATUS_ID"))
+		{
+			return $result;
+		}
+
+		static $cacheSiteData = array();
+
 		/** @var ShipmentCollection $shipmentCollection */
-		if (!$shipmentCollection = $shipment->getCollection())
+		if (!$shipmentCollection = $entity->getCollection())
 		{
 			$result->addError(new ResultError(Main\Localization\Loc::getMessage("SALE_NOTIFY_SHIPMENT_COLLECTION_NOT_FOUND")));
 			return $result;
@@ -378,7 +433,156 @@ class Notify
 			return $result;
 		}
 
-		/** @var Fields $fields */
+
+		if (!isset($cacheSiteData[$order->getSiteId()]))
+		{
+			$siteRes = \CSite::GetByID($order->getSiteId());
+			$siteData = $siteRes->Fetch();
+		}
+		else
+		{
+			$siteData = $cacheSiteData[$order->getSiteId()];
+		}
+		
+		$statusData = Internals\StatusTable::getList(array(
+								 'select' => array(
+									 'ID',
+									 'NOTIFY',
+									 'NAME' => 'Bitrix\Sale\Internals\StatusLangTable:STATUS.NAME',
+								 ),
+								 'filter' => array(
+									 '=ID' => $entity->getField("STATUS_ID"),
+									 '=Bitrix\Sale\Internals\StatusLangTable:STATUS.LID' => $siteData['LANGUAGE_ID'],
+									 '=TYPE' => DeliveryStatus::TYPE
+								 ),
+								 'limit'  => 1,
+							 ))->fetch();
+
+		if (!empty($statusData) && $statusData['NOTIFY'] == "Y")
+		{
+			$isSend = true;
+
+			$fields = array(
+				"ORDER_ID" => $order->getField("ACCOUNT_NUMBER"),
+				"ORDER_REAL_ID" => $order->getField("ID"),
+				"ORDER_ACCOUNT_NUMBER_ENCODE" => urlencode(urlencode($order->getField("ACCOUNT_NUMBER"))),
+				"ORDER_DATE" => $order->getDateInsert()->toString(),
+				"SHIPMENT_ID" => $entity->getId(),
+				"SHIPMENT_DATE" => $entity->getField("DATE_INSERT")->toString(),
+				"SHIPMENT_STATUS" => $statusData["NAME"],
+				"EMAIL" => static::getUserEmail($order),
+				"TEXT" => "",
+				"SALE_EMAIL" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
+			);
+
+			$event = new Main\Event('sale', static::EVENT_SHIPMENT_STATUS_EMAIL, array(
+				'EVENT_NAME' => $statusEventName,
+				'VALUES' => $fields
+			));
+			$event->send();
+
+			if ($event->getResults())
+			{
+				/** @var Main\EventResult $eventResult */
+				foreach($event->getResults() as $eventResult)
+				{
+					if($eventResult->getType() === Main\EventResult::ERROR)
+					{
+						$isSend = false;
+					}
+					elseif($eventResult->getType() == Main\EventResult::SUCCESS)
+					{
+						if ($eventResultParams = $eventResult->getParameters())
+						{
+							/** @var Result $eventResultData */
+							if (!empty($eventResultParams) && is_array($eventResultParams))
+							{
+								if (!empty($eventResultParams['EVENT_NAME']))
+								{
+									$statusEventName = $eventResultParams['EVENT_NAME'];
+								}
+
+								if (!empty($eventResultParams['VALUES']) && is_array($eventResultParams['VALUES']))
+								{
+									$fields = $eventResultParams['VALUES'];
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if($isSend)
+			{
+				$b = '';
+				$o = '';
+				$eventMessage = new \CEventMessage;
+				$eventMessageRes = $eventMessage->GetList(
+					$b,
+					$o,
+					array(
+						"EVENT_NAME" => $statusEventName,
+						"SITE_ID" => $order->getSiteId(),
+						'ACTIVE' => 'Y'
+					)
+				);
+				if (!($eventMessageData = $eventMessageRes->Fetch()))
+				{
+					$statusEventName = static::EVENT_DEFAULT_STATUS_CHANGED_ID.$entity->getField("STATUS_ID");
+				}
+
+				unset($o, $b);
+				$event = new \CEvent;
+				$event->Send($statusEventName, $order->getSiteId(), $fields, "N");
+			}
+		}
+
+		static::addSentEvent('s'.$entity->getId(), $statusEventName);
+
+		return $result;
+	}
+
+	/**
+	 * @param Internals\Entity $entity
+	 *
+	 * @return Result
+	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
+	 */
+	public static function sendShipmentTrackingNumberChange(Internals\Entity $entity)
+	{
+		$result = new Result();
+
+		if (static::isNotifyDisabled())
+		{
+			return $result;
+		}
+
+		if (!$entity instanceof Shipment)
+		{
+			throw new Main\ArgumentTypeException('entity', '\Bitrix\Sale\Shipment');
+		}
+
+		if (static::hasSentEvent('s'.$entity->getId(), static::EVENT_SHIPMENT_TRACKING_NUMBER_SEND_EMAIL_EVENT_NAME))
+		{
+			return $result;
+		}
+
+		/** @var ShipmentCollection $shipmentCollection */
+		if (!$shipmentCollection = $entity->getCollection())
+		{
+			$result->addError(new ResultError(Main\Localization\Loc::getMessage("SALE_NOTIFY_SHIPMENT_COLLECTION_NOT_FOUND")));
+			return $result;
+		}
+
+		/** @var Order $order */
+		if (!$order = $shipmentCollection->getOrder())
+		{
+			$result->addError(new ResultError(Main\Localization\Loc::getMessage("SALE_NOTIFY_ORDER_NOT_FOUND")));
+			return $result;
+		}
+
+		/** @var Internals\Fields $fields */
 		$fields = $order->getFields();
 		$originalValues = $fields->getOriginalValues();
 
@@ -391,9 +595,11 @@ class Notify
 
 		$emailFields = Array(
 			"ORDER_ID" => $accountNumber,
+			"ORDER_REAL_ID" => $order->getField("ID"),
+			"ORDER_ACCOUNT_NUMBER_ENCODE" => urlencode(urlencode($order->getField("ACCOUNT_NUMBER"))),
 			"ORDER_DATE" => $order->getDateInsert()->toString(),
 			"ORDER_USER" => static::getUserName($order),
-			"ORDER_TRACKING_NUMBER" => $shipment->getField('TRACKING_NUMBER'),
+			"ORDER_TRACKING_NUMBER" => $entity->getField('TRACKING_NUMBER'),
 			"BCC" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER['SERVER_NAME']),
 			"EMAIL" => static::getUserEmail($order),
 			"SALE_EMAIL" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER['SERVER_NAME'])
@@ -402,18 +608,19 @@ class Notify
 		$event = new \CEvent;
 		$event->send(static::EVENT_SHIPMENT_TRACKING_NUMBER_SEND_EMAIL_EVENT_NAME, $order->getField("LID"), $emailFields, "N");
 
-		static::addSentEvent('s'.$shipment->getId(), static::EVENT_SHIPMENT_TRACKING_NUMBER_SEND_EMAIL_EVENT_NAME);
+		static::addSentEvent('s'.$entity->getId(), static::EVENT_SHIPMENT_TRACKING_NUMBER_SEND_EMAIL_EVENT_NAME);
 
 		return $result;
 	}
 
 	/**
-	 * @param Shipment $shipment
+	 * @param Internals\Entity $entity
 	 *
-	 * @return bool
+	 * @return Result
 	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
 	 */
-	public static function sendShipmentAllowDelivery(Shipment $shipment)
+	public static function sendShipmentAllowDelivery(Internals\Entity $entity)
 	{
 		$result = new Result();
 
@@ -422,13 +629,18 @@ class Notify
 			return $result;
 		}
 
-		if (static::hasSentEvent('s'.$shipment->getId(), static::EVENT_SHIPMENT_DELIVER_SEND_EMAIL_EVENT_NAME))
+		if (!$entity instanceof Shipment)
+		{
+			throw new Main\ArgumentTypeException('entity', '\Bitrix\Sale\Shipment');
+		}
+
+		if (static::hasSentEvent('s'.$entity->getId(), static::EVENT_SHIPMENT_DELIVER_SEND_EMAIL_EVENT_NAME))
 		{
 			return $result;
 		}
 
 		/** @var ShipmentCollection $shipmentCollection */
-		if (!$shipmentCollection = $shipment->getCollection())
+		if (!$shipmentCollection = $entity->getCollection())
 		{
 			$result->addError(new ResultError(Main\Localization\Loc::getMessage("SALE_NOTIFY_SHIPMENT_COLLECTION_NOT_FOUND")));
 			return $result;
@@ -449,7 +661,11 @@ class Notify
 
 		$fields = Array(
 			"ORDER_ID" => $order->getField("ACCOUNT_NUMBER"),
+			"ORDER_REAL_ID" => $order->getField("ID"),
+			"ORDER_ACCOUNT_NUMBER_ENCODE" => urlencode(urlencode($order->getField("ACCOUNT_NUMBER"))),
 			"ORDER_DATE" => $order->getDateInsert()->toString(),
+			"SHIPMENT_ID" => $entity->getId(),
+			"SHIPMENT_DATE" => $entity->getField("DATE_INSERT")->toString(),
 			"EMAIL" => static::getUserEmail($order),
 			"SALE_EMAIL" => Main\Config\Option::get("sale", "order_email", "order@".$_SERVER["SERVER_NAME"]),
 		);
@@ -473,7 +689,7 @@ class Notify
 
 		\CSaleMobileOrderPush::send(static::EVENT_MOBILE_PUSH_SHIPMENT_ALLOW_DELIVERY, array("ORDER" => static::getOrderFields($order)));
 
-		static::addSentEvent('s'.$shipment->getId(), static::EVENT_SHIPMENT_DELIVER_SEND_EMAIL_EVENT_NAME);
+		static::addSentEvent('s'.$entity->getId(), static::EVENT_SHIPMENT_DELIVER_SEND_EMAIL_EVENT_NAME);
 
 		return $result;
 	}
@@ -857,16 +1073,19 @@ class Notify
 	}
 
 	/**
-	 * @param Order $order
+	 * @param Internals\Entity $entity
 	 * @param $eventName
 	 */
-	public static function callNotify(Order $order, $eventName)
+	public static function callNotify(Internals\Entity $entity, $eventName)
 	{
 		if (($eventNotifyMap = EventActions::getEventNotifyMap()) && !empty($eventNotifyMap) && is_array($eventNotifyMap))
 		{
-			if (array_key_exists($eventName, $eventNotifyMap) && !empty($eventNotifyMap[$eventName]))
+			if (array_key_exists($eventName, $eventNotifyMap) && !empty($eventNotifyMap[$eventName]) && !empty($eventNotifyMap[$eventName]['METHOD']))
 			{
-				call_user_func_array($eventNotifyMap[$eventName], array($order));
+				if ($entity instanceof $eventNotifyMap[$eventName]['ENTITY'])
+				{
+					call_user_func_array($eventNotifyMap[$eventName]['METHOD'], array($entity));
+				}
 			}
 		}
 	}
@@ -877,6 +1096,7 @@ class Notify
 	public static function setNotifyDisable($value)
 	{
 		static::$disableNotify = ($value === true);
+		Compatible\EventCompatibility::setDisableMailSend($value);
 	}
 
 	/**

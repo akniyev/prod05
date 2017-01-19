@@ -1,6 +1,7 @@
 <?
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Sale;
+use Bitrix\Sale\PriceMaths;
 
 Loc::loadMessages(__FILE__);
 
@@ -95,7 +96,7 @@ class CAllSaleOrder
 				{
 					if (in_array($fieldName, $roundOrderFields))
 					{
-						$arOrder[$fieldName] = roundEx($arOrder[$fieldName], SALE_VALUE_PRECISION);
+						$arOrder[$fieldName] = PriceMaths::roundPrecision($arOrder[ $fieldName ]);
 					}
 				}
 			}
@@ -112,7 +113,7 @@ class CAllSaleOrder
 						{
 							if (isset($basketItem[$fieldName]))
 							{
-								$basketItem[$fieldName] = roundEx($basketItem[$fieldName], SALE_VALUE_PRECISION);
+								$basketItem[$fieldName] = PriceMaths::roundPrecision($basketItem[ $fieldName ]);
 							}
 						}
 					}
@@ -145,8 +146,9 @@ class CAllSaleOrder
 		foreach(GetModuleEvents("sale", "OnSaleCalculateOrder", true) as $arEvent)
 			ExecuteModuleEventEx($arEvent, array(&$arOrder));
 
-		$arOrder["PRICE"] = roundEx($arOrder["PRICE"], SALE_VALUE_PRECISION);
-		$arOrder["TAX_VALUE"] = roundEx($arOrder["TAX_VALUE"], SALE_VALUE_PRECISION);
+		$arOrder["PRICE"] = \Bitrix\Sale\PriceMaths::roundPrecision($arOrder["PRICE"]);
+		$arOrder["TAX_VALUE"] = \Bitrix\Sale\PriceMaths::roundPrecision($arOrder["TAX_VALUE"]);
+
 		return $arOrder;
 	}
 
@@ -263,15 +265,15 @@ class CAllSaleOrder
 						$arResult['VAT_RATE'] = $arItem["VAT_RATE"];
 
 					$v = CSaleBasketHelper::getVat($arItem);
-					$arItem["VAT_VALUE"] = roundEx($v / $arItem["QUANTITY"], SALE_VALUE_PRECISION);
+					$arItem["VAT_VALUE"] = \Bitrix\Sale\PriceMaths::roundPrecision($v / $arItem["QUANTITY"]);
 					$arResult["VAT_SUM"] += $v;
 
 				}
 			}
 		}
 
-		$arResult['ORDER_PRICE'] = roundEx($arResult['ORDER_PRICE'], SALE_VALUE_PRECISION);
-		$arResult['VAT_SUM'] = roundEx($arResult['VAT_SUM'], SALE_VALUE_PRECISION);
+		$arResult['ORDER_PRICE'] = \Bitrix\Sale\PriceMaths::roundPrecision($arResult['ORDER_PRICE']);
+		$arResult['VAT_SUM'] = \Bitrix\Sale\PriceMaths::roundPrecision($arResult['VAT_SUM']);
 		unset($arItem);
 
 		return $arResult;
@@ -312,7 +314,6 @@ class CAllSaleOrder
 	*/
 	public static function DoSaveOrder(&$arOrder, $arAdditionalFields, $orderId, &$arErrors, $arCoupons = array(), $arStoreBarcodeOrderFormData = array(), $bSaveBarcodes = false)
 	{
-		Trace("DoSaveOrder");
 		global $APPLICATION;
 
 		$orderId = (int)$orderId;
@@ -440,47 +441,8 @@ class CAllSaleOrder
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
 
-		$userRights = CMain::GetUserRight("sale", $arUserGroups, "Y", "Y");
-		if ($userRights >= "W")
-			return True;
-
-		$arOrder = CSaleOrder::GetByID($ID);
-		if ($arOrder)
-		{
-			if (IntVal($arOrder["USER_ID"]) == $userID)
-				return True;
-
-			if ($userRights == "U")
-			{
-				$num = CSaleGroupAccessToSite::GetList(
-						array(),
-						array(
-								"SITE_ID" => $arOrder["LID"],
-								"GROUP_ID" => $arUserGroups
-							),
-						array()
-					);
-
-				if (IntVal($num) > 0)
-				{
-					$dbStatusPerms = CSaleStatus::GetPermissionsList(
-						array(),
-						array(
-							"STATUS_ID" => $arOrder["STATUS_ID"],
-							"GROUP_ID" => $arUserGroups
-						),
-						array("MAX" => "PERM_VIEW")
-					);
-					if ($arStatusPerms = $dbStatusPerms->Fetch())
-					{
-						if ($arStatusPerms["PERM_VIEW"] == "Y")
-							return True;
-					}
-				}
-			}
-		}
-
-		return False;
+		$permList = self::checkUserPermissionOrderList(array($ID), 'view', $arUserGroups, $userID);
+		return (isset($permList[$ID]) && $permList[$ID] === true);
 	}
 
 	/**
@@ -489,10 +451,11 @@ class CAllSaleOrder
 	 * @param bool $siteID
 	 * @return bool
 	 */
-	function CanUserUpdateOrder($ID, $arUserGroups = false, $siteID = false)
+	static function CanUserUpdateOrder($ID, $arUserGroups = false, $siteID = false)
 	{
 		$ID = IntVal($ID);
 
+		static $cacheGroupAccess = array();
 		$userRights = CMain::GetUserRight("sale", $arUserGroups, "Y", "Y");
 
 		if ($userRights >= "W")
@@ -502,46 +465,31 @@ class CAllSaleOrder
 		{
 			if ($ID > 0)
 			{
-				$arOrder = CSaleOrder::GetByID($ID);
-				if ($arOrder)
-				{
-					$num = CSaleGroupAccessToSite::GetList(
-							array(),
-							array(
-									"SITE_ID" => $arOrder["LID"],
-									"GROUP_ID" => $arUserGroups
-								),
-							array()
-						);
-
-					if (IntVal($num) > 0)
-					{
-						$dbStatusPerms = CSaleStatus::GetPermissionsList(
-							array(),
-							array(
-								"STATUS_ID" => $arOrder["STATUS_ID"],
-								"GROUP_ID" => $arUserGroups
-							),
-							array("MAX" => "PERM_UPDATE")
-						);
-						if ($arStatusPerms = $dbStatusPerms->Fetch())
-							if ($arStatusPerms["PERM_UPDATE"] == "Y")
-								return True;
-					}
-				}
+				$permList = self::checkUserPermissionOrderList(array($ID), 'update', $arUserGroups);
+				return (isset($permList[$ID]) && $permList[$ID] === true);
 			}
 			else // order not created yet
 			{
 				if ($siteID)
 				{
-					$num = CSaleGroupAccessToSite::GetList(
-							array(),
-							array(
-									"SITE_ID" => $siteID,
-									"GROUP_ID" => $arUserGroups
-								),
-							array()
-						);
+					$hashGroupAccess = md5($siteID. "|" . join(', ', $arUserGroups));
+					if (array_key_exists($hashGroupAccess, $cacheGroupAccess))
+					{
+						$num = $cacheGroupAccess[$hashGroupAccess];
+					}
+					else
+					{
+						$num = CSaleGroupAccessToSite::GetList(
+								array(),
+								array(
+										"SITE_ID" => $siteID,
+										"GROUP_ID" => $arUserGroups
+									),
+								array()
+							);
+
+						$cacheGroupAccess[$hashGroupAccess] = $num;
+					}
 
 					if (IntVal($num) > 0)
 						return True;
@@ -558,50 +506,13 @@ class CAllSaleOrder
 	 * @param int $userID
 	 * @return bool
 	 */
-	function CanUserCancelOrder($ID, $arUserGroups = false, $userID = 0)
+	static function CanUserCancelOrder($ID, $arUserGroups = false, $userID = 0)
 	{
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
 
-		$userRights = CMain::GetUserRight("sale", $arUserGroups, "Y", "Y");
-		if ($userRights >= "W")
-			return True;
-
-		$arOrder = CSaleOrder::GetByID($ID);
-		if ($arOrder)
-		{
-			if (IntVal($arOrder["USER_ID"]) == $userID)
-				return True;
-
-			if ($userRights == "U")
-			{
-				$num = CSaleGroupAccessToSite::GetList(
-						array(),
-						array(
-								"SITE_ID" => $arOrder["LID"],
-								"GROUP_ID" => $arUserGroups
-							),
-						array()
-					);
-
-				if (IntVal($num) > 0)
-				{
-					$dbStatusPerms = CSaleStatus::GetPermissionsList(
-						array(),
-						array(
-							"STATUS_ID" => $arOrder["STATUS_ID"],
-							"GROUP_ID" => $arUserGroups
-						),
-						array("MAX" => "PERM_CANCEL")
-					);
-					if ($arStatusPerms = $dbStatusPerms->Fetch())
-						if ($arStatusPerms["PERM_CANCEL"] == "Y")
-							return True;
-				}
-			}
-		}
-
-		return False;
+		$permList = self::checkUserPermissionOrderList(array($ID), 'cancel', $arUserGroups, $userID);
+		return (isset($permList[$ID]) && $permList[$ID] === true);
 	}
 
 	/**
@@ -614,46 +525,9 @@ class CAllSaleOrder
 	{
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
-
-		$userRights = CMain::GetUserRight("sale", $arUserGroups, "Y", "Y");
-		if ($userRights >= "W")
-			return True;
-
-		$arOrder = CSaleOrder::GetByID($ID);
-		if ($arOrder)
-		{
-			if (IntVal($arOrder["USER_ID"]) == $userID)
-				return True;
-
-			if ($userRights == "U")
-			{
-				$num = CSaleGroupAccessToSite::GetList(
-						array(),
-						array(
-								"SITE_ID" => $arOrder["LID"],
-								"GROUP_ID" => $arUserGroups
-							),
-						array()
-					);
-
-				if (IntVal($num) > 0)
-				{
-					$dbStatusPerms = CSaleStatus::GetPermissionsList(
-						array(),
-						array(
-							"STATUS_ID" => $arOrder["STATUS_ID"],
-							"GROUP_ID" => $arUserGroups
-						),
-						array("MAX" => "PERM_MARK")
-					);
-					if ($arStatusPerms = $dbStatusPerms->Fetch())
-						if ($arStatusPerms["PERM_MARK"] == "Y")
-							return True;
-				}
-			}
-		}
-
-		return False;
+		
+		$permList = self::checkUserPermissionOrderList(array($ID), 'mark', $arUserGroups, $userID);
+		return (isset($permList[$ID]) && $permList[$ID] === true);
 	}
 
 	/**
@@ -781,47 +655,13 @@ class CAllSaleOrder
 	 * @param int $userID
 	 * @return bool
 	 */
-	function CanUserDeleteOrder($ID, $arUserGroups = false, $userID = 0)
+	static function CanUserDeleteOrder($ID, $arUserGroups = false, $userID = 0)
 	{
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
 
-		$userRights = CMain::GetUserRight("sale", $arUserGroups, "Y", "Y");
-		if ($userRights >= "W")
-			return True;
-
-		if ($userRights == "U")
-		{
-			$arOrder = CSaleOrder::GetByID($ID);
-			if ($arOrder)
-			{
-				$num = CSaleGroupAccessToSite::GetList(
-						array(),
-						array(
-								"SITE_ID" => $arOrder["LID"],
-								"GROUP_ID" => $arUserGroups
-							),
-						array()
-					);
-
-				if (IntVal($num) > 0)
-				{
-					$dbStatusPerms = CSaleStatus::GetPermissionsList(
-						array(),
-						array(
-							"STATUS_ID" => $arOrder["STATUS_ID"],
-							"GROUP_ID" => $arUserGroups
-						),
-						array("MAX" => "PERM_DELETE")
-					);
-					if ($arStatusPerms = $dbStatusPerms->Fetch())
-						if ($arStatusPerms["PERM_DELETE"] == "Y")
-							return True;
-				}
-			}
-		}
-
-		return False;
+		$permList = self::checkUserPermissionOrderList(array($ID), 'delete', $arUserGroups, $userID);
+		return (isset($permList[$ID]) && $permList[$ID] === true);
 	}
 
 
@@ -1938,25 +1778,28 @@ class CAllSaleOrder
 					$userEMail = $arUser["EMAIL"];
 			}
 
-			$arFields = Array(
-				"ORDER_ID" => $arOrder["ACCOUNT_NUMBER"],
-				"ORDER_DATE" => $arOrder["DATE_INSERT_FORMAT"],
-				"EMAIL" => $userEMail,
-				"SALE_EMAIL" => COption::GetOptionString("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
-			);
-			$eventName = "SALE_ORDER_PAID";
-
-			$bSend = true;
-			foreach(GetModuleEvents("sale", "OnOrderPaySendEmail", true) as $arEvent)
+			if ($isOrderConverted != "Y")
 			{
-				if (ExecuteModuleEventEx($arEvent, Array($ID, &$eventName, &$arFields))===false)
-					$bSend = false;
-			}
+				$arFields = Array(
+						"ORDER_ID" => $arOrder["ACCOUNT_NUMBER"],
+						"ORDER_DATE" => $arOrder["DATE_INSERT_FORMAT"],
+						"EMAIL" => $userEMail,
+						"SALE_EMAIL" => COption::GetOptionString("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
+				);
+				$eventName = "SALE_ORDER_PAID";
 
-			if($bSend)
-			{
-				$event = new CEvent;
-				$event->Send($eventName, $arOrder["LID"], $arFields, "N");
+				$bSend = true;
+				foreach(GetModuleEvents("sale", "OnOrderPaySendEmail", true) as $arEvent)
+				{
+					if (ExecuteModuleEventEx($arEvent, Array($ID, &$eventName, &$arFields))===false)
+						$bSend = false;
+				}
+
+				if($bSend)
+				{
+					$event = new CEvent;
+					$event->Send($eventName, $arOrder["LID"], $arFields, "N");
+				}
 			}
 
 			CSaleMobileOrderPush::send("ORDER_PAYED", array("ORDER" => $arOrder));
@@ -2123,23 +1966,26 @@ class CAllSaleOrder
 					$userEMail = $arUser["EMAIL"];
 			}
 
-			$eventName = "SALE_ORDER_DELIVERY";
-			$arFields = Array(
-				"ORDER_ID" => $arOrder["ACCOUNT_NUMBER"],
-				"ORDER_DATE" => $arOrder["DATE_INSERT_FORMAT"],
-				"EMAIL" => $userEMail,
-				"SALE_EMAIL" => COption::GetOptionString("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
-			);
-
-			$bSend = true;
-			foreach(GetModuleEvents("sale", "OnOrderDeliverSendEmail", true) as $arEvent)
-				if (ExecuteModuleEventEx($arEvent, Array($ID, &$eventName, &$arFields))===false)
-					$bSend = false;
-
-			if($bSend)
+			if ($isOrderConverted != "Y")
 			{
-				$event = new CEvent;
-				$event->Send($eventName, $arOrder["LID"], $arFields, "N");
+				$eventName = "SALE_ORDER_DELIVERY";
+				$arFields = Array(
+						"ORDER_ID" => $arOrder["ACCOUNT_NUMBER"],
+						"ORDER_DATE" => $arOrder["DATE_INSERT_FORMAT"],
+						"EMAIL" => $userEMail,
+						"SALE_EMAIL" => COption::GetOptionString("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
+				);
+
+				$bSend = true;
+				foreach(GetModuleEvents("sale", "OnOrderDeliverSendEmail", true) as $arEvent)
+					if (ExecuteModuleEventEx($arEvent, Array($ID, &$eventName, &$arFields))===false)
+						$bSend = false;
+
+				if($bSend)
+				{
+					$event = new CEvent;
+					$event->Send($eventName, $arOrder["LID"], $arFields, "N");
+				}
 			}
 
 			CSaleMobileOrderPush::send("ORDER_DELIVERY_ALLOWED", array("ORDER" => $arOrder));
@@ -2504,30 +2350,6 @@ class CAllSaleOrder
 					$userEmail = $arUser["EMAIL"];
 			}
 
-			$event = new CEvent;
-			$arFields = Array(
-				"ORDER_ID" => $arOrder["ACCOUNT_NUMBER"],
-				"ORDER_DATE" => $arOrder["DATE_INSERT_FORMAT"],
-				"EMAIL" => $userEmail,
-				"ORDER_CANCEL_DESCRIPTION" => $description,
-				"SALE_EMAIL" => COption::GetOptionString("sale", "order_email", "order@".$_SERVER["SERVER_NAME"])
-			);
-
-			$eventName = "SALE_ORDER_CANCEL";
-
-			$bSend = true;
-			foreach(GetModuleEvents("sale", "OnOrderCancelSendEmail", true) as $arEvent)
-				if (ExecuteModuleEventEx($arEvent, Array($ID, &$eventName, &$arFields))===false)
-					$bSend = false;
-
-			if($bSend)
-			{
-				$event = new CEvent;
-				$event->Send($eventName, $arOrder["LID"], $arFields, "N");
-			}
-
-			CSaleMobileOrderPush::send("ORDER_CANCELED", array("ORDER" => $arOrder));
-
 			if (CModule::IncludeModule("statistic"))
 			{
 				CStatEvent::AddByEvents("eStore", "order_cancel", $ID, "", $arOrder["STAT_GID"]);
@@ -2540,6 +2362,8 @@ class CAllSaleOrder
 	function StatusOrder($ID, $val)
 	{
 		global $DB, $USER, $APPLICATION;
+
+		$isOrderConverted = \Bitrix\Main\Config\Option::get("main", "~sale_converted_15", 'N');
 
 		$ID = IntVal($ID);
 		$val = trim($val);
@@ -2614,32 +2438,35 @@ class CAllSaleOrder
 			foreach(GetModuleEvents("sale", "OnSaleStatusEMail", true) as $arEvent)
 				$arFields["TEXT"] = ExecuteModuleEventEx($arEvent, Array($ID, $arStatus["ID"]));
 
-			$eventName = "SALE_STATUS_CHANGED_".$arOrder["STATUS_ID"];
-
-			$bSend = true;
-			foreach(GetModuleEvents("sale", "OnOrderStatusSendEmail", true) as $arEvent)
-				if (ExecuteModuleEventEx($arEvent, Array($ID, &$eventName, &$arFields, $arOrder["STATUS_ID"]))===false)
-					$bSend = false;
-
-			if($bSend)
+			if ($isOrderConverted != "Y")
 			{
-				$b = '';
-				$o = '';
-				$eventMessage = new CEventMessage;
-				$dbEventMessage = $eventMessage->GetList(
-					$b,
-					$o,
-					array(
-						"EVENT_NAME" => $eventName,
-						"SITE_ID" => $arOrder["LID"],
-						'ACTIVE' => 'Y'
-					)
-				);
-				if (!($arEventMessage = $dbEventMessage->Fetch()))
-					$eventName = "SALE_STATUS_CHANGED";
-				unset($o, $b);
-				$event = new CEvent;
-				$event->Send($eventName, $arOrder["LID"], $arFields, "N");
+				$eventName = "SALE_STATUS_CHANGED_".$arOrder["STATUS_ID"];
+
+				$bSend = true;
+				foreach(GetModuleEvents("sale", "OnOrderStatusSendEmail", true) as $arEvent)
+					if (ExecuteModuleEventEx($arEvent, Array($ID, &$eventName, &$arFields, $arOrder["STATUS_ID"]))===false)
+						$bSend = false;
+
+				if($bSend)
+				{
+					$b = '';
+					$o = '';
+					$eventMessage = new CEventMessage;
+					$dbEventMessage = $eventMessage->GetList(
+							$b,
+							$o,
+							array(
+									"EVENT_NAME" => $eventName,
+									"SITE_ID" => $arOrder["LID"],
+									'ACTIVE' => 'Y'
+							)
+					);
+					if (!($arEventMessage = $dbEventMessage->Fetch()))
+						$eventName = "SALE_STATUS_CHANGED";
+					unset($o, $b);
+					$event = new CEvent;
+					$event->Send($eventName, $arOrder["LID"], $arFields, "N");
+				}
 			}
 		}
 
@@ -2850,8 +2677,13 @@ class CAllSaleOrder
 			$strCurrency = strval($strCurrency);
 			$mxLastOrderDate = '';
 			$intMaxTimestamp = 0;
-			$intTimeStamp = 0;
-			$rsSaleOrders = CSaleOrder::GetList(array(),$arFilter,false,false,array('ID','PRICE','CURRENCY','DATE_INSERT'));
+			$rsSaleOrders = CSaleOrder::GetList(
+				array(),
+				$arFilter,
+				false,
+				false,
+				array('ID','PRICE','CURRENCY','DATE_INSERT')
+			);
 			while ($arSaleOrder = $rsSaleOrders->Fetch())
 			{
 				$intTimeStamp = MakeTimeStamp($arSaleOrder['DATE_INSERT']);
@@ -2867,16 +2699,15 @@ class CAllSaleOrder
 				}
 				else
 				{
-					if ($strCurrency != $arSaleOrder['CURRENCY'])
-					{
-						$dblPrice += $arSaleOrder['PRICE'];
-					}
-					else
-					{
-						$dblPrice += $arSaleOrder['PRICE'];
-					}
+					$dblPrice += (
+						$strCurrency != $arSaleOrder['CURRENCY']
+						? CCurrencyRates::ConvertCurrency($arSaleOrder['PRICE'], $arSaleOrder['CURRENCY'], $strCurrency)
+						: $arSaleOrder['PRICE']
+					);
 				}
+				unset($intTimeStamp);
 			}
+			unset($arSaleOrder, $rsSaleOrders);
 			$mxResult = array(
 				'PRICE' => $dblPrice,
 				'CURRENCY' => $strCurrency,
@@ -2894,8 +2725,8 @@ class CAllSaleOrder
 	*
 	* @param array $arOrder - array to sort
 	* @param array $arFilter - array to filter
-	* @param array $arGroupBy - array to group records
-	* @param array $arNavStartParams - array to parameters
+	* @param array|false $arGroupBy - array to group records
+	* @param array|false $arNavStartParams - array to parameters
 	* @param array $arSelectFields - array to selectes fields
 	* @return object $dbRes - object result
 	*/
@@ -3611,16 +3442,19 @@ class CAllSaleOrder
 									$r = $shipment->tryUnreserve();
 									if (!$r->isSuccess())
 									{
-										$shipment->setField('MARKED', 'Y');
-										if (is_array($r->getErrorMessages()))
+										if (!$shipment->isMarked())
 										{
-											$oldErrorText = $shipment->getField('REASON_MARKED');
-											foreach($r->getErrorMessages() as $error)
+											$shipment->setField('MARKED', 'Y');
+											if (is_array($r->getErrorMessages()))
 											{
-												$oldErrorText .= (strval($oldErrorText) != '' ? "\n" : ""). $error;
-											}
+												$oldErrorText = $shipment->getField('REASON_MARKED');
+												foreach($r->getErrorMessages() as $error)
+												{
+													$oldErrorText .= (strval($oldErrorText) != '' ? "\n" : ""). $error;
+												}
 
-											$shipment->setField('REASON_MARKED', $oldErrorText);
+												$shipment->setField('REASON_MARKED', $oldErrorText);
+											}
 										}
 									}
 								}
@@ -3736,6 +3570,181 @@ class CAllSaleOrder
 			'VAT_RATE',
 			'VAT_SUM',
 		);
+	}
+
+	/**
+	 * @internal
+	 * @param array $list
+	 * @param $perm
+	 * @param bool $userGroups
+	 * @param bool $userId
+	 *
+	 * @return array
+	 * @throws \Bitrix\Main\SystemException
+	 */
+	public static function checkUserPermissionOrderList(array $list, $perm, $userGroups = false, $userId = false)
+	{
+		$output = array();
+
+		$userRights = CMain::GetUserRight("sale", $userGroups, "Y", "Y");
+		foreach ($list as $orderId)
+		{
+			$output[$orderId] = ($userRights >= "W") ? true: false;
+		}
+
+		if ($userRights >= "W")
+			return $output;
+
+		$orderList = array();
+		$siteList = array();
+		$statusList = array();
+		$accessSiteList = array();
+		$statusPermissionList = array();
+		$statusIndexList = array();
+
+		$cacheAccessSite = array();
+		$cacheStatusGroupOperation = array();
+
+		$selectOrder = array('ID', 'LID', 'STATUS_ID');
+
+		if ($userId > 0)
+		{
+			$selectOrder[] = 'USER_ID';
+		}
+
+		$res = Sale\Order::getList(array(
+									   'filter' => array(
+										   '=ID' => $list
+									   ),
+									   'select' => $selectOrder
+								   ));
+		while($orderData = $res->fetch())
+		{
+			if (!in_array($orderData['LID'], array_keys($siteList)))
+			{
+				$siteList[$orderData['LID']][] = $orderData['ID'];
+			}
+
+			if ($userId > 0 && $orderData['USER_ID'] == $userId)
+			{
+				$output[$orderData['ID']] = true;
+				continue;
+			}
+
+			$orderList[$orderData['ID']] = $orderData;
+		}
+
+		if ($userRights == "U" && !empty($orderList))
+		{
+			$hashAccessSite = md5(join(',', array_keys($siteList))."|". join(', ', $userGroups));
+
+			if (array_key_exists($hashAccessSite, $cacheAccessSite))
+			{
+				$accessSiteList = $cacheAccessSite[$hashAccessSite];
+			}
+			else
+			{
+				$accessSiteRes = CSaleGroupAccessToSite::GetList(
+					array(),
+					array(
+						"@SITE_ID" => array_keys($siteList),
+						"GROUP_ID" => $userGroups
+					),
+					false,
+					false,
+					array('SITE_ID')
+				);
+				while($accessSiteData = $accessSiteRes->Fetch())
+				{
+					$accessSiteList[] = $accessSiteData['SITE_ID'];
+				}
+
+				$cacheAccessSite[$hashAccessSite] = $accessSiteList;
+			}
+
+			foreach ($siteList as $siteId => $orderIdList)
+			{
+				if (!in_array($siteId, $accessSiteList))
+				{
+					foreach ($siteList[$siteId] as $orderId)
+					{
+						if (!empty($orderList[$orderId]))
+						{
+							unset($orderList[$orderId]);
+						}
+					}
+					unset($siteList[$siteId]);
+				}
+			}
+
+			if (!empty($orderList))
+			{
+				foreach ($orderList as $orderId => $orderData)
+				{
+					if (!in_array($orderData['STATUS_ID'], $statusList))
+					{
+						$statusList[$orderData['STATUS_ID']] = $orderData['STATUS_ID'];
+					}
+
+					$statusIndexList[$orderData['STATUS_ID']][] = $orderData['ID'];
+				}
+
+				$statusIdList = array_keys($statusList);
+
+				if (!empty($statusIdList))
+				{
+					foreach ($statusIdList as $statusId)
+					{
+						$hashStatusGroupOperation = md5($statusId . "|" . join(',', $userGroups)."|". $perm);
+						if (array_key_exists($hashStatusGroupOperation, $cacheStatusGroupOperation))
+						{
+							$statusPermissionList[$statusId] = $cacheStatusGroupOperation[$hashAccessSite];
+						}
+						else
+						{
+							if (Sale\OrderStatus::canGroupDoOperations($userGroups, $statusId, array($perm)))
+							{
+								$statusPermissionList[$statusId] = true;
+								$cacheStatusGroupOperation[$hashStatusGroupOperation] = true;
+							}
+						}
+					}
+				}
+
+				foreach ($statusIndexList as $statusId => $orderIdList)
+				{
+					if (!array_key_exists($statusId, $statusPermissionList))
+					{
+						foreach ($orderIdList as $orderId)
+						{
+							if (!empty($orderList[$orderId]))
+							{
+								unset($orderList[$orderId]);
+							}
+						}
+						unset($statusList[$statusId]);
+					}
+				}
+			}
+		}
+
+		if (!empty($orderList))
+		{
+			$orderIdList = array_keys($orderList);
+
+			foreach ($list as $orderId)
+			{
+				if (in_array($orderId, $orderIdList))
+				{
+					if (isset($output[$orderId]))
+					{
+						$output[$orderId] = true;
+					}
+				}
+			}
+		}
+
+		return $output;
 	}
 }
 ?>

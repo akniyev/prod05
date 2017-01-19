@@ -33,27 +33,26 @@ $arTemplateParameters['TEMPLATE_THEME'] = array(
 	'ADDITIONAL_VALUES' => 'Y'
 );
 
-if (CModule::IncludeModule("catalog"))
+if (\Bitrix\Main\Loader::includeModule('catalog'))
 {
 	$arSKU = false;
 	$boolSKU = false;
 	$arOfferProps = array();
+	$arSkuData = array();
 
 	// get iblock props from all catalog iblocks including sku iblocks
 	$arSkuIblockIDs = array();
-	$dbCatalog = CCatalog::GetList(array(), array());
-	while ($arCatalog = $dbCatalog->GetNext())
+	$iterator = \Bitrix\Catalog\CatalogIblockTable::getList(array(
+		'select' => array('IBLOCK_ID', 'PRODUCT_IBLOCK_ID', 'SKU_PROPERTY_ID'),
+		'filter' => array('!=PRODUCT_IBLOCK_ID' => 0)
+	));
+	while ($row = $iterator->fetch())
 	{
-		$arSKU = CCatalogSKU::GetInfoByProductIBlock($arCatalog['IBLOCK_ID']);
-
-		if (!empty($arSKU) && is_array($arSKU))
-		{
-			$arSkuIblockIDs[] = $arSKU["IBLOCK_ID"];
-			$arSkuData[$arSKU["IBLOCK_ID"]] = $arSKU;
-
-			$boolSKU = true;
-		}
+		$boolSKU = true;
+		$arSkuIblockIDs[] = $row['IBLOCK_ID'];
+		$arSkuData[$row['IBLOCK_ID']] = $row;
 	}
+	unset($row, $iterator);
 
 	// iblock props
 	$arProps = array();
@@ -73,7 +72,7 @@ if (CModule::IncludeModule("catalog"))
 
 		while ($arProp = $dbProps->GetNext())
 		{
-			if ($arProp['ID'] == $arSkuData[$arSKU["IBLOCK_ID"]]["SKU_PROPERTY_ID"])
+			if ($arProp['ID'] == $arSkuData[$iblockID]["SKU_PROPERTY_ID"])
 				continue;
 
 			if ($arProp['XML_ID'] == 'CML2_LINK')

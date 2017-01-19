@@ -21,7 +21,7 @@ $APPLICATION->SetTitle("ПродМаркет: ");
 		"AJAX_MODE" => "Y",
 		"AJAX_OPTION_JUMP" => "Y",
 		"AJAX_OPTION_STYLE" => "Y",
-		"AJAX_OPTION_HISTORY" => "N",
+		"AJAX_OPTION_HISTORY" => "Y",
 		"CACHE_TYPE" => "A",
 		"CACHE_TIME" => "36000000",
 		"CACHE_FILTER" => "Y",
@@ -261,6 +261,7 @@ $APPLICATION->SetTitle("ПродМаркет: ");
 		"MESSAGE_404" => "",
 		"DISABLE_INIT_JS_IN_COMPONENT" => "N",
 		"DETAIL_SET_VIEWED_IN_COMPONENT" => "N",
+		"INSTANT_RELOAD" => "N",
 		"SEF_URL_TEMPLATES" => array(
 			"sections" => "",
 			"section" => "#SECTION_CODE#/",

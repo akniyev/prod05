@@ -22,9 +22,9 @@ $arColumns = array(
 	"WEIGHT_FORMATED" => GetMessage("SOA_WEIGHT")
 );
 
+$arIblockIDs = array();
 if (Loader::includeModule('catalog'))
 {
-	$arIblockIDs = array();
 	$arIblockNames = array();
 	$parameters = array(
 		'select' => array('IBLOCK_ID', 'NAME' => 'IBLOCK.NAME', 'SITE_ID' => 'IBLOCK_SITE.SITE_ID'),
@@ -136,7 +136,7 @@ $arComponentParameters = array(
 			"NAME" => GetMessage("SOA_ADDITIONAL_MESSAGE_SETTINGS")
 		),
 		"ERROR_MESSAGE_SETTINGS" => array(
-			"NAME" => GetMessage("SOA_ERROR_MESSAGE_SETTINGS")
+			"NAME" => GetMessage("SOA_ERROR_MESSAGE_SETTINGS1")
 		)
 	),
 	"PARAMETERS" => array(
@@ -203,6 +203,18 @@ $arComponentParameters = array(
 			"DEFAULT" => "N",
 			"PARENT" => "BASE",
 		),
+		"SHOW_NOT_CALCULATED_DELIVERIES" => array(
+			"NAME" => GetMessage("SOA_SHOW_NOT_CALCULATED_DELIVERIES"),
+			"TYPE" => "LIST",
+			"MULTIPLE" => "N",
+			"DEFAULT" => "L",
+			"VALUES" => array(
+				'N' => GetMessage("SOA_SHOW_NOT_CALCULATED_DELIVERIES_N"),
+				'L' => GetMessage("SOA_SHOW_NOT_CALCULATED_DELIVERIES_L"),
+				'Y' => GetMessage("SOA_SHOW_NOT_CALCULATED_DELIVERIES_Y"),
+			),
+			"PARENT" => "BASE",
+		),
 		"DELIVERY_NO_SESSION" => array(
 			"NAME" => GetMessage("SOA_DELIVERY_NO_SESSION"),
 			"TYPE" => "CHECKBOX",
@@ -243,7 +255,7 @@ $arComponentParameters = array(
 			"PARENT" => "BASE",
 		),
 		"DISABLE_BASKET_REDIRECT" => array(
-			"NAME" => GetMessage('SOA_DISABLE_BASKET_REDIRECT1'),
+			"NAME" => GetMessage('SOA_DISABLE_BASKET_REDIRECT2'),
 			"TYPE" => "CHECKBOX",
 			"DEFAULT" => "N"
 		)
@@ -290,7 +302,14 @@ if ($arCurrentValues['COUNT_DELIVERY_TAX'] == 'Y')
 }
 
 $arComponentParameters["PARAMETERS"]['COMPATIBLE_MODE'] =  array(
-	"NAME" => GetMessage("SOA_COMPATIBLE_MODE"),
+	"NAME" => GetMessage("SOA_COMPATIBLE_MODE1"),
+	"TYPE" => "CHECKBOX",
+	"DEFAULT" => "Y",
+	"PARENT" => "BASE"
+);
+
+$arComponentParameters["PARAMETERS"]['USE_PRELOAD'] = array(
+	"NAME" => GetMessage("SOA_USE_PRELOAD"),
 	"TYPE" => "CHECKBOX",
 	"DEFAULT" => "Y",
 	"PARENT" => "BASE"
@@ -314,7 +333,6 @@ foreach ($arIblockIDs as $iblockId)
 
 			$fileProperties[$property['CODE']] = $propertyName;
 		}
-
 	}
 
 	$arComponentParameters["PARAMETERS"]['ADDITIONAL_PICT_PROP_'.$iblockId] = array(

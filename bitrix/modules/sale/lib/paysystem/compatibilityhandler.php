@@ -3,11 +3,12 @@
 namespace Bitrix\Sale\PaySystem;
 
 use Bitrix\Main\Application;
+use Bitrix\Main\Entity\EntityError;
 use Bitrix\Main\Request;
 use Bitrix\Sale\Payment;
 use Bitrix\Main\IO;
 
-class CompatibilityHandler extends ServiceHandler
+class CompatibilityHandler extends ServiceHandler implements ICheckable
 {
 	/**
 	 * @param Request $request
@@ -29,20 +30,45 @@ class CompatibilityHandler extends ServiceHandler
 	/**
 	 * @param Payment $payment
 	 * @param Request|null $request
-	 * @return string
+	 * @return ServiceResult
 	 */
 	public function initiatePay(Payment $payment, Request $request = null)
 	{
+		$result = new ServiceResult();
+
 		$this->getParamsBusValue($payment);
-		$this->includeFile('payment.php');
-		return '';
+
+		if ($this->initiateMode == self::STREAM)
+		{
+			$this->includeFile('payment.php');
+		}
+		else if ($this->initiateMode == self::STRING)
+		{
+			ob_start();
+			$content = $this->includeFile('payment.php');
+
+			$buffer = ob_get_contents();
+			if (strlen($buffer) > 0)
+				$content = $buffer;
+
+			$result->setTemplate($content);
+			ob_end_clean();
+		}
+
+		if ($this->service->getField('ENCODING') != '')
+		{
+			define("BX_SALE_ENCODING", $this->service->getField('ENCODING'));
+			AddEventHandler('main', 'OnEndBufferContent', array($this, 'OnEndBufferContent'));
+		}
+
+		return $result;
 	}
 
 	/**
 	 * @param Payment $payment
 	 * @return mixed
 	 */
-	public function getParamsBusValue(Payment $payment)
+	public function getParamsBusValue(Payment $payment = null)
 	{
 		/** @var \Bitrix\Sale\PaymentCollection $paymentCollection */
 		$paymentCollection = $payment->getCollection();
@@ -68,6 +94,7 @@ class CompatibilityHandler extends ServiceHandler
 
 	/**
 	 * @param $file
+	 * @return string
 	 */
 	private function includeFile($file)
 	{
@@ -76,7 +103,13 @@ class CompatibilityHandler extends ServiceHandler
 
 		$path = $documentRoot.$this->service->getField('ACTION_FILE').'/'.$file;
 		if (IO\File::isFileExists($path))
-			require_once $path;
+		{
+			$result = require $path;
+			if ($result !== false && $result !== 1)
+				return $result;
+		}
+
+		return '';
 	}
 
 	/**
@@ -156,7 +189,8 @@ class CompatibilityHandler extends ServiceHandler
 	}
 
 	/**
-	 * @param Payment|null $payment
+	 * @param Payment $payment
+	 * @return ServiceResult
 	 */
 	public function check(Payment $payment)
 	{
@@ -170,7 +204,10 @@ class CompatibilityHandler extends ServiceHandler
 
 			\CSalePaySystemAction::InitParamArrays($order->getFieldValues(), $order->getId(), '', array(), $payment->getFieldValues());
 
-			$this->includeFile('result.php');
+			$res = $this->includeFile('result.php');
+			return $res;
 		}
+
+		return false;
 	}
 }

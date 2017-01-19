@@ -27,7 +27,7 @@ Loader::registerAutoLoadClasses(
 		'Sale\Handlers\Delivery\SpsrProfile' => 'handlers/delivery/spsr/profile.php',
 		'Sale\Handlers\Delivery\Spsr\Request' => 'handlers/delivery/spsr/request.php',
 		'Sale\Handlers\Delivery\Spsr\Location' => 'handlers/delivery/spsr/location.php',
-		'Sale\Handlers\Delivery\Spsr\SpsrTracking' => 'handlers/delivery/spsr/tracking.php',
+		'Sale\Handlers\Delivery\SpsrTracking' => 'handlers/delivery/spsr/tracking.php',
 		'Sale\Handlers\Delivery\Spsr\Calculator' => 'handlers/delivery/spsr/calculator.php',
 	)
 );

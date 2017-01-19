@@ -237,7 +237,10 @@ foreach ($arResult['ITEMS'] as $key => $arItem)
 	}
 	unset($minPrice);
 	?></div></div><?
-	$showSubscribeBtn = false;
+	if($arItem['CATALOG_SUBSCRIBE'] == 'Y')
+		$showSubscribeBtn = true;
+	else
+		$showSubscribeBtn = false;
 	$compareBtnMessage = ($arParams['MESS_BTN_COMPARE'] != '' ? $arParams['MESS_BTN_COMPARE'] : GetMessage('CT_BCS_TPL_MESS_BTN_COMPARE'));
 	if (!isset($arItem['OFFERS']) || empty($arItem['OFFERS']))
 	{
@@ -279,25 +282,28 @@ foreach ($arResult['ITEMS'] as $key => $arItem)
 		}
 		else
 		{
+			if($showSubscribeBtn):
+				$APPLICATION->includeComponent('bitrix:catalog.product.subscribe','',
+					array(
+						'PRODUCT_ID' => $arItem['ID'],
+						'BUTTON_ID' => $arItemIDs['SUBSCRIBE_LINK'],
+						'BUTTON_CLASS' => 'bx_bt_button bx_medium',
+						'DEFAULT_DISPLAY' => true,
+					),
+					$component, array('HIDE_ICONS' => 'Y')
+				);
+			endif;
 			?><div id="<? echo $arItemIDs['NOT_AVAILABLE_MESS']; ?>" class="bx_catalog_item_controls_blockone"><span class="bx_notavailable"><?
 			echo ('' != $arParams['MESS_NOT_AVAILABLE'] ? $arParams['MESS_NOT_AVAILABLE'] : GetMessage('CT_BCS_TPL_MESS_PRODUCT_NOT_AVAILABLE'));
 			?></span></div><?
-			if ($arParams['DISPLAY_COMPARE'] || $showSubscribeBtn)
+			if ($arParams['DISPLAY_COMPARE'])
 			{
 			?>
 				<div class="bx_catalog_item_controls_blocktwo"><?
 				if ($arParams['DISPLAY_COMPARE'])
 				{
 					?><a id="<? echo $arItemIDs['COMPARE_LINK']; ?>" class="bx_bt_button_type_2 bx_medium" href="javascript:void(0)"><? echo $compareBtnMessage; ?></a><?
-				}
-				if ($showSubscribeBtn)
-				{
-				?>
-				<a id="<? echo $arItemIDs['SUBSCRIBE_LINK']; ?>" class="bx_bt_button_type_2 bx_medium" href="javascript:void(0)"><?
-					echo ('' != $arParams['MESS_BTN_SUBSCRIBE'] ? $arParams['MESS_BTN_SUBSCRIBE'] : GetMessage('CT_BCS_TPL_MESS_BTN_SUBSCRIBE'));
-					?></a><?
-				}
-				?>
+				}?>
 			</div><?
 			}
 		}
@@ -423,7 +429,8 @@ foreach ($arResult['ITEMS'] as $key => $arItem)
 				'BASKET_PROP_DIV' => $arItemIDs['BASKET_PROP_DIV'],
 				'BASKET_ACTIONS_ID' => $arItemIDs['BASKET_ACTIONS'],
 				'NOT_AVAILABLE_MESS' => $arItemIDs['NOT_AVAILABLE_MESS'],
-				'COMPARE_LINK_ID' => $arItemIDs['COMPARE_LINK']
+				'COMPARE_LINK_ID' => $arItemIDs['COMPARE_LINK'],
+				'SUBSCRIBE_ID' => $arItemIDs['SUBSCRIBE_LINK'],
 			),
 			'LAST_ELEMENT' => $arItem['LAST_ELEMENT']
 		);
@@ -458,6 +465,19 @@ var <? echo $strObName; ?> = new JCCatalogSection(<? echo CUtil::PhpToJSObject($
 		</div>
 			<?
 			}
+
+			if($showSubscribeBtn):
+				$APPLICATION->includeComponent('bitrix:catalog.product.subscribe','',
+					array(
+						'PRODUCT_ID' => $arItem['ID'],
+						'BUTTON_ID' => $arItemIDs['SUBSCRIBE_LINK'],
+						'BUTTON_CLASS' => 'bx_bt_button bx_medium',
+						'DEFAULT_DISPLAY' => !$canBuy,
+					),
+					$component, array('HIDE_ICONS' => 'Y')
+				);
+			endif;
+
 			?>
 		<div id="<? echo $arItemIDs['NOT_AVAILABLE_MESS']; ?>" class="bx_catalog_item_controls_blockone" style="display: <? echo ($canBuy ? 'none' : ''); ?>;"><span class="bx_notavailable"><?
 			echo ('' != $arParams['MESS_NOT_AVAILABLE'] ? $arParams['MESS_NOT_AVAILABLE'] : GetMessage('CT_BCS_TPL_MESS_PRODUCT_NOT_AVAILABLE'));
@@ -481,12 +501,11 @@ var <? echo $strObName; ?> = new JCCatalogSection(<? echo CUtil::PhpToJSObject($
 <div class="bx_catalog_item_controls_blocktwo">
 	<a id="<? echo $arItemIDs['COMPARE_LINK']; ?>" class="bx_bt_button_type_2 bx_medium" href="javascript:void(0)"><? echo $compareBtnMessage; ?></a>
 </div><?
-	}
-	?>
-				<div style="clear: both;"></div>
-			</div>
-			<?
-			unset($canBuy);
+	} ?>
+		<div style="clear: both;"></div>
+		</div>
+		<?
+		unset($canBuy);
 		}
 		else
 		{
@@ -643,7 +662,8 @@ var <? echo $strObName; ?> = new JCCatalogSection(<? echo CUtil::PhpToJSObject($
 						'DISPLAY_PROP_DIV' => $arItemIDs['DISPLAY_PROP_DIV'],
 						'BASKET_ACTIONS_ID' => $arItemIDs['BASKET_ACTIONS'],
 						'NOT_AVAILABLE_MESS' => $arItemIDs['NOT_AVAILABLE_MESS'],
-						'COMPARE_LINK_ID' => $arItemIDs['COMPARE_LINK']
+						'COMPARE_LINK_ID' => $arItemIDs['COMPARE_LINK'],
+						'SUBSCRIBE_ID' => $arItemIDs['SUBSCRIBE_LINK'],
 					),
 					'BASKET' => array(
 						'QUANTITY' => $arParams['PRODUCT_QUANTITY_VARIABLE'],
@@ -712,7 +732,8 @@ var <? echo $strObName; ?> = new JCCatalogSection(<? echo CUtil::PhpToJSObject($
 					'DISPLAY_PROP_DIV' => $arItemIDs['DISPLAY_PROP_DIV'],
 					'BASKET_ACTIONS_ID' => $arItemIDs['BASKET_ACTIONS'],
 					'NOT_AVAILABLE_MESS' => $arItemIDs['NOT_AVAILABLE_MESS'],
-					'COMPARE_LINK_ID' => $arItemIDs['COMPARE_LINK']
+					'COMPARE_LINK_ID' => $arItemIDs['COMPARE_LINK'],
+					'SUBSCRIBE_ID' => $arItemIDs['SUBSCRIBE_LINK'],
 				),
 				'BASKET' => array(
 					'QUANTITY' => $arParams['PRODUCT_QUANTITY_VARIABLE'],

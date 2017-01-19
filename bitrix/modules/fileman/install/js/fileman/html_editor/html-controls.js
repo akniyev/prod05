@@ -4729,6 +4729,7 @@ function __run()
 			values = {},
 			i, l, link, lastLink, linksCount = 0;
 
+		this.lastLink = false;
 		if (!this.readyToShow)
 		{
 			return setTimeout(function(){_this.Show(nodes, savedRange);}, 100);
@@ -4841,6 +4842,13 @@ function __run()
 					if (anchorPopup && anchorPopup.oPopup &&  anchorPopup.oPopup.popupContainer)
 					{
 						anchorPopup.oPopup.popupContainer.style.zIndex = 3010;
+
+						if (anchors.length > 20)
+						{
+							anchorPopup.oPopup.popupContainer.style.overflow = 'auto';
+							anchorPopup.oPopup.popupContainer.style.paddingRight = '20px';
+							anchorPopup.oPopup.popupContainer.style.maxHeight = '300px';
+						}
 					}
 				});
 			}

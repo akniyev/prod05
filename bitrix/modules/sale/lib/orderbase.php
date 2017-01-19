@@ -373,7 +373,7 @@ abstract class OrderBase
 		return $this->propertyCollection;
 	}
 
-	abstract protected function loadPropertyCollection();
+	abstract public function loadPropertyCollection();
 
 
 	/**
@@ -529,6 +529,14 @@ abstract class OrderBase
 	}
 
 	/**
+	 * @return null|string
+	 */
+	public function isMarked()
+	{
+		return ($this->getField('MARKED') == "Y");
+	}
+
+	/**
 	 * @throws Main\ArgumentOutOfRangeException
 	 */
 	protected function resetVat()
@@ -617,16 +625,7 @@ abstract class OrderBase
 	 */
 	abstract public function save();
 
-
-
-	private static function setStatus($value)
-	{
-
-	}
-
-
-
-
+	
 	/**
 	 * @param $price
 	 */

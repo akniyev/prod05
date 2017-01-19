@@ -393,6 +393,18 @@ class OracleSqlHelper extends SqlHelper
 	}
 
 	/**
+	 * {@inheritDoc}
+	 *
+	 * @param string $fieldName
+	 *
+	 * return string
+	 */
+	public function softCastTextToChar($fieldName)
+	{
+		return 'dbms_lob.substr('.$fieldName.', 4000, 1)';
+	}
+
+	/**
 	 * Converts lob object into string.
 	 * <p>
 	 * Helper function.
@@ -497,13 +509,18 @@ class OracleSqlHelper extends SqlHelper
 		}
 		elseif ($field instanceof Entity\FloatField)
 		{
+			$value = doubleval($value);
+			if(!is_finite($value))
+			{
+				$value = 0;
+			}
 			if (($scale = $field->getScale()) !== null)
 			{
-				$result = "'".round(doubleval($value), $scale)."'";
+				$result = "'".round($value, $scale)."'";
 			}
 			else
 			{
-				$result = "'".doubleval($value)."'";
+				$result = "'".$value."'";
 			}
 		}
 		elseif ($field instanceof Entity\StringField)
@@ -611,7 +628,7 @@ class OracleSqlHelper extends SqlHelper
 			return new Entity\FloatField($name);
 
 		case "NUMBER":
-			if ($parameters["precision"] == '' && $parameters["scale"] == '')
+			if ($parameters["precision"] == 0 && $parameters["scale"] == -127)
 			{
 				//NUMBER
 				return new Entity\FloatField($name);
@@ -732,7 +749,15 @@ class OracleSqlHelper extends SqlHelper
 			if (in_array($columnName, $primaryFields))
 			{
 				$sourceSelectColumns[] = $this->convertToDb($insertFields[$columnName], $tableField)." AS ".$quotedName;
-				$targetConnectColumns[] = "source.".$quotedName." = target.".$quotedName;
+				if($insertFields[$columnName] === null)
+				{
+					//can't just compare NULLs
+					$targetConnectColumns[] = "(source.".$quotedName." IS NULL AND target.".$quotedName." IS NULL)";
+				}
+				else
+				{
+					$targetConnectColumns[] = "(source.".$quotedName." = target.".$quotedName.")";
+				}
 			}
 
 			if (isset($updateFields[$columnName]) || array_key_exists($columnName, $updateFields))

@@ -343,6 +343,11 @@ class CHTMLEditor
 			}
 		}
 
+		if(!isset($arParams["uploadImagesFromClipboard"]) && $arParams["bbCode"])
+		{
+			$arParams["uploadImagesFromClipboard"] = false;
+		}
+
 		if(!isset($arParams["usePspell"]))
 		{
 			$arParams["usePspell"] = COption::GetOptionString("fileman", "use_pspell", "N");
@@ -359,7 +364,6 @@ class CHTMLEditor
 
 		if(!isset($arParams["initConponentParams"]))
 			$arParams["initConponentParams"] = $arParams["showTaskbars"] !== false && $arParams["showComponents"] && ($arParams['limitPhpAccess'] || $arParams['bAllowPhp']);
-
 		$arParams["actionUrl"] = $arParams["bbCode"] ? '/bitrix/tools/html_editor_action.php' : '/bitrix/admin/fileman_html_editor_action.php';
 
 		$arParams["lazyLoad"] = isset($arParams["lazyLoad"]) ? $arParams["lazyLoad"] : false;
@@ -413,6 +417,9 @@ class CHTMLEditor
 
 		if (isset($arParams["initAutosave"]))
 			$this->jsConfig["initAutosave"] = $arParams["initAutosave"];
+
+		if (isset($arParams["uploadImagesFromClipboard"]))
+			$this->jsConfig["uploadImagesFromClipboard"] = $arParams["uploadImagesFromClipboard"];
 
 		if (isset($arParams["useFileDialogs"]))
 			$this->jsConfig["useFileDialogs"] = $arParams["useFileDialogs"];
@@ -474,9 +481,13 @@ class CHTMLEditor
 
 	function Show($arParams)
 	{
-		CUtil::InitJSCore(array('window', 'ajax', 'fx'));
+		CJSCore::Init(array('window', 'ajax', 'fx'));
+
 		$this->InitLangMess();
 		$arParams = $this->Init($arParams);
+
+		if ($arParams["uploadImagesFromClipboard"] !== false)
+			CJSCore::Init(array("uploader"));
 
 		// Display all DOM elements, dialogs
 		$this->BuildSceleton($this->display);
@@ -535,54 +546,41 @@ class CHTMLEditor
 
 	function Run($display = true)
 	{
-		try
-		{
-			$json = \Bitrix\Main\Web\Json::encode($this->jsConfig, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_PARTIAL_OUTPUT_ON_ERROR);
-		}
-		catch (Exception $e)
-		{
-			$json = $this->HealConfig();
-		}
+		$content = $this->jsConfig['content'];
+		$templates = $this->jsConfig['templates'];
+		$templateParams = $this->jsConfig['templateParams'];
+		$snippets = $this->jsConfig['snippets'];
+		$components = $this->jsConfig['components'];
 
+		unset($this->jsConfig['content'], $this->jsConfig['templates'], $this->jsConfig['templateParams'], $this->jsConfig['snippets'], $this->jsConfig['components']);
 		?>
+
 		<script>
+			var config = <?= $this->SafeJsonEncode($this->jsConfig)?>;
+			config.content = '<?= CUtil::JSEscape($content)?>';
+			config.templates = <?= $this->SafeJsonEncode($templates)?>;
+			config.templateParams = <?= $this->SafeJsonEncode($templateParams)?>;
+			config.snippets = <?= $this->SafeJsonEncode($snippets)?>;
+			config.components = <?= $this->SafeJsonEncode($components)?>;
 			<?if($display):?>
-			window.BXHtmlEditor.Show(<?= $json?>);
+			window.BXHtmlEditor.Show(config);
 			<?else:?>
-			window.BXHtmlEditor.SaveConfig(<?= $json?>);
+			window.BXHtmlEditor.SaveConfig(config);
 			<?endif;?>
 		</script><?
 	}
 
-	function HealConfig()
+	function SafeJsonEncode($data = array())
 	{
-		// 1. Remove snippets if json crashed on them
-		$snippets = $this->jsConfig['snippets'];
 		try
 		{
-			\Bitrix\Main\Web\Json::encode($snippets, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_PARTIAL_OUTPUT_ON_ERROR);
+			$json = \Bitrix\Main\Web\Json::encode($data, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_PARTIAL_OUTPUT_ON_ERROR);
 		}
 		catch (Exception $e)
 		{
-			unset($this->jsConfig['snippets']);
+			$json = '{}';
 		}
-
-		// 2. Remove faulty template if we found some
-		$templates = $this->jsConfig['templates'];
-		foreach ($templates as $k => $template)
-		{
-			try
-			{
-				\Bitrix\Main\Web\Json::encode($template, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_PARTIAL_OUTPUT_ON_ERROR);
-			}
-			catch (Exception $e)
-			{
-				unset($templates[$k]);
-			}
-		}
-		$this->jsConfig['templates'] = $templates;
-
-		return \Bitrix\Main\Web\Json::encode($this->jsConfig, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_PARTIAL_OUTPUT_ON_ERROR);
+		return $json;
 	}
 
 	function InitLangMess()
@@ -987,6 +985,63 @@ class CHTMLEditor
 
 				$result = array('result' => true);
 				break;
+
+			case "uploadfile":
+				$uploader = new \CFileUploader(
+					array("events" => array(
+						"onFileIsUploaded" => function ($hash, &$file, &$package, &$upload, &$error)
+						{
+							$error = \CFile::CheckFile($file["files"]["default"], 0, "image/", \CFile::GetImageExtensions());
+							$io = CBXVirtualIo::GetInstance();
+							$fileName = $file["name"];
+
+							if(empty($error) && $io->ValidateFilenameString($fileName) && $io->ValidatePathString(self::GetUploadPath().$fileName))
+							{
+								if (COption::GetOptionString('fileman', "use_medialib", "Y") != "N" &&
+									CMedialib::CanDoOperation('medialib_view_collection', 0, false, true))
+								{
+									$image = CMedialib::AutosaveImage($file["files"]["default"]);
+									if ($image && $image['PATH'])
+									{
+										$file["uploadedPath"] = $image['PATH'];
+										return true;
+									}
+									else
+									{
+										return false;
+									}
+								}
+								else
+								{
+									$newPath = self::GetUploadPath().$fileName;
+									if($io->FileExists($_SERVER["DOCUMENT_ROOT"].$newPath))
+									{
+										$ext = GetFileExtension($fileName);
+										$name = GetFileNameWithoutExtension($fileName);
+										$iter = 1;
+										while(true && $iter < 1000)
+										{
+											$newPath = self::GetUploadPath().$name.'('.$iter.').'.$ext;
+											if(!$io->FileExists($_SERVER["DOCUMENT_ROOT"].$newPath))
+											{
+												break;
+											}
+											$iter++;
+										}
+									}
+									CopyDirFiles($file["files"]["default"]["tmp_name"], $_SERVER["DOCUMENT_ROOT"].$newPath);
+									$file["uploadedPath"] = $newPath;
+									return true;
+								}
+								return false;
+							}
+						}
+					)),
+					"get"
+				);
+				$uploader->checkPost();
+				$result = array('result' => true);
+				break;
 		}
 
 		self::ShowResponse(intVal($_REQUEST['reqId']), $result);
@@ -1279,6 +1334,11 @@ class CHTMLEditor
 			}
 		}
 		return $settingsKey;
+	}
+
+	public static function GetUploadPath()
+	{
+		return '/upload/images/';
 	}
 }
 ?>

@@ -10,6 +10,7 @@ use Bitrix\Main\Type\DateTime;
 use Bitrix\Main\Web\HttpClient;
 use Bitrix\Sale\PaySystem;
 use Bitrix\Sale\Payment;
+use Bitrix\Sale\PriceMaths;
 
 Loc::loadMessages(__FILE__);
 
@@ -43,7 +44,7 @@ class AssistHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 	 * @param int $refundableSum
 	 * @return PaySystem\ServiceResult
 	 */
-	public function refund(Payment $payment, $refundableSum = 0)
+	public function refund(Payment $payment, $refundableSum)
 	{
 		$result = new PaySystem\ServiceResult();
 
@@ -51,11 +52,13 @@ class AssistHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 		$refundUrl = $this->getUrl($payment, 'return');
 
 		$data = array(
-			'BILLNUMBER' => $params['ASSIST_SHOP_ID'],
-			'SHOP_ID' => $params['ASSIST_SHOP_ID'],
-			'LOGIN' => $params['ASSIST_LOGIN'],
-			'PASSWORD' => $params['ASSIST_PASSWORD'],
-			'SUBTOTAL_P' => $refundableSum
+			'Billnumber' => $payment->getField('PS_INVOICE_ID'),
+			'Merchant_ID' => $params['ASSIST_SHOP_IDP'],
+			'Login' => $params['ASSIST_SHOP_LOGIN'],
+			'Password' => $params['ASSIST_SHOP_PASSWORD'],
+			'Amount' => $refundableSum,
+			'Currency' => $params['PAYMENT_CURRENCY'],
+			'Format' => 3
 		);
 
 		$clientHttp = new HttpClient();
@@ -63,7 +66,21 @@ class AssistHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 
 		if ($response)
 		{
-			$result->setOperationType(PaySystem\ServiceResult::MONEY_LEAVING);
+			$xml = new \CDataXML();
+			$xml->LoadString($response);
+			$data = $xml->GetArray();
+			if ($data && $data['result']['@']['firstcode'] == '0' && $data['result']['@']['secondcode'] == '0')
+			{
+				$result->setOperationType(PaySystem\ServiceResult::MONEY_LEAVING);
+			}
+			else
+			{
+				PaySystem\ErrorLog::add(array(
+					'ACTION' => 'return',
+					'MESSAGE' => 'assist error refund: firstcode='.$data['result']['@']['firstcode'].' secondcode='.$data['result']['@']['secondcode']
+				));
+				$result->addError(new EntityError(Loc::getMessage('SALE_PS_MESSAGE_ERROR_CONNECT_PAY_SYS')));
+			}
 		}
 		else
 		{
@@ -107,7 +124,7 @@ class AssistHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 		$sum = $request->get('orderamount');
 		$paymentSum = $this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY');
 
-		return Payment::roundByFormatCurrency($paymentSum, $payment->getField('CURRENCY')) == Payment::roundByFormatCurrency($sum, $payment->getField('CURRENCY'));
+		return PriceMaths::roundByFormatCurrency($paymentSum, $payment->getField('CURRENCY')) == PriceMaths::roundByFormatCurrency($sum, $payment->getField('CURRENCY'));
 	}
 
 	/**
@@ -174,7 +191,8 @@ class AssistHandler extends PaySystem\ServiceHandler implements PaySystem\IRefun
 					"PS_STATUS_MESSAGE" => Loc::getMessage('SALE_PS_MESSAGE_'.ToUpper($status)),
 					"PS_SUM" => $request->get('orderamount'),
 					"PS_CURRENCY" => $request->get('ordercurrency'),
-					"PS_RESPONSE_DATE" => new \Bitrix\Main\Type\DateTime()
+					"PS_INVOICE_ID" => $request->get('billnumber'),
+					"PS_RESPONSE_DATE" => new DateTime()
 				)
 			);
 

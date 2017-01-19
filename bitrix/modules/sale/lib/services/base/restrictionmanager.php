@@ -24,6 +24,7 @@ class RestrictionManager
 
 	const SERVICE_TYPE_SHIPMENT = 0;
 	const SERVICE_TYPE_PAYMENT = 1;
+	const SERVICE_TYPE_COMPANY = 2;
 
 	protected static function init()
 	{
@@ -206,8 +207,9 @@ class RestrictionManager
 		if(empty($servicesIds))
 			return;
 
-		$ids = array_diff($servicesIds, array_keys(static::$cachedFields));
 		$serviceType = static::getServiceType();
+		$cachedServices = is_array(static::$cachedFields[$serviceType]) ? array_keys(static::$cachedFields[$serviceType]) : array();
+		$ids = array_diff($servicesIds, $cachedServices);
 		$idsForDb = array_diff($ids, array_keys($fields));
 
 		if(!empty($idsForDb))
@@ -241,18 +243,49 @@ class RestrictionManager
 			$className::prepareData($ids);
 	}
 
+	/**
+	 * @param int $serviceId
+	 * @param int $serviceType
+	 * @param array $fields
+	 * @throws ArgumentNullException
+	 */
 	protected static function setCache($serviceId, $serviceType, array $fields = array())
 	{
-		if($serviceId <= 0)
-			throw new ArgumentNullException('serviceId');
+		if(intval($serviceId) <= 0)
+			throw new  ArgumentNullException('serviceId');
 
-		$cacheId = $serviceId."_".$serviceType;
+		if(!isset(static::$cachedFields[$serviceType]))
+			static::$cachedFields[$serviceType] = array();
 
-		if(!isset(static::$cachedFields[$cacheId]))
-			static::$cachedFields[$cacheId] = array();
+		if(!isset(static::$cachedFields[$serviceType][$serviceId]))
+			static::$cachedFields[$serviceType][$serviceId] = array();
 
 		if(!empty($fields))
-			static::$cachedFields[$cacheId][$fields["ID"]] = $fields;
+			static::$cachedFields[$serviceType][$serviceId][$fields["ID"]] = $fields;
+	}
+
+	/**
+	 * @param int $serviceId
+	 * @param int $serviceType
+	 * @return array
+	 * @throws ArgumentNullException
+	 */
+	protected static function getCache($serviceId, $serviceType)
+	{
+		$result = array();
+
+		if(intval($serviceId) > 0)
+		{
+			if(isset(static::$cachedFields[$serviceType][$serviceId]))
+				$result = static::$cachedFields[$serviceType][$serviceId];
+		}
+		else
+		{
+			if(isset(static::$cachedFields[$serviceType]))
+				$result = static::$cachedFields[$serviceType];
+		}
+
+		return $result;
 	}
 
 	/**
@@ -262,5 +295,29 @@ class RestrictionManager
 	public static function getBuildInRestrictions()
 	{
 		throw new NotImplementedException;
+	}
+
+	/**
+	 * @param array $params
+	 * @return \Bitrix\Main\DB\Result
+	 * @throws \Bitrix\Main\ArgumentException
+	 */
+	public static function getList(array $params)
+	{
+		if (!$params['filter'])
+			$params['filter'] = array();
+
+		$params['filter']['SERVICE_TYPE'] = static::getServiceType();
+
+		return ServiceRestrictionTable::getList($params);
+	}
+
+	/**
+	 * @param $id
+	 * @return \Bitrix\Main\DB\Result
+	 */
+	public static function getById($id)
+	{
+		return ServiceRestrictionTable::getById($id);
 	}
 }

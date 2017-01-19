@@ -22,8 +22,9 @@ use Bitrix\Sale\Internals\OrderPropsRelationTable;
 class PropertyValue
 	extends Internals\CollectableEntity
 {
-	private $property = array();
-	private $savedValue;
+	protected $property = array();
+	protected $savedValue;
+	protected $deletedValue;
 
 	protected static $mapFields;
 
@@ -101,6 +102,36 @@ class PropertyValue
 		if ($value && $this->property['TYPE'] == 'FILE')
 			$value = Input\File::loadInfo($value);
 
+		if ($this->property['TYPE'] == "STRING")
+		{
+			if (Input\StringInput::isMultiple($value))
+			{
+				$fields = $this->getFields();
+				$baseValuesData = $fields->getValues();
+				$baseValues = null;
+				if (!empty($baseValuesData['VALUE']) && is_array($baseValuesData['VALUE']))
+				{
+					$baseValues = array_values($baseValuesData['VALUE']);
+				}
+				foreach ($value as $key => $data)
+				{
+					if (Input\StringInput::isDeletedSingle($data))
+					{
+						$this->deletedValue[] = $key;
+						if (is_array($baseValues) && array_key_exists($key, $baseValues))
+						{
+							$value[$key] = $baseValues[$key];
+						}
+						else
+						{
+							$value[$key] = '';
+						}
+
+					}
+				}
+			}
+		}
+
 		$this->setField('VALUE', $value);
 	}
 
@@ -143,6 +174,23 @@ class PropertyValue
 				as $fileId)
 			{
 				\CFile::Delete($fileId);
+			}
+		}
+		elseif($property['TYPE'] == 'STRING')
+		{
+			if (!empty($this->deletedValue) && is_array($this->deletedValue))
+			{
+				if (!empty($value) && is_array($value))
+				{
+					foreach ($value as $i => $string)
+					{
+						if (in_array($i, $this->deletedValue))
+						{
+							unset($value[$i]);
+							unset($this->deletedValue[$i]);
+						}
+					}
+				}
 			}
 		}
 
@@ -216,7 +264,7 @@ class PropertyValue
 
 		$error = Input\Manager::getError($property, $value);
 
-		if ($property['IS_EMAIL'] == 'Y' && !check_email($value, true)) // TODO EMAIL TYPE
+		if (!is_array($value) && strval(trim($value)) != "" && $property['IS_EMAIL'] == 'Y' && !check_email($value, true)) // TODO EMAIL TYPE
 		{
 			$error['EMAIL'] = str_replace(
 				array("#EMAIL#", "#NAME#"),
@@ -379,12 +427,17 @@ class PropertyValue
 
 	function getRelations()
 	{
-		return $this->property['RELATIONS'];
+		return $this->property['RELATION'];
 	}
 
 	function getDescription()
 	{
 		return $this->property['DESCRIPTION'];
+	}
+
+	function getType()
+	{
+		return $this->property['TYPE'];
 	}
 
 	function isRequired()
@@ -536,12 +589,56 @@ class PropertyValue
 		$result = OrderPropsVariantTable::getList(array(
 			'select' => array('VALUE', 'NAME'),
 			'filter' => array('ORDER_PROPS_ID' => $propertyId),
+			'order' => array('SORT' => 'ASC')
 		));
 
 		while ($row = $result->fetch())
 			$options[$row['VALUE']] = $row['NAME'];
 
 		return $options;
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return PropertyValue
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$propertyValueClone = clone $this;
+		$propertyValueClone->isClone = true;
+
+		/** @var Internals\Fields $fields */
+		if ($fields = $this->fields)
+		{
+			$propertyValueClone->fields = $fields->createClone($cloneEntity);
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $propertyValueClone;
+		}
+
+		if ($collection = $this->getCollection())
+		{
+			if (!$cloneEntity->contains($collection))
+			{
+				$cloneEntity[$collection] = $collection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($collection))
+			{
+				$propertyValueClone->collection = $cloneEntity[$collection];
+			}
+		}
+
+		return $propertyValueClone;
 	}
 
 }

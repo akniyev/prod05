@@ -43,4 +43,15 @@ $MESS["SOA_DEFAULT"] = "default";
 $MESS["SOA_ADDITIONAL_IMAGE"] = "Additional image";
 $MESS["SOA_ANALYTICS_SETTINGS"] = "Analytics settings";
 $MESS["SOA_DELIVERY_NO_AJAX2"] = "Pre-calculate deliveries that have external access to services";
+$MESS["SOA_DISABLE_BASKET_REDIRECT2"] = "Stay on checkout page if the shopping cart is empty";
+$MESS["DISABLE_BASKET_REDIRECT_TIP"] = "This will include the empty.php page that you can modify as required.";
+$MESS["SOA_ERROR_MESSAGE_SETTINGS1"] = "Notification messages";
+$MESS["SOA_COMPATIBLE_MODE1"] = "Use compatibility mode for legacy template";
+$MESS["COMPATIBLE_MODE_TIP"] = "Enable this option if you are using a template from previous module versions";
+$MESS["SOA_USE_PRELOAD"] = "Auto fill payment and delivery details forms using previous order data";
+$MESS["SOA_SHOW_NOT_CALCULATED_DELIVERIES"] = "Delivery services that failed to calculate correctly";
+$MESS["SOA_SHOW_NOT_CALCULATED_DELIVERIES_N"] = "don't show";
+$MESS["SOA_SHOW_NOT_CALCULATED_DELIVERIES_L"] = "move to the bottom";
+$MESS["SOA_SHOW_NOT_CALCULATED_DELIVERIES_Y"] = "show as usual";
+$MESS["SHOW_NOT_CALCULATED_DELIVERIES_TIP"] = "Enable the \"Pre-calculate deliveries that have external access to services\" option to sort deliveries of this type.";
 ?>

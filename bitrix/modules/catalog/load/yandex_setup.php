@@ -5,6 +5,12 @@
 /** @global CMain $APPLICATION */
 /** @global string $ACTION */
 /** @global array $arOldSetupVars */
+/** @global int $IBLOCK_ID */
+/** @global string $SETUP_FILE_NAME */
+/** @global string $SETUP_SERVER_NAME */
+/** @global mixed $V */
+/** @global mixed $XML_DATA */
+/** @global string $SETUP_PROFILE_NAME */
 IncludeModuleLangFile($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/catalog/export_setup_templ.php');
 
 global $APPLICATION, $USER;
@@ -36,11 +42,13 @@ if (($ACTION == 'EXPORT_EDIT' || $ACTION == 'EXPORT_COPY') && $STEP == 1)
 		$USE_HTTPS = $arOldSetupVars['USE_HTTPS'];
 	if (isset($arOldSetupVars['FILTER_AVAILABLE']))
 		$filterAvalable = $arOldSetupVars['FILTER_AVAILABLE'];
+	if (isset($arOldSetupVars['DISABLE_REFERERS']))
+		$disableReferers = $arOldSetupVars['DISABLE_REFERERS'];
 }
 
 if ($STEP > 1)
 {
-	$IBLOCK_ID = intval($IBLOCK_ID);
+	$IBLOCK_ID = (int)$IBLOCK_ID;
 	$rsIBlocks = CIBlock::GetByID($IBLOCK_ID);
 	if ($IBLOCK_ID <= 0 || !($arIBlock = $rsIBlocks->Fetch()))
 	{
@@ -113,8 +121,8 @@ if ($STEP > 1)
 		$_REQUEST['V'] = $V;
 	}
 
-	$arCatalog = CCatalogSKU::GetInfoByIBlock($IBLOCK_ID);
-	if (CCatalogSKU::TYPE_PRODUCT == $arCatalog['CATALOG_TYPE'] || CCatalogSKU::TYPE_FULL == $arCatalog['CATALOG_TYPE'])
+	$arCatalog = CCatalogSku::GetInfoByIBlock($IBLOCK_ID);
+	if (CCatalogSku::TYPE_PRODUCT == $arCatalog['CATALOG_TYPE'] || CCatalogSku::TYPE_FULL == $arCatalog['CATALOG_TYPE'])
 	{
 		if (strlen($XML_DATA) <= 0)
 		{
@@ -126,6 +134,8 @@ if ($STEP > 1)
 		$USE_HTTPS = 'N';
 	if (!isset($filterAvalable) || $filterAvalable != 'Y')
 		$filterAvalable = 'N';
+	if (!isset($disableReferers) || $disableReferers != 'Y')
+		$disableReferers = 'N';
 
 	if (($ACTION=="EXPORT_SETUP" || $ACTION=="EXPORT_EDIT" || $ACTION=="EXPORT_COPY") && strlen($SETUP_PROFILE_NAME)<=0)
 		$arSetupErrors[] = GetMessage("CET_ERROR_NO_PROFILE_NAME");
@@ -152,6 +162,7 @@ $context->Show();
 if (!empty($arSetupErrors))
 	ShowError(implode('<br>', $arSetupErrors));
 ?>
+<!--suppress JSUnresolvedVariable -->
 <form method="post" action="<?echo $APPLICATION->GetCurPage() ?>" name="yandex_setup_form" id="yandex_setup_form">
 <?
 $aTabs = array(
@@ -237,10 +248,12 @@ if ($STEP == 1)
 	<td width="60%"><?
 	if ($intCountSelected)
 	{
-		foreach ($V as &$oneKey)
+		foreach ($V as $oneKey)
 		{
-			?><input type="hidden" value="<? echo intval($oneKey); ?>" name="V[]" id="oldV<? echo intval($oneKey); ?>"><?
+			$oneKey = (int)$oneKey;
+			?><input type="hidden" value="<? echo $oneKey; ?>" name="V[]" id="oldV<? echo $oneKey; ?>"><?
 		}
+		unset($oneKey);
 	}
 	?><div id="tree"></div>
 	<script type="text/javascript">
@@ -298,14 +311,14 @@ if ($STEP == 1)
 
 		for (i in Tree[0])
 		{
-			if (!Tree[i])
+			if (!Tree[0][i])
 			{
-				space = '<input type="checkbox" name="V[]" value="'+i+'" id="V'+i+'"'+(BX.util.in_array(i,TreeSelected) ? ' checked' : '')+' onclick="delOldV(this);"><label for="V'+i+'"><font class="text">' + Tree[0][i][0] + '</font></label>';
+				space = '<input type="checkbox" name="V[]" value="'+i+'" id="V'+i+'"'+(BX.util.in_array(i,TreeSelected) ? ' checked' : '')+' onclick="delOldV(this);"><label for="V'+i+'"><span class="text">' + Tree[0][i][0] + '</span></label>';
 				imgSpace = '';
 			}
 			else
 			{
-				space = '<input type="checkbox" name="V[]" value="'+i+'"'+(BX.util.in_array(i,TreeSelected) ? ' checked' : '')+' onclick="delOldV(this);"><a href="javascript: collapse(' + i + ')"><font class="text"><b>' + Tree[0][i][0] + '</b></font></a>';
+				space = '<input type="checkbox" name="V[]" value="'+i+'"'+(BX.util.in_array(i,TreeSelected) ? ' checked' : '')+' onclick="delOldV(this);"><a href="javascript: collapse(' + i + ')"><span class="text"><b>' + Tree[0][i][0] + '</b></span></a>';
 				imgSpace = '<img src="/bitrix/images/catalog/load/plus.gif" width="13" height="13" id="img_' + i + '" OnClick="collapse(' + i + ')">';
 			}
 
@@ -335,7 +348,7 @@ if ($STEP == 1)
 
 			for (i in Tree[node])
 			{
-				if (!Tree[i])
+				if (!Tree[node][i])
 				{
 					space = '<input type="checkbox" name="V[]" value="'+i+'" id="V'+i+'"'+(BX.util.in_array(i,TreeSelected) ? ' checked' : '')+' onclick="delOldV(this);"><label for="V'+i+'"><font class="text">' + Tree[node][i][0] + '</font></label>';
 					imgSpace = '';
@@ -414,6 +427,13 @@ if ($STEP == 1)
 	</td>
 </tr>
 <tr>
+	<td width="40%"><? echo GetMessage('CAT_YANDEX_DISABLE_REFERERS'); ?></td>
+	<td width="60%">
+		<input type="hidden" name="DISABLE_REFERERS" value="N">
+		<input type="checkbox" name="DISABLE_REFERERS" value="Y"<? echo ($disableReferers == 'Y' ? ' checked' : ''); ?>
+	</td>
+</tr>
+<tr>
 	<td width="40%"><?echo GetMessage("CET_SERVER_NAME");?></td>
 	<td width="60%">
 		<input type="text" name="SETUP_SERVER_NAME" value="<?echo (strlen($SETUP_SERVER_NAME)>0) ? htmlspecialcharsbx($SETUP_SERVER_NAME) : '' ?>" size="50" /> <input type="button" onclick="this.form['SETUP_SERVER_NAME'].value = window.location.host;" value="<?echo htmlspecialcharsbx(GetMessage('CET_SERVER_NAME_SET_CURRENT'))?>" />
@@ -470,7 +490,7 @@ if (2 > $STEP)
 	<input type="hidden" name="ACT_FILE" value="<?echo htmlspecialcharsbx($_REQUEST["ACT_FILE"]) ?>">
 	<input type="hidden" name="ACTION" value="<?echo htmlspecialcharsbx($ACTION) ?>">
 	<input type="hidden" name="STEP" value="<?echo intval($STEP) + 1 ?>">
-	<input type="hidden" name="SETUP_FIELDS_LIST" value="V,IBLOCK_ID,SETUP_SERVER_NAME,SETUP_FILE_NAME,XML_DATA,USE_HTTPS,FILTER_AVAILABLE">
+	<input type="hidden" name="SETUP_FIELDS_LIST" value="V,IBLOCK_ID,SETUP_SERVER_NAME,SETUP_FILE_NAME,XML_DATA,USE_HTTPS,FILTER_AVAILABLE,DISABLE_REFERERS">
 	<input type="submit" value="<?echo ($ACTION=="EXPORT")?GetMessage("CET_EXPORT"):GetMessage("CET_SAVE")?>"><?
 }
 

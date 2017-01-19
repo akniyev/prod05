@@ -98,11 +98,20 @@ class catalog extends CModule
 
 		ModuleManager::registerModule('catalog');
 
+		\Bitrix\Main\Config\Option::set('catalog', 'subscribe_repeated_notify', 'Y');
+
 		$eventManager = \Bitrix\Main\EventManager::getInstance();
 		$eventManager->registerEventHandler('sale', 'onBuildCouponProviders', 'catalog', '\Bitrix\Catalog\DiscountCouponTable', 'couponManager');
 		$eventManager->registerEventHandler('sale', 'onBuildDiscountProviders', 'catalog', '\Bitrix\Catalog\Discount\DiscountManager', 'catalogDiscountManager');
 		$eventManager->registerEventHandler('sale', 'onExtendOrderData', 'catalog', '\Bitrix\Catalog\Discount\DiscountManager', 'extendOrderData');
 		$eventManager->registerEventHandler('currency', 'onAfterUpdateCurrencyBaseRate', 'catalog', '\Bitrix\Catalog\Product\Price', 'handlerAfterUpdateCurrencyBaseRate');
+
+		$eventManager->registerEventHandlerCompatible('main', 'onUserDelete', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onUserDelete');
+		$eventManager->registerEventHandlerCompatible('iblock', 'OnIBlockElementDelete', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onIblockElementDelete');
+		$eventManager->registerEventHandlerCompatible('catalog', 'OnProductUpdate', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onProductUpdate');
+		$eventManager->registerEventHandlerCompatible('catalog', 'OnProductSetAvailableUpdate', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onProductSetAvailableUpdate');
+		$eventManager->registerEventHandlerCompatible('catalog', 'onAddContactType', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onAddContactType');
+		$eventManager->registerEventHandler('sale', 'OnSaleOrderSaved', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onSaleOrderSaved');
 
 		RegisterModuleDependences("iblock", "OnIBlockDelete", "catalog", "CCatalog", "OnIBlockDelete");
 		RegisterModuleDependences("iblock", "OnIBlockElementDelete", "catalog", "CCatalogProduct", "OnIBlockElementDelete");
@@ -214,6 +223,8 @@ class catalog extends CModule
 
 	function InstallEvents()
 	{
+		global $DB;
+		include($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/catalog/install/events/set_events.php");
 		return true;
 	}
 
@@ -234,6 +245,7 @@ class catalog extends CModule
 			));
 
 			$this->UnInstallFiles();
+			$this->UnInstallEvents();
 
 			$APPLICATION->IncludeAdminFile(Loc::getMessage("CATALOG_INSTALL_TITLE"), $_SERVER['DOCUMENT_ROOT']."/bitrix/modules/catalog/install/unstep2.php");
 		}
@@ -321,6 +333,13 @@ class catalog extends CModule
 		$eventManager->unRegisterEventHandler('sale', 'onExtendOrderData', 'catalog', '\Bitrix\Catalog\Discount\DiscountManager', 'extendOrderData');
 		$eventManager->unRegisterEventHandler('currency', 'onAfterUpdateCurrencyBaseRate', 'catalog', '\Bitrix\Catalog\Product\Price', 'handlerAfterUpdateCurrencyBaseRate');
 
+		$eventManager->unRegisterEventHandler('main', 'onUserDelete', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onUserDelete');
+		$eventManager->unRegisterEventHandler('iblock', 'OnIBlockElementDelete', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onIblockElementDelete');
+		$eventManager->unRegisterEventHandler('catalog', 'OnProductUpdate', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onProductUpdate');
+		$eventManager->unRegisterEventHandler('catalog', 'OnProductSetAvailableUpdate', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onProductSetAvailableUpdate');
+		$eventManager->unRegisterEventHandler('catalog', 'onAddContactType', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onAddContactType');
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleOrderSaved', 'catalog', '\Bitrix\Catalog\SubscribeTable', 'onSaleOrderSaved');
+
 		CAgent::RemoveModuleAgents('catalog');
 
 		ModuleManager::unRegisterModule('catalog');
@@ -330,6 +349,8 @@ class catalog extends CModule
 
 	function UnInstallEvents()
 	{
+		global $DB;
+		include_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/catalog/install/events/del_events.php");
 		return true;
 	}
 
@@ -438,7 +459,9 @@ class catalog extends CModule
 			'catalog' => array(
 				'b_catalog_product' => array(
 					'ID' => array(
-						'b_catalog_price' => 'PRODUCT_ID'
+						'b_catalog_price' => 'PRODUCT_ID',
+						'b_catalog_store_product' => 'PRODUCT_ID',
+						'b_catalog_product' => 'TRIAL_PRICE_ID'
 					)
 				),
 				'b_catalog_vat' => array(
@@ -462,6 +485,11 @@ class catalog extends CModule
 				'b_catalog_measure' => array(
 					'ID' => array(
 						'b_catalog_product' => 'MEASURE'
+					)
+				),
+				'b_catalog_store' => array(
+					'ID' => array(
+						'b_catalog_store_product' => 'STORE_ID'
 					)
 				)
 			)

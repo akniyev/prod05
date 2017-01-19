@@ -101,6 +101,9 @@ OrderEdit::initCouponsData(
 if(!$boolLocked)
 	\Bitrix\Sale\Order::lock($ID);
 
+$customTabber = new CAdminTabEngine("OnAdminSaleOrderEdit", array("ID" => $ID));
+$customDraggableBlocks = new CAdminDraggableBlockEngine('OnAdminSaleOrderEditDraggable', array('ORDER' => $order));
+
 $isSavingOperation = $_SERVER["REQUEST_METHOD"] == "POST" && (isset($_POST["apply"]) || isset($_POST["save"]));
 $isRefreshDataAndSaveOperation = ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["refresh_data_and_save"]) && $_POST["refresh_data_and_save"] == "Y");
 $isNeedFieldsRestore = $_SERVER["REQUEST_METHOD"] == "POST" && !$isSavingOperation && !$isRefreshDataAndSaveOperation;
@@ -112,31 +115,58 @@ if (($isSavingOperation || $isNeedFieldsRestore || $isRefreshDataAndSaveOperatio
 	&& $result->isSuccess()
 )
 {
-	if($isSavingOperation || $isRefreshDataAndSaveOperation)
-		$order = OrderEdit::editOrderByFormData($_POST, $order, $USER->GetID(), true, $_FILES, $result);
-
-	if($isRefreshDataAndSaveOperation)
+	if(($isSavingOperation || $isRefreshDataAndSaveOperation))
 	{
-		/** @var \Bitrix\Sale\Basket $basket */
-		if (!($basket = $order->getBasket()))
-			throw new \Bitrix\Main\ObjectNotFoundException('Entity "Basket" not found');
+		$res = OrderEdit::editOrderByFormData($_POST, $order, $USER->GetID(), true, $_FILES, $result);
 
-		$res = $basket->refreshData(array('PRICE', 'QUANTITY', 'COUPONS'));
+		if($res)
+			$order = $res;
 
-		if(!$res->isSuccess())
-			$result->addErrors($res->getErrors());
-	}
-
-	if(($isSavingOperation || $isRefreshDataAndSaveOperation ) && $result->isSuccess())
-	{
-		if($order)
+		if($res)
 		{
+			if (!$customTabber->Check())
+			{
+				if ($ex = $APPLICATION->GetException())
+					$errorMessage .= $ex->GetString();
+				else
+					$errorMessage .= "Custom tabber check unknown error!";
+
+				$result->addError(new \Bitrix\Main\Entity\EntityError($errorMessage));
+			}
+
+			if (!$customDraggableBlocks->check())
+			{
+				if ($ex = $APPLICATION->GetException())
+					$errorMessage .= $ex->GetString();
+				else
+					$errorMessage .= "Custom draggable block check unknown error!";
+
+				$result->addError(new \Bitrix\Main\Entity\EntityError($errorMessage));
+			}
+
 			$res = OrderEdit::saveCoupons($order->getUserId(), $_POST);
 
 			if(!$res)
 				$result->addError(new \Bitrix\Main\Entity\EntityError("Can't save coupons!"));
 
 			$discount = $order->getDiscount();
+
+			if ($isRefreshDataAndSaveOperation)
+			{
+				\Bitrix\Sale\DiscountCouponsManager::clearApply(true);
+				\Bitrix\Sale\DiscountCouponsManager::useSavedCouponsForApply(true);
+				$discount->setOrderRefresh(true);
+				$discount->setApplyResult(array());
+				/** @var \Bitrix\Sale\Basket $basket */
+				if (!($basket = $order->getBasket()))
+					throw new \Bitrix\Main\ObjectNotFoundException('Entity "Basket" not found');
+
+				$res = $basket->refreshData(array('PRICE', 'QUANTITY', 'COUPONS'));
+
+				if(!$res->isSuccess())
+					$result->addErrors($res->getErrors());
+			}
+
 			$res = $discount->calculate();
 			if(!$res->isSuccess())
 				$result->addErrors($res->getErrors());
@@ -165,11 +195,34 @@ if (($isSavingOperation || $isNeedFieldsRestore || $isRefreshDataAndSaveOperatio
 				{
 					if(isset($_POST["BUYER_PROFILE_ID"]))
 					{
-						$profResult = OrderEdit::saveProfileData(intval($_POST["BUYER_PROFILE_ID"]), $order, $_POST, true);
+						$profResult = OrderEdit::saveProfileData(intval($_POST["BUYER_PROFILE_ID"]), $order, $_POST);
 
 						if(!$profResult->isSuccess())
 							$result->addErrors($profResult->getErrors());
 					}
+
+					if (!$customTabber->Action())
+					{
+						if ($ex = $APPLICATION->GetException())
+							$errorMessage .= $ex->GetString();
+						else
+							$errorMessage .= "Custom tabber action unknown error!";
+
+						$result->addError(new \Bitrix\Main\Error($errorMessage));
+					}
+
+					if (!$customDraggableBlocks->action())
+					{
+						if ($ex = $APPLICATION->GetException())
+							$errorMessage .= $ex->GetString();
+						else
+							$errorMessage .= "Custom draggable block action unknown error!";
+
+						$result->addError(new \Bitrix\Main\Error($errorMessage));
+					}
+
+					if(!$result->isSuccess())
+						$_SESSION['SALE_ORDER_EDIT_ERROR'] = implode('<br>\n',$result->getErrorMessages());
 
 					if(isset($_POST["save"]))
 					{
@@ -185,7 +238,7 @@ if (($isSavingOperation || $isNeedFieldsRestore || $isRefreshDataAndSaveOperatio
 		}
 		else
 		{
-			$result->addError(new \Bitrix\Main\Entity\EntityError("Can't update order!"));
+			$result->addError(new \Bitrix\Main\Error(Loc::getMessage('SOE_ORDER_UPDATE_ERROR')));
 		}
 	}
 }
@@ -337,19 +390,34 @@ $fastNavItems = array();
 foreach($defaultBlocksOrder as $item)
 	$fastNavItems[$item] = Loc::getMessage("SALE_BLOCK_TITLE_".toUpper($item));
 
-// errors
-if(!$result->isSuccess() && !$isNeedFieldsRestore)
+foreach($customDraggableBlocks->getBlocksBrief() as $blockId => $blockParams)
 {
-	$message = "";
+	$defaultBlocksOrder[] = $blockId;
+	$fastNavItems[$blockId] = $blockParams['TITLE'];
+}
 
+// errors
+$message = "";
+
+if(!empty($_SESSION['SALE_ORDER_EDIT_ERROR']))
+{
+	$message = $_SESSION['SALE_ORDER_EDIT_ERROR']."<br>\n";
+	unset($_SESSION['SALE_ORDER_EDIT_ERROR']);
+}
+
+if(!$result->isSuccess() && !$isNeedFieldsRestore)
 	foreach($result->getErrors() as $error)
 		$message .= $error->getMessage()."<br>\n";
 
-	CAdminMessage::ShowMessage(array(
+if(!empty($message))
+{
+	$admMessage = new CAdminMessage(array(
 		"TYPE" => "ERROR",
 		"MESSAGE" => $message,
 		"HTML" => true
 	));
+
+	echo $admMessage->Show();
 }
 
 $formId = "sale_order_edit";
@@ -360,6 +428,7 @@ $orderBasket = new Blocks\OrderBasket(
 	"BX.Sale.Admin.OrderBasketObj",
 	$basketPrefix
 );
+///
 
 $defTails = $result->isSuccess() && !$isNeedFieldsRestore;
 
@@ -372,6 +441,7 @@ echo Blocks\OrderStatus::getScripts($order, $USER->GetID());
 echo Blocks\OrderFinanceInfo::getScripts();
 echo Blocks\OrderShipment::getScripts();
 echo $orderBasket->getScripts($defTails);
+echo $customDraggableBlocks->getScripts();
 
 // navigation
 echo OrderEdit::getFastNavigationHtml($fastNavItems);
@@ -391,6 +461,7 @@ $aTabs = array(
 ?><form method="POST" action="<?=$APPLICATION->GetCurPage()."?lang=".LANGUAGE_ID."&ID=".$ID."&".$urlForm.GetFilterParams("filter_", false)?>" name="sale_order_edit_form" id="sale_order_edit_form" enctype="multipart/form-data"><?
 
 $tabControl = new CAdminTabControlDrag($formId, $aTabs, $moduleId, false, true);
+$tabControl->AddTabs($customTabber);
 $tabControl->Begin();
 
 //TAB order --
@@ -409,7 +480,7 @@ $blocksOrder = $tabControl->getCurrentTabBlocksOrder($defaultBlocksOrder);
 		foreach ($blocksOrder as $blockCode)
 		{
 			echo '<a id="'.$blockCode.'"></a>';
-			$tabControl->DraggableBlockBegin(Loc::getMessage("SALE_BLOCK_TITLE_".toUpper($blockCode)), $blockCode);
+			$tabControl->DraggableBlockBegin($fastNavItems[$blockCode], $blockCode);
 
 			switch ($blockCode)
 			{
@@ -461,6 +532,9 @@ $blocksOrder = $tabControl->getCurrentTabBlocksOrder($defaultBlocksOrder);
 				case "basket":
 					echo $orderBasket->getEdit($defTails);
 					echo '<div style="display: none;">'.$orderBasket->settingsDialog->getHtml().'</div>';
+					break;
+				default:
+					echo $customDraggableBlocks->getBlockContent($blockCode, $tabControl->selectedTab);
 					break;
 			}
 			$tabControl->DraggableBlockEnd();
@@ -520,7 +594,7 @@ $tabControl->End();
 	<script type="text/javascript">
 		BX.ready( function(){
 			BX.Sale.Admin.OrderAjaxer.sendRequest(
-				BX.Sale.Admin.OrderEditPage.ajaxRequests.getOrderTails("<?=$order->getId()?>", 'edit'),
+				BX.Sale.Admin.OrderEditPage.ajaxRequests.getOrderTails("<?=$order->getId()?>", "edit", "<?=$basketPrefix?>"),
 				true
 			);
 		});

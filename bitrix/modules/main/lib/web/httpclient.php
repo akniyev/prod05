@@ -9,6 +9,7 @@ namespace Bitrix\Main\Web;
 
 use Bitrix\Main\Text\BinaryString;
 use Bitrix\Main\IO;
+use Bitrix\Main\Config\Configuration;
 
 class HttpClient
 {
@@ -80,7 +81,18 @@ class HttpClient
 		$this->requestCookies = new HttpCookies();
 		$this->responseCookies = new HttpCookies();
 
-		if($options !== null)
+		if($options === null)
+		{
+			$options = array();
+		}
+
+		$defaultOptions = Configuration::getValue("http_client_options");
+		if($defaultOptions !== null)
+		{
+			$options += $defaultOptions;
+		}
+
+		if(!empty($options))
 		{
 			if(isset($options["redirect"]))
 			{
@@ -617,20 +629,28 @@ class HttpClient
 			$this->setHeader("Accept-Encoding", "gzip");
 		}
 
-		if(!is_resource($entityBody) && $entityBody <> '')
+		if(!is_resource($entityBody))
 		{
-			if($method == self::HTTP_POST && $this->requestHeaders->get("Content-Type") === null)
+			if($method == self::HTTP_POST)
 			{
-				$contentType = "application/x-www-form-urlencoded";
-				if($this->requestCharset <> '')
+				//special processing for POST requests
+				if($this->requestHeaders->get("Content-Type") === null)
 				{
-					$contentType .= "; charset=".$this->requestCharset;
+					$contentType = "application/x-www-form-urlencoded";
+					if($this->requestCharset <> '')
+					{
+						$contentType .= "; charset=".$this->requestCharset;
+					}
+					$this->setHeader("Content-Type", $contentType);
 				}
-				$this->setHeader("Content-Type", $contentType);
 			}
-			if($this->requestHeaders->get("Content-Length") === null)
+			if($entityBody <> '' || $method == self::HTTP_POST)
 			{
-				$this->setHeader("Content-Length", BinaryString::getLength($entityBody));
+				//HTTP/1.0 requires Content-Length for POST
+				if($this->requestHeaders->get("Content-Length") === null)
+				{
+					$this->setHeader("Content-Length", BinaryString::getLength($entityBody));
+				}
 			}
 		}
 

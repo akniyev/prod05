@@ -1,9 +1,12 @@
 <?
-use Bitrix\Main\Loader;
-use Bitrix\Iblock;
+use Bitrix\Main\Loader,
+	Bitrix\Main,
+	Bitrix\Iblock,
+	Bitrix\Catalog;
 
 /** @global CUser $USER */
 /** @global CMain $APPLICATION */
+/** @global CDatabase $DB */
 
 require_once($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/main/include/prolog_admin_before.php');
 require_once($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/iblock/prolog.php');
@@ -88,11 +91,10 @@ if ($bCatalog)
 {
 	$boolCatalogRead = $USER->CanDoOperation('catalog_read');
 	$boolCatalogPrice = $USER->CanDoOperation('catalog_price');
-	$arMainCatalog = CCatalogSKU::GetInfoByIBlock($IBLOCK_ID);
+	$arMainCatalog = CCatalogSku::GetInfoByIBlock($IBLOCK_ID);
 	if (!empty($arMainCatalog))
 	{
-		if (CCatalogSKU::TYPE_PRODUCT == $arMainCatalog['CATALOG_TYPE'] || CCatalogSKU::TYPE_FULL == $arMainCatalog['CATALOG_TYPE'])
-			$bOffers = true;
+		$bOffers = ($arMainCatalog['CATALOG_TYPE'] == CCatalogSku::TYPE_PRODUCT || $arMainCatalog['CATALOG_TYPE'] == CCatalogSku::TYPE_FULL);
 		CCatalogAdminTools::setProductFormParams();
 
 		$arCatalogTabs = CCatalogAdminTools::getShowTabs($IBLOCK_ID, ($copyID > 0 && $ID == 0 ? $copyID : $ID), $arMainCatalog);
@@ -133,7 +135,7 @@ if ($historyId > 0 && $bBizproc)
 else
 	$historyId = 0;
 
-$APPLICATION->AddHeadScript('/bitrix/js/iblock/iblock_edit.js');
+Main\Page\Asset::getInstance()->addJs('/bitrix/js/iblock/iblock_edit.js');
 
 $error = false;
 
@@ -251,7 +253,7 @@ do{ //one iteration loop
 			"DIV" => "edit1",
 			"TAB" => $arIBlock["ELEMENT_NAME"],
 			"ICON" => "iblock_element",
-			"TITLE" => htmlspecialcharsex($arIBlock["ELEMENT_NAME"])
+			"TITLE" => htmlspecialcharsEx($arIBlock["ELEMENT_NAME"])
 		),
 		array(
 			"DIV" => "edit5",
@@ -278,7 +280,7 @@ do{ //one iteration loop
 			"DIV" => "edit2",
 			"TAB" => $arIBlock["SECTIONS_NAME"],
 			"ICON" => "iblock_element_section",
-			"TITLE" => htmlspecialcharsex($arIBlock["SECTIONS_NAME"]),
+			"TITLE" => htmlspecialcharsEx($arIBlock["SECTIONS_NAME"]),
 		);
 	if ($arShowTabs['catalog'])
 		$aTabs[] = array(
@@ -497,7 +499,7 @@ do{ //one iteration loop
 		{
 			$arMainCatalog['OFFERS_PROPERTY_ID'] = 0;
 			$arMainCatalog['OFFERS_IBLOCK_ID'] = 0;
-			if ($arMainCatalog['CATALOG_TYPE'] == CCatalogSKU::TYPE_FULL || $arMainCatalog['CATALOG_TYPE'] == CCatalogSKU::TYPE_PRODUCT)
+			if ($arMainCatalog['CATALOG_TYPE'] == CCatalogSku::TYPE_FULL || $arMainCatalog['CATALOG_TYPE'] == CCatalogSku::TYPE_PRODUCT)
 			{
 				$arMainCatalog['OFFERS_PROPERTY_ID'] = $arMainCatalog['SKU_PROPERTY_ID'];
 				$arMainCatalog['OFFERS_IBLOCK_ID'] = $arMainCatalog['IBLOCK_ID'];
@@ -612,10 +614,10 @@ do{ //one iteration loop
 		{
 			if(substr($a, 0, 1)==="n")
 			{
-				$a = intval(substr($a, 1));
+				$a = (int)substr($a, 1);
 				if(substr($b, 0, 1)==="n")
 				{
-					$b = intval(substr($b, 1));
+					$b = (int)substr($b, 1);
 					if($a < $b)
 						return -1;
 					elseif($a > $b)
@@ -637,14 +639,14 @@ do{ //one iteration loop
 				else
 				{
 					if(preg_match("/^(\\d+):(\\d+)$/", $a, $a_match))
-						$a = intval($a_match[2]);
+						$a = (int)$a_match[2];
 					else
-						$a = intval($a);
+						$a = (int)$a;
 
 					if(preg_match("/^(\\d+):(\\d+)$/", $b, $b_match))
-						$b = intval($b_match[2]);
+						$b = (int)$b_match[2];
 					else
-						$b = intval($b);
+						$b = (int)$b;
 
 					if($a < $b)
 						return -1;
@@ -668,6 +670,7 @@ do{ //one iteration loop
 				if(is_array($PROP[$id]))
 					uksort($PROP[$id], "_prop_value_id_cmp");
 			}
+			unset($id);
 		}
 
 		if(strlen($arIBlock["EDIT_FILE_BEFORE"])>0 && is_file($_SERVER["DOCUMENT_ROOT"].$arIBlock["EDIT_FILE_BEFORE"]))
@@ -799,9 +802,9 @@ do{ //one iteration loop
 					{
 					// errors'll be appended to $strWarning;
 						$boolSKUExists = false;
-						if (CCatalogSKU::TYPE_FULL == $arMainCatalog['CATALOG_TYPE'])
+						if (CCatalogSku::TYPE_FULL == $arMainCatalog['CATALOG_TYPE'])
 						{
-							$boolSKUExists = CCatalogSKU::IsExistOffers(($ID > 0 && !$bCopy ? $ID : '-'.$str_TMP_ID), $IBLOCK_ID);
+							$boolSKUExists = CCatalogSku::IsExistOffers(($ID > 0 && !$bCopy ? $ID : '-'.$str_TMP_ID), $IBLOCK_ID);
 						}
 						include($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/catalog/admin/templates/product_edit_validator.php");
 					}
@@ -1140,7 +1143,7 @@ do{ //one iteration loop
 						}
 
 						$arDocumentStates = null;
-						CBPDocument::AddDocumentToHistory(array(MODULE_ID, ENTITY, $ID), $BP_HISTORY_NAME, $GLOBALS["USER"]->GetID());
+						CBPDocument::AddDocumentToHistory(array(MODULE_ID, ENTITY, $ID), $BP_HISTORY_NAME, $USER->GetID());
 					}
 				}
 			}
@@ -1615,7 +1618,7 @@ else
 	{
 		$aMenu = array(
 			array(
-				"TEXT" => htmlspecialcharsex($arIBlock["ELEMENTS_NAME"]),
+				"TEXT" => htmlspecialcharsEx($arIBlock["ELEMENTS_NAME"]),
 				"LINK" => CIBlock::GetAdminElementListLink($IBLOCK_ID, array('find_section_section'=>intval($find_section_section))),
 				"ICON" => "btn_list",
 			)
@@ -1657,7 +1660,7 @@ else
 		{
 			$arSubMenu = array();
 			$arSubMenu[] = array(
-				"TEXT" => htmlspecialcharsex($arIBlock["ELEMENT_ADD"]),
+				"TEXT" => htmlspecialcharsEx($arIBlock["ELEMENT_ADD"]),
 				"LINK" => "/bitrix/admin/".CIBlock::GetAdminElementEditLink($IBLOCK_ID, 0, array(
 					"IBLOCK_SECTION_ID" => $MENU_SECTION_ID,
 					"find_section_section" => intval($find_section_section),
@@ -1670,7 +1673,7 @@ else
 				$urlDelete .= '&'.bitrix_sessid_get();
 				$urlDelete .= '&ID='.(preg_match('/^iblock_list_admin\.php/', $urlDelete)? "E": "").$ID;
 				$arSubMenu[] = array(
-					"TEXT" => htmlspecialcharsex($arIBlock["ELEMENT_DELETE"]),
+					"TEXT" => htmlspecialcharsEx($arIBlock["ELEMENT_DELETE"]),
 					"ACTION" => "if(confirm('".GetMessageJS("IBLOCK_ELEMENT_DEL_CONF")."'))window.location='".CUtil::JSEscape($urlDelete)."';",
 					'ICON' => 'delete',
 				);
@@ -1722,28 +1725,6 @@ else:
 
 	$tabControl->BeginPrologContent();
 	CJSCore::Init(array('date'));
-
-	if(COption::GetOptionString("iblock", "use_htmledit", "Y")=="Y" && $bFileman)
-	{
-		//TODO:This dirty hack will be replaced by special method like calendar do
-		echo '<div style="display:none">';
-		CFileMan::AddHTMLEditorFrame(
-			"SOME_TEXT",
-			"",
-			"SOME_TEXT_TYPE",
-			"text",
-			array(
-				'height' => 450,
-				'width' => '100%'
-			),
-			"N",
-			0,
-			"",
-			"",
-			$arIBlock["LID"]
-		);
-		echo '</div>';
-	}
 
 	if($arTranslit["TRANSLITERATION"] == "Y")
 	{
@@ -2201,7 +2182,7 @@ $tabControl->BeginCustomField("PREVIEW_TEXT", GetMessage("IBLOCK_FIELD_PREVIEW_T
 			true,
 			false,
 			array(
-				'toolbarConfig' => CFileman::GetEditorToolbarConfig("iblock_".(defined('BX_PUBLIC_MODE') && BX_PUBLIC_MODE == 1 ? 'public' : 'admin')),
+				'toolbarConfig' => CFileMan::GetEditorToolbarConfig("iblock_".(defined('BX_PUBLIC_MODE') && BX_PUBLIC_MODE == 1 ? 'public' : 'admin')),
 				'saveEditorKey' => $IBLOCK_ID,
 				'hideTypeSelector' => $arIBlock["FIELDS"]["PREVIEW_TEXT_TYPE_ALLOW_CHANGE"]["DEFAULT_VALUE"] === "N",
 			)
@@ -2321,7 +2302,7 @@ $tabControl->BeginCustomField("DETAIL_TEXT", GetMessage("IBLOCK_FIELD_DETAIL_TEX
 				true,
 				false,
 				array(
-					'toolbarConfig' => CFileman::GetEditorToolbarConfig("iblock_".(defined('BX_PUBLIC_MODE') && BX_PUBLIC_MODE == 1 ? 'public' : 'admin')),
+					'toolbarConfig' => CFileMan::GetEditorToolbarConfig("iblock_".(defined('BX_PUBLIC_MODE') && BX_PUBLIC_MODE == 1 ? 'public' : 'admin')),
 					'saveEditorKey' => $IBLOCK_ID,
 					'hideTypeSelector' => $arIBlock["FIELDS"]["DETAIL_TEXT_TYPE_ALLOW_CHANGE"]["DEFAULT_VALUE"] === "N",
 				)
@@ -2802,6 +2783,11 @@ $tabControl->EndCustomField("DETAIL_TEXT",
 	{
 		var form = BX('<?echo CUtil::JSEscape($tabControl->GetFormName())?>');
 		var url = '<?echo CUtil::JSEscape($APPLICATION->GetCurPageParam())?>';
+		var selectedTab = BX(s='<?echo CUtil::JSEscape("form_element_".$IBLOCK_ID."_active_tab")?>');
+		if (selectedTab && selectedTab.value)
+		{
+			url += '&<?echo CUtil::JSEscape("form_element_".$IBLOCK_ID."_active_tab")?>=' + selectedTab.value;
+		}
 		<?if($arIBlock["SECTION_PROPERTY"] === "Y" || defined("CATALOG_PRODUCT")):?>
 		var groupField = new JCIBlockGroupField(form, 'tr_IBLOCK_ELEMENT_PROPERTY', url);
 		groupField.reload();
@@ -2847,7 +2833,7 @@ if ($arShowTabs['sku'])
 	$arSubIBlockType = CIBlockType::GetByIDLang($strSubIBlockType, LANGUAGE_ID);
 
 	$boolIncludeOffers = CIBlockRights::UserHasRightTo($intSubIBlockID, $intSubIBlockID, "iblock_admin_display");;
-	$arSubCatalog = CCatalogSKU::GetInfoByOfferIBlock($arMainCatalog['IBLOCK_ID']);
+	$arSubCatalog = CCatalogSku::GetInfoByOfferIBlock($arMainCatalog['IBLOCK_ID']);
 	$boolSubCatalog = (!empty($arSubCatalog) && is_array($arSubCatalog));
 	if (!$boolCatalogRead && !$boolCatalogPrice)
 		$boolSubCatalog = false;
@@ -3040,7 +3026,7 @@ if ($arShowTabs['bizproc']):
 		{
 			$canViewWorkflow = CBPDocument::CanUserOperateDocument(
 				CBPCanUserOperateOperation::ViewWorkflow,
-				$GLOBALS["USER"]->GetID(),
+				$USER->GetID(),
 				array(MODULE_ID, ENTITY, $ID),
 				array("AllUserGroups" => $arCurrentUserGroups, "DocumentStates" => $arDocumentStates, "WorkflowId" => $arDocumentState["ID"] > 0 ? $arDocumentState["ID"] : $arDocumentState["TEMPLATE_ID"])
 			);
@@ -3049,7 +3035,7 @@ if ($arShowTabs['bizproc']):
 		{
 			$canViewWorkflow = CBPDocument::CanUserOperateDocumentType(
 				CBPCanUserOperateOperation::ViewWorkflow,
-				$GLOBALS["USER"]->GetID(),
+				$USER->GetID(),
 				array(MODULE_ID, ENTITY, DOCUMENT_TYPE),
 				array("AllUserGroups" => $arCurrentUserGroups, "DocumentStates" => $arDocumentStates, "WorkflowId" => $arDocumentState["ID"] > 0 ? $arDocumentState["ID"] : $arDocumentState["TEMPLATE_ID"])
 			);
@@ -3109,9 +3095,8 @@ if ($arShowTabs['bizproc']):
 				}
 			}
 		}
-		?>
-		<?
-		$arEvents = CBPDocument::GetAllowableEvents($GLOBALS["USER"]->GetID(), $arCurrentUserGroups, $arDocumentState, $arIBlock["RIGHTS_MODE"] === "E");
+
+		$arEvents = CBPDocument::GetAllowableEvents($USER->GetID(), $arCurrentUserGroups, $arDocumentState, $arIBlock["RIGHTS_MODE"] === "E");
 		if (!empty($arEvents))
 		{
 			?>

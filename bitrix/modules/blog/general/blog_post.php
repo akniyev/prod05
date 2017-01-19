@@ -12,10 +12,11 @@ class CAllBlogPost
 
 	function CanUserEditPost($ID, $userID)
 	{
+		global $APPLICATION;
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
 
-		$blogModulePermissions = $GLOBALS["APPLICATION"]->GetGroupRight("blog");
+		$blogModulePermissions = $APPLICATION->GetGroupRight("blog");
 		if ($blogModulePermissions >= "W")
 			return True;
 
@@ -41,10 +42,12 @@ class CAllBlogPost
 
 	function CanUserDeletePost($ID, $userID)
 	{
+		global $APPLICATION;
+
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
 
-		$blogModulePermissions = $GLOBALS["APPLICATION"]->GetGroupRight("blog");
+		$blogModulePermissions = $APPLICATION->GetGroupRight("blog");
 		if ($blogModulePermissions >= "W")
 			return True;
 
@@ -72,13 +75,15 @@ class CAllBlogPost
 		return False;
 	}
 
-	function GetBlogUserPostPerms($ID, $userID)
+	public static function GetBlogUserPostPerms($ID, $userID)
 	{
+		global $APPLICATION;
+
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
 
 		$arAvailPerms = array_keys($GLOBALS["AR_BLOG_PERMS"]);
-		$blogModulePermissions = $GLOBALS["APPLICATION"]->GetGroupRight("blog");
+		$blogModulePermissions = $APPLICATION->GetGroupRight("blog");
 		if ($blogModulePermissions >= "W")
 			return $arAvailPerms[count($arAvailPerms) - 1];
 
@@ -102,14 +107,15 @@ class CAllBlogPost
 		return $arAvailPerms[0];
 	}
 
-	function GetBlogUserCommentPerms($ID, $userID)
+	public static function GetBlogUserCommentPerms($ID, $userID)
 	{
+		global $APPLICATION;
 		$ID = IntVal($ID);
 		$userID = IntVal($userID);
 
 		$arAvailPerms = array_keys($GLOBALS["AR_BLOG_PERMS"]);
 
-		$blogModulePermissions = $GLOBALS["APPLICATION"]->GetGroupRight("blog");
+		$blogModulePermissions = $APPLICATION->GetGroupRight("blog");
 		if ($blogModulePermissions >= "W")
 			return $arAvailPerms[count($arAvailPerms) - 1];
 
@@ -155,22 +161,23 @@ class CAllBlogPost
 	/*************** ADD, UPDATE, DELETE *****************/
 	function CheckFields($ACTION, &$arFields, $ID = 0)
 	{
-		global $DB;
+		global $DB, $APPLICATION;
+
 		if ((is_set($arFields, "TITLE") || $ACTION=="ADD") && strlen($arFields["TITLE"]) <= 0)
 		{
-			$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_EMPTY_TITLE"), "EMPTY_TITLE");
+			$APPLICATION->ThrowException(GetMessage("BLG_GP_EMPTY_TITLE"), "EMPTY_TITLE");
 			return false;
 		}
 
 		if ((is_set($arFields, "DETAIL_TEXT") || $ACTION=="ADD") && strlen($arFields["DETAIL_TEXT"]) <= 0)
 		{
-			$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_EMPTY_DETAIL_TEXT"), "EMPTY_DETAIL_TEXT");
+			$APPLICATION->ThrowException(GetMessage("BLG_GP_EMPTY_DETAIL_TEXT"), "EMPTY_DETAIL_TEXT");
 			return false;
 		}
 
 		if ((is_set($arFields, "BLOG_ID") || $ACTION=="ADD") && IntVal($arFields["BLOG_ID"]) <= 0)
 		{
-			$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_EMPTY_BLOG_ID"), "EMPTY_BLOG_ID");
+			$APPLICATION->ThrowException(GetMessage("BLG_GP_EMPTY_BLOG_ID"), "EMPTY_BLOG_ID");
 			return false;
 		}
 		elseif (is_set($arFields, "BLOG_ID"))
@@ -178,14 +185,14 @@ class CAllBlogPost
 			$arResult = CBlog::GetByID($arFields["BLOG_ID"]);
 			if (!$arResult)
 			{
-				$GLOBALS["APPLICATION"]->ThrowException(str_replace("#ID#", $arFields["BLOG_ID"], GetMessage("BLG_GP_ERROR_NO_BLOG")), "ERROR_NO_BLOG");
+				$APPLICATION->ThrowException(str_replace("#ID#", $arFields["BLOG_ID"], GetMessage("BLG_GP_ERROR_NO_BLOG")), "ERROR_NO_BLOG");
 				return false;
 			}
 		}
 
 		if ((is_set($arFields, "AUTHOR_ID") || $ACTION=="ADD") && IntVal($arFields["AUTHOR_ID"]) <= 0)
 		{
-			$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_EMPTY_AUTHOR_ID"), "EMPTY_AUTHOR_ID");
+			$APPLICATION->ThrowException(GetMessage("BLG_GP_EMPTY_AUTHOR_ID"), "EMPTY_AUTHOR_ID");
 			return false;
 		}
 		elseif (is_set($arFields, "AUTHOR_ID"))
@@ -193,20 +200,20 @@ class CAllBlogPost
 			$dbResult = CUser::GetByID($arFields["AUTHOR_ID"]);
 			if (!$dbResult->Fetch())
 			{
-				$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_ERROR_NO_AUTHOR"), "ERROR_NO_AUTHOR");
+				$APPLICATION->ThrowException(GetMessage("BLG_GP_ERROR_NO_AUTHOR"), "ERROR_NO_AUTHOR");
 				return false;
 			}
 		}
 
 		if (is_set($arFields, "DATE_CREATE") && (!$DB->IsDate($arFields["DATE_CREATE"], false, LANG, "FULL")))
 		{
-			$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_ERROR_DATE_CREATE"), "ERROR_DATE_CREATE");
+			$APPLICATION->ThrowException(GetMessage("BLG_GP_ERROR_DATE_CREATE"), "ERROR_DATE_CREATE");
 			return false;
 		}
 
 		if (is_set($arFields, "DATE_PUBLISH") && (!$DB->IsDate($arFields["DATE_PUBLISH"], false, LANG, "FULL")))
 		{
-			$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_ERROR_DATE_PUBLISH"), "ERROR_DATE_PUBLISH");
+			$APPLICATION->ThrowException(GetMessage("BLG_GP_ERROR_DATE_PUBLISH"), "ERROR_DATE_PUBLISH");
 			return false;
 		}
 
@@ -236,7 +243,7 @@ class CAllBlogPost
 			$res = CFile::CheckImageFile($arFields["ATTACH_IMG"], 0, 0, 0);
 			if (strlen($res) > 0)
 			{
-				$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_ERROR_ATTACH_IMG").": ".$res, "ERROR_ATTACH_IMG");
+				$APPLICATION->ThrowException(GetMessage("BLG_GP_ERROR_ATTACH_IMG").": ".$res, "ERROR_ATTACH_IMG");
 				return false;
 			}
 		}
@@ -260,7 +267,7 @@ class CAllBlogPost
 
 			if (in_array(strtolower($arFields["CODE"]), $GLOBALS["AR_BLOG_POST_RESERVED_CODES"]))
 			{
-				$GLOBALS["APPLICATION"]->ThrowException(str_replace("#CODE#", $arFields["CODE"], GetMessage("BLG_GP_RESERVED_CODE")), "CODE_RESERVED");
+				$APPLICATION->ThrowException(str_replace("#CODE#", $arFields["CODE"], GetMessage("BLG_GP_RESERVED_CODE")), "CODE_RESERVED");
 				return false;
 			}
 
@@ -282,7 +289,7 @@ class CAllBlogPost
 			$dbItem = CBlogPost::GetList(Array(), $arFilter, false, Array("nTopCount" => 1), Array("ID", "CODE", "BLOG_ID"));
 			if($dbItem->Fetch())
 			{
-				$GLOBALS["APPLICATION"]->ThrowException(GetMessage("BLG_GP_CODE_EXIST", Array("#CODE#" => $arFields["CODE"])), "CODE_EXIST");
+				$APPLICATION->ThrowException(GetMessage("BLG_GP_CODE_EXIST", Array("#CODE#" => $arFields["CODE"])), "CODE_EXIST");
 				return false;
 			}
 		}
@@ -398,7 +405,7 @@ class CAllBlogPost
 
 	public static function Delete($ID)
 	{
-		global $DB;
+		global $DB, $CACHE_MANAGER, $USER_FIELD_MANAGER;
 
 		$ID = IntVal($ID);
 
@@ -478,7 +485,7 @@ class CAllBlogPost
 
 			$arBlog = CBlog::GetByID($arPost["BLOG_ID"]);
 
-			$result = $DB->Query("DELETE FROM b_blog_post WHERE ID = ".$ID."", true);
+			$result = $DB->Query("DELETE FROM b_blog_post WHERE ID = ".$ID, true);
 
 			if (IntVal($arBlog["LAST_POST_ID"]) == $ID)
 				CBlog::SetStat($arPost["BLOG_ID"]);
@@ -490,7 +497,7 @@ class CAllBlogPost
 					CBlogImage::Delete($aImg['ID']);
 			}
 			if ($result)
-				$GLOBALS["USER_FIELD_MANAGER"]->Delete("BLOG_POST", $ID);
+				$USER_FIELD_MANAGER->Delete("BLOG_POST", $ID);
 
 			foreach(GetModuleEvents("blog", "OnPostDelete", true) as $arEvent)
 				ExecuteModuleEventEx($arEvent, Array($ID, &$result));
@@ -507,18 +514,17 @@ class CAllBlogPost
 			}
 			if(defined("BX_COMP_MANAGED_CACHE"))
 			{
-				$GLOBALS["CACHE_MANAGER"]->ClearByTag("blog_post_".$ID);
+				$CACHE_MANAGER->ClearByTag("blog_post_".$ID);
 			}
 			
 			return $result;
 		}
 		else
 			return false;
-		return True;
 	}
 
 	//*************** SELECT *********************/
-	function PreparePath($blogUrl, $postID = 0, $siteID = False, $is404 = True, $userID = 0, $groupID = 0)
+	public static function PreparePath($blogUrl, $postID = 0, $siteID = False, $is404 = True, $userID = 0, $groupID = 0)
 	{
 		$blogUrl = Trim($blogUrl);
 		$postID = IntVal($postID);
@@ -526,15 +532,21 @@ class CAllBlogPost
 		$userID = IntVal($userID);
 
 		if (!$siteID)
+		{
 			$siteID = SITE_ID;
+		}
 
 		$dbPath = CBlogSitePath::GetList(array(), array("SITE_ID"=>$siteID));
-		while($arPath = $dbPath->Fetch())
+		while ($arPath = $dbPath->Fetch())
 		{
-			if(strlen($arPath["TYPE"])>0)
+			if (strlen($arPath["TYPE"]) > 0)
+			{
 				$arPaths[$arPath["TYPE"]] = $arPath["PATH"];
+			}
 			else
+			{
 				$arPaths["OLD"] = $arPath["PATH"];
+			}
 		}
 
 		if($postID > 0)
@@ -602,7 +614,7 @@ class CAllBlogPost
 		);
 	}
 
-	function CounterInc($ID)
+	public static function CounterInc($ID)
 	{
 		global $DB;
 		$ID = IntVal($ID);
@@ -618,11 +630,17 @@ class CAllBlogPost
 		$DB->Query($strSql);
 	}
 
-	function Notify($arPost, $arBlog, $arParams)
+	public static function Notify($arPost, $arBlog, $arParams)
 	{
 		global $DB;
 		if(empty($arBlog))
+		{
 			$arBlog = CBlog::GetByID($arPost["BLOG_ID"]);
+		}
+
+		$arImages = $arOwner = Array();
+		$parserBlog = false;
+		$text4mail = $serverName = $AuthorName = "";
 
 		if($arParams["bSoNet"] || ($arBlog["EMAIL_NOTIFY"]=="Y" && $arParams["user_id"] != $arBlog["OWNER_ID"]))
 		{
@@ -636,12 +654,15 @@ class CAllBlogPost
 			$parserBlog = new blogTextParser(false, $arParams["PATH_TO_SMILE"]);
 			$text4mail = $arPost["DETAIL_TEXT"];
 			if($arPost["DETAIL_TEXT_TYPE"] == "html")
+			{
 				$text4mail = HTMLToTxt($text4mail);
+			}
 
-			$arImages = Array();
 			$res = CBlogImage::GetList(array("ID"=>"ASC"),array("POST_ID"=>$arPost["ID"], "BLOG_ID"=>$arBlog["ID"], "IS_COMMENT" => "N"));
 			while ($arImage = $res->Fetch())
+			{
 				$arImages[$arImage['ID']] = $arImage['FILE_ID'];
+			}
 
 			$text4mail = $parserBlog->convert4mail($text4mail, $arImages);
 			$serverName = ((defined("SITE_SERVER_NAME") && strlen(SITE_SERVER_NAME) > 0) ? SITE_SERVER_NAME : COption::GetOptionString("main", "server_name", ""));
@@ -653,27 +674,33 @@ class CAllBlogPost
 				"NEW_BLOG_MESSAGE",
 				SITE_ID,
 				array(
-					"BLOG_ID"		=> $arBlog["ID"],
-					"BLOG_NAME"		=> htmlspecialcharsBack($arBlog["NAME"]),
-					"BLOG_URL"		=> $arBlog["URL"],
-					"MESSAGE_TITLE"	=> $arPost["TITLE"],
-					"MESSAGE_TEXT"	=> $text4mail,
-					"MESSAGE_DATE"	=> GetTime(MakeTimeStamp($arPost["DATE_PUBLISH"])-CTimeZone::GetOffset(), "FULL"),
-					"MESSAGE_PATH"	=> "http://".$serverName.CComponentEngine::MakePathFromTemplate(htmlspecialcharsBack($arParams["PATH_TO_POST"]), array("blog" => $arBlog["URL"], "post_id" => $arPost["ID"], "user_id" => $arBlog["OWNER_ID"], "group_id" => $arParams["SOCNET_GROUP_ID"])),
-					"AUTHOR"		=> $AuthorName,
-					"EMAIL_FROM"	=> COption::GetOptionString("main","email_from", "nobody@nobody.com"),
-					"EMAIL_TO"		=> $arOwner["EMAIL"]
+					"BLOG_ID" => $arBlog["ID"],
+					"BLOG_NAME" => htmlspecialcharsBack($arBlog["NAME"]),
+					"BLOG_URL" => $arBlog["URL"],
+					"MESSAGE_TITLE" => $arPost["TITLE"],
+					"MESSAGE_TEXT" => $text4mail,
+					"MESSAGE_DATE" => GetTime(MakeTimeStamp($arPost["DATE_PUBLISH"])-CTimeZone::GetOffset(), "FULL"),
+					"MESSAGE_PATH" => "http://".$serverName.CComponentEngine::MakePathFromTemplate(htmlspecialcharsBack($arParams["PATH_TO_POST"]), array("blog" => $arBlog["URL"], "post_id" => $arPost["ID"], "user_id" => $arBlog["OWNER_ID"], "group_id" => $arParams["SOCNET_GROUP_ID"])),
+					"AUTHOR" => $AuthorName,
+					"EMAIL_FROM" => COption::GetOptionString("main","email_from", "nobody@nobody.com"),
+					"EMAIL_TO" => $arOwner["EMAIL"]
 				)
 			);
 		}
 
-		if($arParams["bSoNet"] && $arPost["ID"] && CModule::IncludeModule("socialnetwork"))
+		if(
+			$arParams["bSoNet"] && $arPost["ID"]
+			&& CModule::IncludeModule("socialnetwork")
+			&& $parserBlog
+		)
 		{
 			if($arPost["DETAIL_TEXT_TYPE"] == "html" && $arParams["allowHTML"] == "Y" && $arBlog["ALLOW_HTML"] == "Y")
 			{
 				$arAllow = array("HTML" => "Y", "ANCHOR" => "Y", "IMG" => "Y", "SMILES" => "N", "NL2BR" => "N", "VIDEO" => "Y", "QUOTE" => "Y", "CODE" => "Y");
 				if($arParams["allowVideo"] != "Y")
+				{
 					$arAllow["VIDEO"] = "N";
+				}
 				$text4message = $parserBlog->convert($arPost["DETAIL_TEXT"], false, $arImages, $arAllow);
 			}
 			else
@@ -685,10 +712,13 @@ class CAllBlogPost
 			$arSoFields = Array(
 				"EVENT_ID" => (intval($arPost["UF_BLOG_POST_IMPRTNT"]) > 0 ? "blog_post_important" : "blog_post"),
 				"=LOG_DATE" => (
-					strlen($arPost["DATE_PUBLISH"]) > 0?
-						(MakeTimeStamp($arPost["DATE_PUBLISH"], CSite::GetDateFormat("FULL", SITE_ID)) > time()+CTimeZone::GetOffset()?
-							$DB->CharToDateFunction($arPost["DATE_PUBLISH"], "FULL", SITE_ID) :
-							$DB->CurrentTimeFunction()) :
+					strlen($arPost["DATE_PUBLISH"]) > 0
+						? (
+							MakeTimeStamp($arPost["DATE_PUBLISH"], CSite::GetDateFormat("FULL", SITE_ID)) > time()+CTimeZone::GetOffset()
+								? $DB->CharToDateFunction($arPost["DATE_PUBLISH"], "FULL", SITE_ID)
+								: $DB->CurrentTimeFunction()
+						)
+						:
 						$DB->CurrentTimeFunction()
 				),
 				"TITLE_TEMPLATE" => "#USER_NAME# ".GetMessage("BLG_SONET_TITLE"),
@@ -718,7 +748,9 @@ class CAllBlogPost
 			}
 
 			if (intval($arParams["user_id"]) > 0)
+			{
 				$arSoFields["USER_ID"] = $arParams["user_id"];
+			}
 
 			$logID = CSocNetLog::Add($arSoFields, false);
 
@@ -726,7 +758,9 @@ class CAllBlogPost
 			{
 				$socnetPerms = CBlogPost::GetSocNetPermsCode($arPost["ID"]);
 				if(!in_array("U".$arPost["AUTHOR_ID"], $socnetPerms))
+				{
 					$socnetPerms[] = "U".$arPost["AUTHOR_ID"];
+				}
 				$socnetPerms[] = "SA"; // socnet admin
 
 				if (
@@ -759,22 +793,28 @@ class CAllBlogPost
 				CSocNetLog::Update($logID, array("TMP_ID" => $logID));
 				if (CModule::IncludeModule("extranet"))
 				{
-					$arSiteID = CExtranet::GetSitesByLogDestinations($socnetPerms, $arPost["AUTHOR_ID"], SITE_ID);
-					CSocNetLog::Update($logID, array("SITE_ID" => $arSiteID));
+					CSocNetLog::Update($logID, array(
+						"SITE_ID" => CExtranet::GetSitesByLogDestinations($socnetPerms, $arPost["AUTHOR_ID"], SITE_ID)
+					));
 				}
 
 				CSocNetLogRights::DeleteByLogID($logID);
 				CSocNetLogRights::Add($logID, $socnetPerms);
+
+				if (\Bitrix\Main\Loader::includeModule('crm'))
+				{
+					CCrmLiveFeedComponent::processCrmBlogPostRights($logID, $arSoFields, $arPost, 'new');
+				}
 
 				\Bitrix\Main\FinderDestTable::merge(array(
 					"CONTEXT" => "blog_post",
 					"CODE" => \Bitrix\Main\FinderDestTable::convertRights($socnetPerms, array("U".$arPost["AUTHOR_ID"]))
 				));
 
+				$arUsrId = array();
 				$bForAll = (in_array("AU", $socnetPerms) || in_array("G2", $socnetPerms));
 				if (!$bForAll)
 				{
-					$arUsrId = array();
 					foreach($socnetPerms as $code)
 					{
 
@@ -790,54 +830,62 @@ class CAllBlogPost
 					}
 				}
 
-				CSocNetLog::CounterIncrement(
-					$logID, 
-					$arSoFields["EVENT_ID"], 
-					false, 
-					"L",
-					$bForAll,
-					(
+				CSocNetLog::CounterIncrement(array(
+					"ENTITY_ID" => $logID,
+					"EVENT_ID" => $arSoFields["EVENT_ID"],
+					"TYPE" => "L",
+					"FOR_ALL_ACCESS" =>  $bForAll,
+					"USERS_TO_PUSH" => (
 						$bForAll
 						|| empty($arUsrId)
 						|| count($arUsrId) > 20
 							? array()
 							: $arUsrId
+					),
+					"SEND_TO_AUTHOR" => (
+						!empty($arParams["SEND_COUNTER_TO_AUTHOR"])
+						&& $arParams["SEND_COUNTER_TO_AUTHOR"] == "Y"
+							? "Y"
+							: "N"
 					)
-				);
+				));
 
 				return $logID;
 			}
 		}
 	}
 
-	function UpdateLog($postID, $arPost, $arBlog, $arParams)
+	public static function UpdateLog($postID, $arPost, $arBlog, $arParams)
 	{
 		if (!CModule::IncludeModule('socialnetwork'))
+		{
 			return;
-
-		global $DB;
+		}
 
 		$parserBlog = new blogTextParser(false, $arParams["PATH_TO_SMILE"]);
 
 		preg_match("#^(.*?)<cut[\s]*(/>|>).*?$#is", $arPost["DETAIL_TEXT"], $arMatches);
 		if (count($arMatches) <= 0)
+		{
 			preg_match("#^(.*?)\[cut[\s]*(/\]|\]).*?$#is", $arPost["DETAIL_TEXT"], $arMatches);
+		}
 
-		if (count($arMatches) > 0)
-			$cut_suffix = "#CUT#";
-		else
-			$cut_suffix = "";
+		$cut_suffix = (count($arMatches) > 0 ? "#CUT#" : "");
 
 		$arImages = Array();
 		$res = CBlogImage::GetList(array("ID"=>"ASC"),array("POST_ID"=>$postID, "BLOG_ID"=>$arBlog["ID"], "IS_COMMENT" => "N"));
 		while ($arImage = $res->Fetch())
+		{
 			$arImages[$arImage['ID']] = $arImage['FILE_ID'];
+		}
 
 		if($arPost["DETAIL_TEXT_TYPE"] == "html" && $arParams["allowHTML"] == "Y" && $arBlog["ALLOW_HTML"] == "Y")
 		{
 			$arAllow = array("HTML" => "Y", "ANCHOR" => "Y", "IMG" => "Y", "SMILES" => "N", "NL2BR" => "N", "VIDEO" => "Y", "QUOTE" => "Y", "CODE" => "Y");
 			if($arParams["allowVideo"] != "Y")
+			{
 				$arAllow["VIDEO"] = "N";
+			}
 			$text4message = $parserBlog->convert($arPost["DETAIL_TEXT"], true, $arImages, $arAllow);
 		}
 		else
@@ -854,15 +902,6 @@ class CAllBlogPost
 			"MESSAGE" => $text4message,
 			"TEXT_MESSAGE" => $text4message,
 			"ENABLE_COMMENTS" => (array_key_exists("ENABLE_COMMENTS", $arPost) && $arPost["ENABLE_COMMENTS"] == "N" ? "N" : "Y"),
-			/*
-			"=LOG_UPDATE" => (
-				strlen($arPost["DATE_PUBLISH"]) > 0?
-					(MakeTimeStamp($arPost["DATE_PUBLISH"], CSite::GetDateFormat("FULL", $SITE_ID)) > time()+CTimeZone::GetOffset()?
-						$DB->CharToDateFunction($arPost["DATE_PUBLISH"], "FULL", SITE_ID) :
-						$DB->CurrentTimeFunction()) :
-					$DB->CurrentTimeFunction()
-			),
-			*/
 			"EVENT_ID" => (intval($arPost["UF_BLOG_POST_IMPRTNT"]) > 0 ? "blog_post_important" : "blog_post")
 		);
 
@@ -874,22 +913,30 @@ class CAllBlogPost
 			),
 			false,
 			false,
-			array("ID", "ENTITY_TYPE", "ENTITY_ID")
+			array("ID", "ENTITY_TYPE", "ENTITY_ID", "EVENT_ID", "USER_ID")
 		);
-		if ($arRes = $dbRes->Fetch())
+		if ($arLog = $dbRes->Fetch())
 		{
-			CSocNetLog::Update($arRes["ID"], $arSoFields);
+			CSocNetLog::Update($arLog["ID"], $arSoFields);
 			$socnetPerms = CBlogPost::GetSocNetPermsCode($postID);
 			if(!in_array("U".$arPost["AUTHOR_ID"], $socnetPerms))
+			{
 				$socnetPerms[] = "U".$arPost["AUTHOR_ID"];
+			}
 			if (CModule::IncludeModule("extranet"))
 			{
-				$arSiteID = CExtranet::GetSitesByLogDestinations($socnetPerms, $arPost["AUTHOR_ID"]);
-				CSocNetLog::Update($arRes["ID"], array("SITE_ID" => $arSiteID));
+				CSocNetLog::Update($arLog["ID"], array(
+					"SITE_ID" => CExtranet::GetSitesByLogDestinations($socnetPerms, $arPost["AUTHOR_ID"])
+				));
 			}
 			$socnetPerms[] = "SA"; // socnet admin
-			CSocNetLogRights::DeleteByLogID($arRes["ID"]);
-			CSocNetLogRights::Add($arRes["ID"], $socnetPerms);
+			CSocNetLogRights::DeleteByLogID($arLog["ID"]);
+			CSocNetLogRights::Add($arLog["ID"], $socnetPerms);
+
+			if (\Bitrix\Main\Loader::includeModule('crm'))
+			{
+				CCrmLiveFeedComponent::processCrmBlogPostRights($arLog["ID"], $arLog, $arPost, 'edit');
+			}
 		}
 	}
 
@@ -969,7 +1016,7 @@ class CAllBlogPost
 		return $postID;
 	}
 
-	function GetPostID($postID, $code, $allowCode = false)
+	public static function GetPostID($postID, $code, $allowCode = false)
 	{
 		$postID = IntVal($postID);
 		$code = preg_replace("/[^a-zA-Z0-9_-]/is", "", Trim($code));
@@ -984,6 +1031,8 @@ class CAllBlogPost
 
 	function AddSocNetPerms($ID, $perms = false, $arPost = array())
 	{
+		global $CACHE_MANAGER;
+
 		if(IntVal($ID) <= 0)
 			return false;
 
@@ -995,6 +1044,7 @@ class CAllBlogPost
 		// DR - department and hier
 		// G - user group
 		// AU - authorized user
+		// CRMCONTACT - CRM contact
 		//$bAU = false;
 
 		if(empty($perms) || in_array("UA", $perms))//if default rights or for everyone
@@ -1017,19 +1067,24 @@ class CAllBlogPost
 			foreach($perms as $val)
 			{
 				if($val == "UA")
+				{
 					continue;
+				}
+
 				if(strlen($val) > 0)
 				{
-					$scID = 0;
-					$scT = substr($val, 0, 2);
-					if(in_array($scT, Array("DR", "SG")))
+					if (
+						preg_match('/^(CRMCONTACT)(\d+)$/i', $val, $matches)
+						|| preg_match('/^(DR)(\d+)$/i', $val, $matches)
+						|| preg_match('/^(SG)(\d+)$/i', $val, $matches)
+						|| preg_match('/^(AU)(\d+)$/i', $val, $matches)
+						|| preg_match('/^(U)(\d+)$/i', $val, $matches)
+						|| preg_match('/^(D)(\d+)$/i', $val, $matches)
+						|| preg_match('/^(G)(\d+)$/i', $val, $matches)
+					)
 					{
-						$scID = IntVal(substr($val, 2));
-					}
-					else
-					{
-						$scT = substr($val, 0, 1);
-						$scID = IntVal(substr($val, 1));
+						$scT = $matches[1];
+						$scID = $matches[2];
 					}
 
 					if($scT == "SG")
@@ -1039,13 +1094,17 @@ class CAllBlogPost
 						{
 							CBlogPost::__AddSocNetPerms($ID, $scT, $scID, $val1);
 							if(!in_array($val1, $arResult))
+							{
 								$arResult[] = $val1;
+							}
 						}
 					}
 
 					CBlogPost::__AddSocNetPerms($ID, $scT, $scID, $val);
 					if(!in_array($val, $arResult))
+					{
 						$arResult[] = $val;
+					}
 				}
 			}
 		}
@@ -1053,13 +1112,13 @@ class CAllBlogPost
 		BXClearCache(true, "/blog/getsocnetperms/".$ID."/");
 		if(defined("BX_COMP_MANAGED_CACHE"))
 		{
-			$GLOBALS["CACHE_MANAGER"]->ClearByTag("blog_post_getsocnetperms_".$ID);
+			$CACHE_MANAGER->ClearByTag("blog_post_getsocnetperms_".$ID);
 		}
 
 		return $arResult;
 	}
 
-	function UpdateSocNetPerms($ID, $perms = false, $arPost = array())
+	public static function UpdateSocNetPerms($ID, $perms = false, $arPost = array())
 	{
 		global $DB;
 		$ID = IntVal($ID);
@@ -1076,7 +1135,18 @@ class CAllBlogPost
 	{
 		global $DB;
 
-		if(IntVal($ID) > 0 && strlen($entityType) > 0 && strlen($entity) > 0 && in_array($entityType, Array("D", "U", "SG", "DR", "G", "AU")))
+		static $allowedTypes = false;
+
+		if ($allowedTypes === false)
+		{
+			$allowedTypes = Array("D", "U", "SG", "DR", "G", "AU");
+			if (IsModuleInstalled('crm'))
+			{
+				$allowedTypes[] = "CRMCONTACT";
+			}
+		}
+
+		if(IntVal($ID) > 0 && strlen($entityType) > 0 && strlen($entity) > 0 && in_array($entityType, $allowedTypes))
 		{
 			$arSCFields = Array("POST_ID" => $ID, "ENTITY_TYPE" => $entityType, "ENTITY_ID" => IntVal($entityID), "ENTITY" => $entity);
 			$arSCInsert = $DB->PrepareInsert("b_blog_socnet_rights", $arSCFields);
@@ -1093,7 +1163,7 @@ class CAllBlogPost
 		return false;
 	}
 
-	function GetSocNetGroups($entity_type, $entity_id, $operation = "view_post")
+	public static function GetSocNetGroups($entity_type, $entity_id, $operation = "view_post")
 	{
 		$entity_id = IntVal($entity_id);
 		if($entity_id <= 0)
@@ -1118,8 +1188,13 @@ class CAllBlogPost
 					break;
 				case "K"://Group members includes moderators and admins
 					$arResult[] = $prefix.'K';
+					$arResult[] = $prefix.'E';
+					$arResult[] = $prefix.'A';
+					break;
 				case "E"://Moderators includes admins
 					$arResult[] = $prefix.'E';
+					$arResult[] = $prefix.'A';
+					break;
 				case "A"://Admins
 					$arResult[] = $prefix.'A';
 					break;
@@ -1140,6 +1215,7 @@ class CAllBlogPost
 				case "E"://Friends of friends (has no rights yet) so it counts as
 				case "M"://Friends
 					$arResult[] = $prefix.'M';
+					break;
 				case "Z"://Personal
 					$arResult[] = $prefix.'Z';
 					break;
@@ -1149,9 +1225,9 @@ class CAllBlogPost
 		return $arResult;
 	}
 
-	function GetSocNetPerms($ID)
+	public static function GetSocNetPerms($ID)
 	{
-		global $DB;
+		global $DB, $CACHE_MANAGER;
 		$ID = IntVal($ID);
 		if($ID <= 0)
 			return false;
@@ -1182,9 +1258,9 @@ class CAllBlogPost
 
 			if(defined("BX_COMP_MANAGED_CACHE"))
 			{
-				$GLOBALS["CACHE_MANAGER"]->StartTagCache($cacheDir);
-				$GLOBALS["CACHE_MANAGER"]->RegisterTag("blog_post_getsocnetperms_".$ID);
-				$GLOBALS["CACHE_MANAGER"]->EndTagCache();
+				$CACHE_MANAGER->StartTagCache($cacheDir);
+				$CACHE_MANAGER->RegisterTag("blog_post_getsocnetperms_".$ID);
+				$CACHE_MANAGER->EndTagCache();
 			}
 			$obCache->EndDataCache($arResult);
 		}
@@ -1245,7 +1321,7 @@ class CAllBlogPost
 		return $arResult;
 	}
 
-	function ChangeSocNetPermission($entity_type, $entity_id, $operation)
+	public static function ChangeSocNetPermission($entity_type, $entity_id, $operation)
 	{
 		global $DB;
 		$entity_id = IntVal($entity_id);
@@ -1269,7 +1345,7 @@ class CAllBlogPost
 		}
 	}
 
-	function GetSocNetPostsPerms($entity_type, $entity_id)
+	public static function GetSocNetPostsPerms($entity_type, $entity_id)
 	{
 		global $DB;
 		$entity_id = IntVal($entity_id);
@@ -1282,9 +1358,12 @@ class CAllBlogPost
 			$type = $type2 = "SG";
 
 		$arResult = Array();
-		$dbRes = $DB->Query("SELECT SR.POST_ID, SR.ENTITY, SR.ENTITY_ID, SR.ENTITY_TYPE FROM b_blog_socnet_rights SR
-							WHERE SR.POST_ID IN (SELECT POST_ID FROM b_blog_socnet_rights WHERE ENTITY_TYPE='".$type."' AND ENTITY_ID=".$entity_id." AND ENTITY = '".$type.$entity_id."')
-								AND SR.ENTITY <> '".$type2.$entity_id."'", false, "File: ".__FILE__."<br>Line: ".__LINE__);
+		$dbRes = $DB->Query("
+			SELECT SR.POST_ID, SR.ENTITY, SR.ENTITY_ID, SR.ENTITY_TYPE FROM b_blog_socnet_rights SR
+			WHERE
+				SR.POST_ID IN (SELECT POST_ID FROM b_blog_socnet_rights WHERE ENTITY_TYPE='".$type."' AND ENTITY_ID=".$entity_id." AND ENTITY = '".$type.$entity_id."')
+				AND SR.ENTITY <> '".$type2.$entity_id."'
+		", false, "File: ".__FILE__."<br>Line: ".__LINE__);
 		while($arRes = $dbRes->Fetch())
 		{
 			$arResult[$arRes["POST_ID"]]["PERMS"][] = $arRes["ENTITY"];
@@ -1295,6 +1374,10 @@ class CAllBlogPost
 
 	public static function GetSocNetPostPerms($postId = 0, $bNeedFull = false, $userId = false, $postAuthor = 0)
 	{
+		global $USER;
+
+		$cId = md5(serialize(func_get_args()));
+
 		if (
 			is_array($postId)
 			&& isset($postId["POST_ID"])
@@ -1307,11 +1390,16 @@ class CAllBlogPost
 			$postAuthor = (isset($arParams["POST_AUTHOR_ID"]) ? $arParams["POST_AUTHOR_ID"] : 0);
 			$bPublic = (isset($arParams["PUBLIC"]) ? $arParams["PUBLIC"] : false);
 			$logId = (isset($arParams["LOG_ID"]) ? intval($arParams["PUBLIC"]) : false);
+			$bIgnoreAdmin = (isset($arParams["IGNORE_ADMIN"]) ? $arParams["IGNORE_ADMIN"] : false);
+		}
+		else
+		{
+			$bPublic = $logId = $bIgnoreAdmin = false;
 		}
 
 		if(!$userId)
 		{
-			$userId = IntVal($GLOBALS["USER"]->GetID());
+			$userId = IntVal($USER->GetID());
 			$bByUserId = false;
 		}
 		else
@@ -1323,7 +1411,6 @@ class CAllBlogPost
 		if($postId <= 0)
 			return false;
 
-		$cId = md5(serialize(func_get_args()));
 		if (!empty(static::$arSocNetPostPermsCache[$cId]))
 		{
 			return static::$arSocNetPostPermsCache[$cId];
@@ -1344,12 +1431,12 @@ class CAllBlogPost
 				$perms = $arAvailPerms[count($arAvailPerms) - 1];
 			}
 		}
-		else
+		elseif(
+			!$bIgnoreAdmin
+			&& CSocNetUser::IsUserModuleAdmin($userId)
+		)
 		{
-			if(CSocNetUser::IsUserModuleAdmin($userId))
-			{
-				$perms = $arAvailPerms[count($arAvailPerms) - 1];
-			}
+			$perms = $arAvailPerms[count($arAvailPerms) - 1];
 		}
 
 		if(IntVal($postAuthor) <= 0)
@@ -1534,7 +1621,7 @@ class CAllBlogPost
 						if($perms <= BLOG_PERMS_READ)
 						{
 							$f = CSocNetFeaturesPerms::GetOperationPerm(SONET_ENTITY_GROUP, $arGroupsId, "blog", $v);
-							if(!empty($f))
+							if(is_array($f))
 							{
 								foreach($f as $gid => $val)
 								{
@@ -1571,13 +1658,14 @@ class CAllBlogPost
 
 	public static function NotifyIm($arParams)
 	{
+		$arUserIDSent = array();
+
 		if (!CModule::IncludeModule("im"))
 		{
-			return;
+			return $arUserIDSent;
 		}
 
 		$arUsers = array();
-		$arUserIDSent = array();
 
 		if(!empty($arParams["TO_USER_ID"]))
 		{
@@ -1644,7 +1732,7 @@ class CAllBlogPost
 			"NOTIFY_MODULE" => "blog",
 		);
 
-		$aditGM = "";
+		$aditGM = $authorName = "";
 		if(IntVal($arParams["FROM_USER_ID"]) > 0)
 		{
 			$dbUser = CUser::GetByID($arParams["FROM_USER_ID"]);
@@ -1654,15 +1742,15 @@ class CAllBlogPost
 				{
 					$aditGM = "_FEMALE";
 				}
+
+				$authorName = (
+					$arUser
+						? CUser::FormatName(CSite::GetNameFormat(), $arUser, true)
+						: GetMessage("BLG_GP_PUSH_USER")
+				);
 			}
 		}
 
-		$authorName = (
-			$arUser
-				? CUser::FormatName(CSite::GetNameFormat(), $arUser, true)
-				: GetMessage("BLG_GP_PUSH_USER")
-		);
-		
 		if (CModule::IncludeModule("socialnetwork"))
 		{
 			$rsLog = CSocNetLog::GetList(
@@ -1726,8 +1814,8 @@ class CAllBlogPost
 				$arMessageFields["PUSH_MESSAGE"] = GetMessage(
 					"BLG_GP_PUSH_1".$aditGM,
 					array(
-						"#name#" => htmlspecialcharsbx($authorName),
-						"#title#" => htmlspecialcharsbx($arParams["TITLE"])
+						"#name#" => $authorName,
+						"#title#" => $arParams["TITLE"]
 					)
 				);
 			}
@@ -1761,7 +1849,7 @@ class CAllBlogPost
 			);
 
 			$arMessageFields["NOTIFY_EVENT"] = "comment";
-			$arMessageFields["NOTIFY_TAG"] = "BLOG|COMMENT|".$arParams["ID"];
+			$arMessageFields["NOTIFY_TAG"] = "BLOG|COMMENT|".$arParams["ID"].(!empty($arParams["COMMENT_ID"]) ? '|'.$arParams["COMMENT_ID"] : '');
 			if (!$bTitleEmpty)
 			{
 				$arMessageFields["NOTIFY_MESSAGE"] = GetMessage(
@@ -2078,12 +2166,28 @@ class CAllBlogPost
 					&& $val != $arParams["FROM_USER_ID"]
 				)
 				{
-					if (CBlogPost::GetSocNetPostPerms($arParams["ID"], false, $val) < BLOG_PERMS_READ)
+					$postPerm = CBlogPost::GetSocNetPostPerms(array(
+						"POST_ID" => $arParams["ID"],
+						"NEED_FULL" => false,
+						"USER_ID" => $val,
+						"IGNORE_ADMIN" => true
+					));
+
+					if (
+						$postPerm < BLOG_PERMS_READ
+						&& $arParams["TYPE"] == "COMMENT"
+					)
 					{
 						$arUserIdToShare[] = $val;
 					}
 
-					$arUserIdToMention[] = $val;
+					if (
+						$postPerm >= BLOG_PERMS_READ
+						|| $arParams["TYPE"] == "COMMENT"
+					)
+					{
+						$arUserIdToMention[] = $val;
+					}
 				}
 			}
 
@@ -2124,12 +2228,52 @@ class CAllBlogPost
 						"LIVE" => "N"
 					)
 				);
+
+				if (
+					isset($arParams["COMMENT_ID"])
+					&& intval($arParams["COMMENT_ID"]) > 0
+				)
+				{
+					$res = CSocNetLogComments::GetList(
+						array(),
+						array(
+							"EVENT_ID" => "blog_comment",
+							"SOURCE_ID" => $arParams["COMMENT_ID"]
+						),
+						false,
+						false,
+						array("ID", "LOG_ID")
+					);
+
+					if ($arSonetLogComment = $res->Fetch())
+					{
+						$commentId = intval($arSonetLogComment["ID"]);
+						if ($commentId > 0)
+						{
+							CUserCounter::IncrementWithSelect(
+								CSocNetLogCounter::GetSubSelect2(
+									$commentId,
+									array(
+										"TYPE" => "LC",
+										"MULTIPLE" => "Y",
+										"SET_TIMESTAMP" => "Y",
+										"USER_ID" => $arUserIdToShare
+									)
+								),
+								true,
+								array(
+									"SET_TIMESTAMP" => "Y",
+									"USERS_TO_PUSH" => $arUserIdToShare
+								)
+							);
+						}
+					}
+				}
 			}
 
 			foreach($arUserIdToMention as $val)
 			{
 				$val = IntVal($val);
-
 				$arMessageFields["TO_USER_ID"] = $val;
 
 				if (IsModuleInstalled("extranet"))
@@ -2212,7 +2356,8 @@ class CAllBlogPost
 				elseif ($arParams["TYPE"] == "COMMENT")
 				{
 					$arMessageFields["NOTIFY_EVENT"] = "mention_comment";
-					$arMessageFields["NOTIFY_TAG"] = "BLOG|COMMENT_MENTION|".$arParams["ID"];
+					$arMessageFields["NOTIFY_TAG"] = "BLOG|COMMENT_MENTION|".$arParams["ID"].(!empty($arParams["COMMENT_ID"]) ? '|'.$arParams["COMMENT_ID"] : '');
+
 					if (!$bTitleEmpty)
 					{
 						$arMessageFields["NOTIFY_MESSAGE"] = GetMessage(
@@ -2325,9 +2470,16 @@ class CAllBlogPost
 					"EXCLUDE_USERS" => array_merge(array($arParams["FROM_USER_ID"]), array($arUserIDSent))
 				);
 
-				CSocNetSubscription::NotifyGroup($arNotifyParams);
+				$arUserIDSentBySubscription = CSocNetSubscription::NotifyGroup($arNotifyParams);
+				if (!$arUserIDSentBySubscription)
+				{
+					$arUserIDSentBySubscription = array();
+				}
+				$arUserIDSent = array_merge($arUserIDSent, $arUserIDSentBySubscription);
 			}
 		}
+
+		return $arUserIDSent;
 	}
 
 	public static function NotifyMail($arFields)
@@ -2348,7 +2500,6 @@ class CAllBlogPost
 			return false;
 		}
 
-
 		if (!is_array($arFields["userId"]))
 		{
 			$arFields["userId"] = array($arFields["userId"]);
@@ -2360,6 +2511,7 @@ class CAllBlogPost
 		}
 
 		$nameTemplate = CSite::GetNameFormat("", $arFields["siteId"]);
+		$authorName = "";
 
 		if (!empty($arFields["authorId"]))
 		{
@@ -2368,7 +2520,8 @@ class CAllBlogPost
 			$authorName = CUser::FormatName(
 				$nameTemplate,
 				$arAuthor,
-				true
+				true,
+				false
 			);
 
 			if (check_email($authorName))
@@ -2429,7 +2582,7 @@ class CAllBlogPost
 		}
 
 		$mailMessageInReplyTo = "<BLOG_POST_".$arFields["postId"]."@".$GLOBALS["SERVER_NAME"].">";
-		$defaultEmailFrom = \Bitrix\Mail\User::getDefaultEmailFrom($arSite['SERVER_NAME']);
+		$defaultEmailFrom = \Bitrix\Mail\User::getDefaultEmailFrom();
 
 		foreach ($arEmail as $userId => $arUser)
 		{
@@ -2479,6 +2632,21 @@ class CAllBlogPost
 				}
 			}
 		}
+
+		if (
+			strtoupper($arFields["type"]) == 'COMMENT'
+			&& \Bitrix\Main\Loader::includeModule('crm')
+		)
+		{
+			CCrmLiveFeedComponent::processCrmBlogComment(array(
+				"AUTHOR" => isset($arAuthor) ? $arAuthor : false,
+				"POST_ID" => intval($arFields["postId"]),
+				"COMMENT_ID" => intval($arFields["commentId"]),
+				"USER_ID" => array_keys($arEmail)
+			));
+		}
+
+		return true;
 	}
 
 	function DeleteSocNetPostPerms($postId)
@@ -2491,10 +2659,11 @@ class CAllBlogPost
 		$DB->Query("DELETE FROM b_blog_socnet_rights WHERE POST_ID = ".$postId, false, "File: ".__FILE__."<br>Line: ".__LINE__);
 	}
 
-	function GetMentionedUserID($arFields)
+	public static function GetMentionedUserID($arFields)
 	{
+		global $USER_FIELD_MANAGER;
 		$arMentionedUserID = array();
-								
+
 		if (isset($arFields["DETAIL_TEXT"]))
 		{
 			preg_match_all("/\[user\s*=\s*([^\]]*)\](.+?)\[\/user\]/is".BX_UTF_PCRE_MODIFIER, $arFields["DETAIL_TEXT"], $arMention);
@@ -2504,7 +2673,7 @@ class CAllBlogPost
 			}
 		}
 
-		$arPostUF = $GLOBALS["USER_FIELD_MANAGER"]->GetUserFields("BLOG_POST", $arFields["ID"], LANGUAGE_ID);
+		$arPostUF = $USER_FIELD_MANAGER->GetUserFields("BLOG_POST", $arFields["ID"], LANGUAGE_ID);
 
 		if (
 			is_array($arPostUF)

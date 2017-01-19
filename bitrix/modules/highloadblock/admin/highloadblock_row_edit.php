@@ -74,7 +74,7 @@ $row = null;
 if (isset($_REQUEST['ID']) && $_REQUEST['ID'] > 0)
 {
 	$row = $entity_data_class::getById($_REQUEST['ID'])->fetch();
-
+	
 	if (!empty($row))
 	{
 		$is_update_form = true;
@@ -145,6 +145,15 @@ if ((strlen($save)>0 || strlen($apply)>0) && $REQUEST_METHOD=="POST" && check_bi
 	else
 	{
 		$errors = $result->getErrorMessages();
+
+		// rewrite values
+		foreach ($data as $k => $v)
+		{
+			if (isset($row[$k]))
+			{
+				$row[$k] = $v;
+			}
+		}
 	}
 }
 
@@ -195,7 +204,7 @@ $tabControl->BeginEpilogContent();
 	<input type="hidden" name="ENTITY_ID" value="<?=htmlspecialcharsbx($hlblock['ID'])?>">
 	<input type="hidden" name="lang" value="<?=LANGUAGE_ID?>">
 
-	<?$tabControl->EndEpilogContent();?>
+<?$tabControl->EndEpilogContent();?>
 
 	<? $tabControl->Begin(array(
 		"FORM_ACTION" => $APPLICATION->GetCurPage()."?ENTITY_ID=".$hlblock['ID']."&ID=".IntVal($ID)."&lang=".LANG

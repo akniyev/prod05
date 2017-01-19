@@ -94,8 +94,11 @@ class CSaleGiftBasketComponent extends CCatalogViewedProductsComponent
 			if(
 				$item->getField('MODULE') === 'catalog' &&
 				(
-					$item->getProvider() instanceof \CCatalogProductProvider ||
-					$item->getProvider() === 'CCatalogProductProvider'
+					$item->getProvider() &&
+					(
+						$item->getProvider() === "CCatalogProductProvider" ||
+						array_key_exists("CCatalogProductProvider", class_parents($item->getProvider()))
+					)
 				)
 			)
 			{
@@ -157,8 +160,8 @@ class CSaleGiftBasketComponent extends CCatalogViewedProductsComponent
 			if(
 				$item->getField('MODULE') === 'catalog' &&
 				(
-					$item->getProvider() instanceof \CCatalogProductProvider ||
-					$item->getProvider() === 'CCatalogProductProvider'
+					$item->getProvider() === "CCatalogProductProvider" ||
+					array_key_exists("CCatalogProductProvider", class_parents($item->getProvider()))
 				)
 			)
 			{

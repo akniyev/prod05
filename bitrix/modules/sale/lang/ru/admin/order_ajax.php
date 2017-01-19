@@ -17,3 +17,6 @@ $MESS["SALE_OA_ERROR_PAYMENT_ID_WRONG"] = "Неверный идентифика
 $MESS["SALE_OA_ERROR_UNMARK_RIGHTS"] = "Недостаточно прав для снятия пометки заказа как проблемного";
 $MESS["SALE_OA_ERROR_LOAD_PAYMENT"] = "Не удалось найти оплату с идентификатором";
 $MESS["SALE_OA_ERROR_LOAD_SHIPMENT"] = "Не удалось найти отгрузку с идентификатором";
+$MESS["SALE_OA_ERROR_HAPPENED2"] = "Ошибка обработки запроса. Наиболее вероятные причины: у пользователя недостаточно прав; проблемы с сохранением сессий PHP; часть данных POST-запроса обрезается PHP либо веб-сервером.";
+$MESS["SALE_OA_ERROR_DELETE_SHIPMENT_PERMISSION"] = "У вас недостаточно прав для удаления данной отгрузки";
+$MESS["SALE_OA_ERROR_DELETE_PAYMENT_PERMISSION"] = "У вас недостаточно прав для удаления данной оплаты";

@@ -3,6 +3,7 @@ namespace Bitrix\Sale\Delivery\Restrictions;
 
 use \Bitrix\Main\Localization\Loc;
 use Bitrix\Sale\Delivery\Restrictions\Base;
+use Bitrix\Sale\Internals\CollectableEntity;
 use Bitrix\Sale\Services\Base\RestrictionManager;
 
 Loc::loadMessages(__FILE__);
@@ -45,7 +46,7 @@ class ByPrice extends Base
 	}
 
 
-	public static function checkByEntity(\Bitrix\Sale\Shipment $shipment, array $restrictionParams, $mode, $deliveryId = 0)
+	public static function checkByEntity(CollectableEntity $shipment, array $restrictionParams, $mode, $deliveryId = 0)
 	{
 		$severity = self::getSeverity($mode);
 
@@ -53,12 +54,13 @@ class ByPrice extends Base
 			return RestrictionManager::SEVERITY_NONE;
 
 		$price = self::extractParams($shipment);
+		$sCurrency = $shipment->getCurrency();
 
-		if (!empty($restrictionParams["CURRENCY"]) && \Bitrix\Main\Loader::includeModule('currency'))
+		if (!empty($sCurrency) && !empty($restrictionParams["CURRENCY"]) && \Bitrix\Main\Loader::includeModule('currency'))
 		{
 			$price = \CCurrencyRates::convertCurrency(
 				$price,
-				$shipment->getCurrency(),
+				$sCurrency,
 				$restrictionParams["CURRENCY"]
 			);
 		}
@@ -67,7 +69,7 @@ class ByPrice extends Base
 		return $res ? RestrictionManager::SEVERITY_NONE : $severity;
 	}
 
-	protected static function extractParams(\Bitrix\Sale\Shipment $shipment)
+	protected static function extractParams(CollectableEntity $shipment)
 	{
 		if(!$itemCollection = $shipment->getShipmentItemCollection())
 			return -1;
@@ -75,7 +77,7 @@ class ByPrice extends Base
 		return $itemCollection->getPrice();
 	}
 
-	public static function getParamsStructure()
+	public static function getParamsStructure($entityId = 0)
 	{
 		return array(
 			"MIN_PRICE" => array(

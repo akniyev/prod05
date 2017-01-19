@@ -1243,10 +1243,13 @@ if($this->startResultCache(false, array($arrFilter, ($arParams["CACHE_GROUPS"]==
 				unset($linkElement);
 			}
 			unset($arOffer);
-			unset($filteredOffers);
 
+			if (!empty($filteredOffers))
+				$arResult['FILTERED_OFFERS_ID'] = array();
 			foreach ($arElementLink as &$item)
 			{
+				if (isset($filteredOffers[$item['ID']]))
+					$arResult['FILTERED_OFFERS_ID'][$item['ID']] = $filteredOffers[$item['ID']];
 				if ($item['OFFER_ID_SELECTED'] == 0 || isset($filteredElements[$item['ID']]))
 					continue;
 				if (count($uniqueSortHash[$item['ID']]) < 2)
@@ -1255,6 +1258,7 @@ if($this->startResultCache(false, array($arrFilter, ($arParams["CACHE_GROUPS"]==
 			unset($item);
 			unset($filteredElements);
 			unset($uniqueSortHash);
+			unset($filteredOffers);
 		}
 		unset($arOffers);
 	}

@@ -749,7 +749,18 @@ BX.Sale.Input = (function () {
 		element.name  = name;
 		element.value = value || '';
 
-		return [element];
+		// Deletor
+		var item = [element];
+
+		if (settings.MULTIPLE == 'Y')
+		{
+			var deletor = this.createEditorSingleDeletor(item);
+			deletor.setName(name+'[DELETE]');
+			item.deletor = deletor;
+			item.push(deletor);
+		}
+		
+		return item;
 	};
 
 	StringInput.prototype.afterEditorSingleInsert = function (item)
@@ -949,8 +960,8 @@ BX.Sale.Input = (function () {
 			name = this.name,
 			settings = this.settings,
 			options = settings.OPTIONS;
-
-		if (options === undefined || options === null || options.constructor !== Object)
+		
+		if (options === undefined || options === null || (options.constructor !== Object && options.constructor !== Array) || options.length === 0)
 		{
 			this.variants = [];
 			this.items = [document.createTextNode(BX.message('INPUT_ENUM_OPTIONS_ERROR'))];
@@ -1075,6 +1086,15 @@ BX.Sale.Input = (function () {
 					variants.push(option);
 				}
 			);
+
+			if (settings.REQUIRED == "N")
+			{
+				var option = document.createElement('option');
+				option.text     = BX.message('INPUT_ENUM_EMPTY_OPTION');
+				option.value    = "";
+				select.insertBefore(option, select.firstChild);
+				variants.push(option);
+			}
 
 			this.items = [select];
 		}
@@ -1283,6 +1303,7 @@ BX.Sale.Input = (function () {
 		if (src)
 		{
 			anchor.href = src;
+			anchor.target = '_blank';
 			anchor.title = BX.message('INPUT_FILE_DOWNLOAD');
 			switch (src.split('.').pop())
 			{
@@ -1305,6 +1326,7 @@ BX.Sale.Input = (function () {
 		else
 		{
 			anchor.removeAttribute('href');
+			anchor.removeAttribute('target');
 			anchor.removeAttribute('title');
 		}
 

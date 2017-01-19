@@ -2,7 +2,12 @@
 namespace Bitrix\Pull;
 
 use Bitrix\Main;
+use Bitrix\Main\Entity\Event;
+use Bitrix\Main\Entity\FieldError;
+use Bitrix\Main\Entity\Result;
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Main\Entity;
+
 Loc::loadMessages(__FILE__);
 
 /**
@@ -91,10 +96,12 @@ class PushTable extends Main\Entity\DataManager
 			'DATE_CREATE' => array(
 				'data_type' => 'datetime',
 				'required' => true,
+				'default_value' => new \Bitrix\Main\Type\DateTime,
 				'title' => Loc::getMessage('PUSH_ENTITY_DATE_CREATE_FIELD'),
 			),
 			'DATE_AUTH' => array(
 				'data_type' => 'datetime',
+				'default_value' => new \Bitrix\Main\Type\DateTime,
 				'title' => Loc::getMessage('PUSH_ENTITY_DATE_AUTH_FIELD'),
 			),
 			'USER' => array(
@@ -136,6 +143,87 @@ class PushTable extends Main\Entity\DataManager
 			new Main\Entity\Validator\Length(null, 50),
 		);
 	}
+
+	/**
+	 * Checks the data fields before saving to DB. Result stores in the $result object
+	 *
+	 * @param Result $result
+	 * @param mixed $primary
+	 * @param array $data
+	 * @throws Main\ArgumentException
+	 */
+	public static function checkFields(Result $result, $primary, array $data)
+	{
+		parent::checkFields($result, $primary, $data);
+		$pushManager = new \CPushManager();
+		$availableDataTypes = array_keys($pushManager->getServices());
+
+		if ($result instanceof Entity\AddResult)
+		{
+			$entity = self::getEntity();
+
+			if (!$data["DEVICE_TYPE"] || !in_array($data["DEVICE_TYPE"], $availableDataTypes))
+			{
+				$result->addError(new Entity\FieldError($entity->getField("DEVICE_TYPE"), "Wrong field value", FieldError::INVALID_VALUE));
+			}
+			if (!preg_match('~^[a-f0-9]{64}$~i', $data["DEVICE_TOKEN"]) && $data["DEVICE_TYPE"] == "APPLE")
+			{
+				$result->addError(new Entity\FieldError($entity->getField("DEVICE_TYPE"), "Wrong format of token for iOS", FieldError::INVALID_VALUE));
+			}
+		}
+	}
+
+
+	public static function onBeforeAdd(Event $event)
+	{
+		$result = new Entity\EventResult;
+		$data = $event->getParameter("fields");
+
+		if(!$data["APP_ID"])
+		{
+			if(defined("MOBILEAPP_DEFAULT_APP_ID"))
+			{
+				$data["APP_ID"] = MOBILEAPP_DEFAULT_APP_ID;
+			}
+			else
+			{
+				$data["APP_ID"] = "unknown";
+			}
+		}
+
+		if(!$data["DEVICE_NAME"])
+		{
+			$data["DEVICE_NAME"] = $data["DEVICE_ID"];
+		}
+
+		$data["UNIQUE_HASH"] = \CPullPush::getUniqueHash($data["USER_ID"], $data["APP_ID"]);
+		$data["DATE_AUTH"] = new Main\Type\DateTime();
+		$result->modifyFields($data);
+
+		return $result;
+	}
+
+	public static function onAfterAdd(Event $event)
+	{
+		parent::onAfterAdd($event);
+		\CAgent::AddAgent("CPullPush::cleanTokens();", "pull", "N", 43200, "", "Y", ConvertTimeStamp(time() + \CTimeZone::GetOffset() + 30, "FULL"));
+	}
+
+
+	public static function onBeforeUpdate(Event $event)
+	{
+		parent::onBeforeUpdate($event);
+
+		$result = new Entity\EventResult;
+		$data = $event->getParameter("fields");
+		$data["UNIQUE_HASH"] = \CPullPush::getUniqueHash($data["USER_ID"], $data["APP_ID"]);
+		$data["DATE_AUTH"] = new Main\Type\DateTime();
+		$result->modifyFields($data);
+
+		return $result;
+	}
+
+
 	/**
 	 * Returns validators for DEVICE_ID field.
 	 *

@@ -1068,7 +1068,7 @@ final class BusinessValueControl
 				else
 				{
 					$providerOptions[$providerKey] = $provider['NAME'] ?: $providerKey;
-					$personProviderValueInput[$personTypeId][$providerKey] = array('TYPE' => 'STRING', 'SIZE' => 30, 'MAXLENGTH' => 255, 'ONCHANGE' => $onChange);
+					$personProviderValueInput[$personTypeId][$providerKey] = array('TYPE' => 'STRING', 'SIZE' => 30, 'ONCHANGE' => $onChange);
 				}
 			}
 

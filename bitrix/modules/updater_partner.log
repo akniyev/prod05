@@ -10,3 +10,68 @@
 2016-12-09 00:11:29 -  - exec CUpdateClientPartner::GetHTTPPage
 2016-12-09 00:11:29 -  - TIME GetUpdatesList(request) 0.204 sec
 2016-12-09 00:11:29 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:00 -  - exec CUpdateClientPartner::GetUpdatesList
+2017-01-04 11:37:00 -  - exec CUpdateClientPartner::__CollectRequestData
+2017-01-04 11:37:00 -  - utf=Y&lang=ru&stable=Y&CANGZIP=Y&SUPD_DBS=MYSQL&XE=N&CLIENT_SITE=prod05.ru&LICENSE_KEY=X&SUPD_STS=1&SUPD_URS=0&SUPD_URSA=19&TYPENC=D&CLIENT_PHPVER=7.0.12&NGINX=Y&dbv=5.6.33&instm=main%2C16.5.8%2CY%3Bclouds%2C16.5.2%2CN%3Bfileman%2C16.5.5%2CN%3Bblog%2C16.5.7%2CN%3Bsecurity%2C16.5.0%2CN%3Bsearch%2C16.5.0%2CN%3Bforum%2C17.0.0%2CN%3Bconversion%2C15.5.6%2CN%3Bbitrix.sitecorporate%2C15.0.0%2CN%3Bb24connector%2C16.5.3%2CN%3Bseo%2C16.0.3%2CN%3Bcatalog%2C16.5.6%2CN%3Bpull%2C17.0.0%2CN%3Bhighloadblock%2C16.5.0%2CN%3Bsale%2C16.5.14%2CN%3Bphotogallery%2C16.0.1%2CN%3Bperfmon%2C16.5.0%2CN%3Bform%2C15.0.2%2CN%3Bsender%2C16.5.2%2CN%3Bbitrix.eshop%2C16.5.0%2CN%3Bvote%2C15.5.0%2CN%3Bsocialservices%2C16.5.5%2CN%3Btranslate%2C14.5.0%2CN%3Babtest%2C16.0.0%2CN%3Biblock%2C16.5.6%2CN%3Bscale%2C16.5.0%2CN%3Bsubscribe%2C16.5.0%2CN%3Breport%2C16.5.0%2CN%3Bcurrency%2C16.5.0%2CN%3Bcompression%2C16.0.0%2CN%3Bmobileapp%2C16.0.11%2CN%3Bstoreassist%2C16.0.1%2CN%3Bbitrixcloud%2C16.0.1%2CN%3Beshopapp%2C16.5.0%2CN&reqm=bitrix.sitecorporate%2Cbitrix.eshop&SUPD_SRS=RU&SUPD_CMP=N
+2017-01-04 11:37:00 -  - exec CUpdateClientPartner::GetHTTPPage
+2017-01-04 11:37:01 -  - TIME GetUpdatesList(request) 1.016 sec
+2017-01-04 11:37:01 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:20 -  - exec CUpdateClientPartner::LoadModulesUpdates
+2017-01-04 11:37:20 -  - exec CUpdateClientPartner::__CollectRequestData
+2017-01-04 11:37:20 -  - utf=Y&lang=ru&stable=Y&CANGZIP=Y&SUPD_DBS=MYSQL&XE=N&CLIENT_SITE=prod05.ru&LICENSE_KEY=X&SUPD_STS=1&SUPD_URS=0&SUPD_URSA=19&TYPENC=D&CLIENT_PHPVER=7.0.12&NGINX=Y&dbv=5.6.33&instm=main%2C16.5.8%2CY%3Bclouds%2C16.5.2%2CN%3Bfileman%2C16.5.5%2CN%3Bblog%2C16.5.7%2CN%3Bsecurity%2C16.5.0%2CN%3Bsearch%2C16.5.0%2CN%3Bforum%2C17.0.0%2CN%3Bconversion%2C15.5.6%2CN%3Bbitrix.sitecorporate%2C15.0.0%2CN%3Bb24connector%2C16.5.3%2CN%3Bseo%2C16.0.3%2CN%3Bcatalog%2C16.5.6%2CN%3Bpull%2C17.0.0%2CN%3Bhighloadblock%2C16.5.0%2CN%3Bsale%2C16.5.14%2CN%3Bphotogallery%2C16.0.1%2CN%3Bperfmon%2C16.5.0%2CN%3Bform%2C15.0.2%2CN%3Bsender%2C16.5.2%2CN%3Bbitrix.eshop%2C16.5.0%2CN%3Bvote%2C15.5.0%2CN%3Bsocialservices%2C16.5.5%2CN%3Btranslate%2C14.5.0%2CN%3Babtest%2C16.0.0%2CN%3Biblock%2C16.5.6%2CN%3Bscale%2C16.5.0%2CN%3Bsubscribe%2C16.5.0%2CN%3Breport%2C16.5.0%2CN%3Bcurrency%2C16.5.0%2CN%3Bcompression%2C16.0.0%2CN%3Bmobileapp%2C16.0.11%2CN%3Bstoreassist%2C16.0.1%2CN%3Bbitrixcloud%2C16.0.1%2CN%3Beshopapp%2C16.5.0%2CN&reqm=bitrix.eshop&lim=Y&SUPD_SRS=RU&SUPD_CMP=N
+2017-01-04 11:37:20 -  - exec CUpdateClientPartner::GetHTTPPage
+2017-01-04 11:37:20 -  - TIME LoadModulesUpdates(request) 0.356 sec
+2017-01-04 11:37:20 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:20 - S - STEP
+2017-01-04 11:37:20 - LMU01 - LoadModulesUpdates-Step
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::LoadModulesUpdates
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:21 -  - loadFile
+2017-01-04 11:37:21 - U - RETURN
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::UnGzipArchive
+2017-01-04 11:37:21 -  - TIME UnGzipArchive 0.007 sec
+2017-01-04 11:37:21 - CSURUS1 - Run updater '/bitrix/updates/update_m1483519041/bitrix.eshop/updater16.5.1/index.php'
+2017-01-04 11:37:21 -  - TIME UpdateStepModules 0.009 sec
+2017-01-04 11:37:21 - UPD_SUCCESS - Updated: bitrix.eshop (16.5.1)<br><li>Незначительные изменения в демо-данных мастера.
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::LoadModulesUpdates
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::__CollectRequestData
+2017-01-04 11:37:21 -  - utf=Y&lang=ru&stable=Y&CANGZIP=Y&SUPD_DBS=MYSQL&XE=N&CLIENT_SITE=prod05.ru&LICENSE_KEY=X&SUPD_STS=1&SUPD_URS=0&SUPD_URSA=19&TYPENC=D&CLIENT_PHPVER=7.0.12&NGINX=Y&dbv=5.6.33&instm=main%2C16.5.8%2CY%3Bclouds%2C16.5.2%2CN%3Bfileman%2C16.5.5%2CN%3Bblog%2C16.5.7%2CN%3Bsecurity%2C16.5.0%2CN%3Bsearch%2C16.5.0%2CN%3Bforum%2C17.0.0%2CN%3Bconversion%2C15.5.6%2CN%3Bbitrix.sitecorporate%2C15.0.0%2CN%3Bb24connector%2C16.5.3%2CN%3Bseo%2C16.0.3%2CN%3Bcatalog%2C16.5.6%2CN%3Bpull%2C17.0.0%2CN%3Bhighloadblock%2C16.5.0%2CN%3Bsale%2C16.5.14%2CN%3Bphotogallery%2C16.0.1%2CN%3Bperfmon%2C16.5.0%2CN%3Bform%2C15.0.2%2CN%3Bsender%2C16.5.2%2CN%3Bbitrix.eshop%2C16.5.1%2CN%3Bvote%2C15.5.0%2CN%3Bsocialservices%2C16.5.5%2CN%3Btranslate%2C14.5.0%2CN%3Babtest%2C16.0.0%2CN%3Biblock%2C16.5.6%2CN%3Bscale%2C16.5.0%2CN%3Bsubscribe%2C16.5.0%2CN%3Breport%2C16.5.0%2CN%3Bcurrency%2C16.5.0%2CN%3Bcompression%2C16.0.0%2CN%3Bmobileapp%2C16.0.11%2CN%3Bstoreassist%2C16.0.1%2CN%3Bbitrixcloud%2C16.0.1%2CN%3Beshopapp%2C16.5.0%2CN&reqm=bitrix.eshop&lim=Y&SUPD_SRS=RU&SUPD_CMP=N
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::GetHTTPPage
+2017-01-04 11:37:21 -  - TIME LoadModulesUpdates(request) 0.332 sec
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:21 - S - STEP
+2017-01-04 11:37:21 - LMU01 - LoadModulesUpdates-Step
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::LoadModulesUpdates
+2017-01-04 11:37:21 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:21 -  - loadFile
+2017-01-04 11:37:22 - U - RETURN
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::UnGzipArchive
+2017-01-04 11:37:22 -  - TIME UnGzipArchive 0.002 sec
+2017-01-04 11:37:22 - CSURUS1 - Run updater '/bitrix/updates/update_m1483519042/bitrix.eshop/updater16.5.2.php'
+2017-01-04 11:37:22 -  - TIME UpdateStepModules 0.004 sec
+2017-01-04 11:37:22 - UPD_SUCCESS - Updated: bitrix.eshop (16.5.2)<br><li>Незначительные изменения в демо-данных мастера.
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::LoadModulesUpdates
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::__CollectRequestData
+2017-01-04 11:37:22 -  - utf=Y&lang=ru&stable=Y&CANGZIP=Y&SUPD_DBS=MYSQL&XE=N&CLIENT_SITE=prod05.ru&LICENSE_KEY=X&SUPD_STS=1&SUPD_URS=0&SUPD_URSA=19&TYPENC=D&CLIENT_PHPVER=7.0.12&NGINX=Y&dbv=5.6.33&instm=main%2C16.5.8%2CY%3Bclouds%2C16.5.2%2CN%3Bfileman%2C16.5.5%2CN%3Bblog%2C16.5.7%2CN%3Bsecurity%2C16.5.0%2CN%3Bsearch%2C16.5.0%2CN%3Bforum%2C17.0.0%2CN%3Bconversion%2C15.5.6%2CN%3Bbitrix.sitecorporate%2C15.0.0%2CN%3Bb24connector%2C16.5.3%2CN%3Bseo%2C16.0.3%2CN%3Bcatalog%2C16.5.6%2CN%3Bpull%2C17.0.0%2CN%3Bhighloadblock%2C16.5.0%2CN%3Bsale%2C16.5.14%2CN%3Bphotogallery%2C16.0.1%2CN%3Bperfmon%2C16.5.0%2CN%3Bform%2C15.0.2%2CN%3Bsender%2C16.5.2%2CN%3Bbitrix.eshop%2C16.5.2%2CN%3Bvote%2C15.5.0%2CN%3Bsocialservices%2C16.5.5%2CN%3Btranslate%2C14.5.0%2CN%3Babtest%2C16.0.0%2CN%3Biblock%2C16.5.6%2CN%3Bscale%2C16.5.0%2CN%3Bsubscribe%2C16.5.0%2CN%3Breport%2C16.5.0%2CN%3Bcurrency%2C16.5.0%2CN%3Bcompression%2C16.0.0%2CN%3Bmobileapp%2C16.0.11%2CN%3Bstoreassist%2C16.0.1%2CN%3Bbitrixcloud%2C16.0.1%2CN%3Beshopapp%2C16.5.0%2CN&reqm=bitrix.eshop&lim=Y&SUPD_SRS=RU&SUPD_CMP=N
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::GetHTTPPage
+2017-01-04 11:37:22 -  - TIME LoadModulesUpdates(request) 0.307 sec
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:22 - S - STEP
+2017-01-04 11:37:22 - LMU01 - LoadModulesUpdates-Step
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::LoadModulesUpdates
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:22 -  - loadFile
+2017-01-04 11:37:22 - U - RETURN
+2017-01-04 11:37:22 -  - exec CUpdateClientPartner::UnGzipArchive
+2017-01-04 11:37:22 -  - TIME UnGzipArchive 0.002 sec
+2017-01-04 11:37:22 - CSURUS1 - Run updater '/bitrix/updates/update_m1483519042/bitrix.eshop/updater16.5.3.php'
+2017-01-04 11:37:22 -  - TIME UpdateStepModules 0.009 sec
+2017-01-04 11:37:22 - UPD_SUCCESS - Updated: bitrix.eshop (16.5.3)<br><li>Добавлен новый комплексный компонент персонального раздела.
+2017-01-04 11:37:23 -  - exec CUpdateClientPartner::LoadModulesUpdates
+2017-01-04 11:37:23 -  - exec CUpdateClientPartner::__CollectRequestData
+2017-01-04 11:37:23 -  - utf=Y&lang=ru&stable=Y&CANGZIP=Y&SUPD_DBS=MYSQL&XE=N&CLIENT_SITE=prod05.ru&LICENSE_KEY=X&SUPD_STS=1&SUPD_URS=0&SUPD_URSA=19&TYPENC=D&CLIENT_PHPVER=7.0.12&NGINX=Y&dbv=5.6.33&instm=main%2C16.5.8%2CY%3Bclouds%2C16.5.2%2CN%3Bfileman%2C16.5.5%2CN%3Bblog%2C16.5.7%2CN%3Bsecurity%2C16.5.0%2CN%3Bsearch%2C16.5.0%2CN%3Bforum%2C17.0.0%2CN%3Bconversion%2C15.5.6%2CN%3Bbitrix.sitecorporate%2C15.0.0%2CN%3Bb24connector%2C16.5.3%2CN%3Bseo%2C16.0.3%2CN%3Bcatalog%2C16.5.6%2CN%3Bpull%2C17.0.0%2CN%3Bhighloadblock%2C16.5.0%2CN%3Bsale%2C16.5.14%2CN%3Bphotogallery%2C16.0.1%2CN%3Bperfmon%2C16.5.0%2CN%3Bform%2C15.0.2%2CN%3Bsender%2C16.5.2%2CN%3Bbitrix.eshop%2C16.5.3%2CN%3Bvote%2C15.5.0%2CN%3Bsocialservices%2C16.5.5%2CN%3Btranslate%2C14.5.0%2CN%3Babtest%2C16.0.0%2CN%3Biblock%2C16.5.6%2CN%3Bscale%2C16.5.0%2CN%3Bsubscribe%2C16.5.0%2CN%3Breport%2C16.5.0%2CN%3Bcurrency%2C16.5.0%2CN%3Bcompression%2C16.0.0%2CN%3Bmobileapp%2C16.0.11%2CN%3Bstoreassist%2C16.0.1%2CN%3Bbitrixcloud%2C16.0.1%2CN%3Beshopapp%2C16.5.0%2CN&reqm=bitrix.eshop&lim=Y&SUPD_SRS=RU&SUPD_CMP=N
+2017-01-04 11:37:23 -  - exec CUpdateClientPartner::GetHTTPPage
+2017-01-04 11:37:23 -  - TIME LoadModulesUpdates(request) 0.357 sec
+2017-01-04 11:37:23 -  - exec CUpdateClientPartner::ParseServerData
+2017-01-04 11:37:23 - STEP - Finish - NOUPDATES
+2017-01-04 11:37:23 - STEP - Finish - NOUPDATES

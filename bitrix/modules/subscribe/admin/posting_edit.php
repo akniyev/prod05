@@ -611,7 +611,9 @@ $tabControl->BeginNextTab();
 		<?
 		$aCharset = explode(",", COption::GetOptionString("subscribe", "posting_charset"));
 		foreach($aCharset as $strCharset):
-			?><option value="<?echo htmlspecialcharsbx($strCharset)?>"<?if($ID > 0 && $post_arr["CHARSET"]==$strCharset) echo " selected"?>><?echo htmlspecialcharsex($strCharset)?></option><?
+			?><option value="<?echo htmlspecialcharsbx($strCharset)?>"<?
+			if($ID > 0 && ToLower($post_arr["CHARSET"]) == ToLower($strCharset)) echo " selected"
+			?>><?echo htmlspecialcharsex($strCharset)?></option><?
 		endforeach;
 		?>
 		</select>

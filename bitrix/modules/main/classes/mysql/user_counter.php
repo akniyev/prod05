@@ -1,4 +1,4 @@
-<?
+<?php
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/classes/general/user_counter.php");
 
 class CUserCounter extends CAllUserCounter
@@ -117,8 +117,14 @@ class CUserCounter extends CAllUserCounter
 	}
 
 	/**
-	* @deprecated
-	*/
+	 * @deprecated
+	 * @param $user_id
+	 * @param $code
+	 * @param string $site_id
+	 * @param bool $sendPull
+	 * @param int $decrement
+	 * @return bool
+	 */
 	public static function Decrement($user_id, $code, $site_id = SITE_ID, $sendPull = true, $decrement = 1)
 	{
 		global $DB, $CACHE_MANAGER;
@@ -242,7 +248,7 @@ class CUserCounter extends CAllUserCounter
 			if ($pullInclude)
 			{
 				$arSites = Array();
-				$res = CSite::GetList(($b = ""), ($o = ""), Array("ACTIVE" => "Y"));
+				$res = CSite::GetList($b = "", $o = "", Array("ACTIVE" => "Y"));
 				while($row = $res->Fetch())
 				{
 					$arSites[] = $row['ID'];
@@ -366,7 +372,7 @@ class CUserCounter extends CAllUserCounter
 
 			$strSQL .= " ON DUPLICATE KEY UPDATE CNT = 0, LAST_DATE = ".$DB->CurrentTimeFunction();
 
-			$res = $DB->Query($strSQL, false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
+			$DB->Query($strSQL, false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
 		}
 
 		if (self::$counters && self::$counters[$user_id])
@@ -416,8 +422,8 @@ class CUserCounter extends CAllUserCounter
 			{
 				$bPullEnabled = true;
 
-				$arSites = Array();
-				$res = CSite::GetList(($b = ""), ($o = ""), Array("ACTIVE" => "Y"));
+				$arSites = array();
+				$res = CSite::GetList($b = "", $o = "", array("ACTIVE" => "Y"));
 				while($row = $res->Fetch())
 				{
 					$arSites[] = $row['ID'];
@@ -463,6 +469,8 @@ class CUserCounter extends CAllUserCounter
 				'params' => $arMessage,
 			));
 		}
+
+		return null;
 	}
 
 	protected static function dbIF($condition, $yes, $no)
@@ -483,55 +491,73 @@ class CUserCounterPage extends CAllUserCounterPage
 	{
 		global $DB;
 
-		$prevMax = self::getUserIdOption();
-
-		if ($prevMax !== 'EMPTY')
+		$uniq = CMain::GetServerUniqID();
+		$db_lock = $DB->Query("SELECT GET_LOCK('".$uniq."_counterpull', 0) as L");
+		$ar_lock = $db_lock->Fetch();
+		if($ar_lock["L"] == "0")
 		{
-			$minMaxValue = self::getMinMax($prevMax);
+			return;
+		}
 
-			if (is_array($minMaxValue))
+		$arSites = array();
+		$res = CSite::GetList($b = "", $o = "", array("ACTIVE" => "Y"));
+		while($row = $res->Fetch())
+		{
+			$arSites[] = $row['ID'];
+		}
+
+		$userSQL = "SELECT USER_ID FROM b_user_counter WHERE SENT='0' GROUP BY USER_ID LIMIT ".intval(CAllUserCounterPage::getPageSizeOption(100));
+		$res = $DB->Query($userSQL, false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
+
+		$userString = '';
+		$pullMessage = array();
+
+		while($row = $res->Fetch())
+		{
+			$userString .= ($userString <> ''? ', ' : '').intval($row["USER_ID"]);
+		}
+
+		if ($userString <> '')
+		{
+			$strSQL = "
+				SELECT pc.CHANNEL_ID, uc.USER_ID, uc.SITE_ID, uc.CODE, uc.CNT
+				FROM b_user_counter uc
+				INNER JOIN b_pull_channel pc ON pc.USER_ID = uc.USER_ID
+				WHERE uc.USER_ID IN (".$userString.") AND uc.CODE NOT LIKE '**L%' AND uc.SENT = '0'
+			";
+
+			$res = $DB->Query($strSQL, false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
+			while($row = $res->Fetch())
 			{
-				$arSites = Array();
-				$res = CSite::GetList(($b = ""), ($o = ""), Array("ACTIVE" => "Y"));
-				while($row = $res->Fetch())
-				{
-					$arSites[] = $row['ID'];
-				}
-
-				$strSQL = "
-					SELECT pc.CHANNEL_ID, uc.USER_ID, uc.SITE_ID, uc.CODE, uc.CNT
-					FROM b_user_counter uc
-					INNER JOIN b_pull_channel pc ON pc.USER_ID = uc.USER_ID
-					WHERE uc.SENT = '0' AND uc.USER_ID BETWEEN ".intval($minMaxValue["MIN"])." AND ".intval($minMaxValue["MAX"])."
-				";
-
-				$res = $DB->Query($strSQL, false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
-
-				$pullMessage = array();
-				while($row = $res->Fetch())
-				{
-					CUserCounter::addValueToPullMessage($row, $arSites, $pullMessage);
-				}
-
-				$DB->Query("UPDATE b_user_counter SET SENT = '1' WHERE SENT = '0' AND CODE NOT LIKE '**L%' AND USER_ID BETWEEN ".$minMaxValue["MIN"]." AND ".$minMaxValue["MAX"]);
-
-				foreach ($pullMessage as $channelId => $arMessage)
-				{
-					CPullStack::AddByChannel($channelId, Array(
-						'module_id' => 'main',
-						'command' => 'user_counter',
-						'expiry' => 3600,
-						'params' => $arMessage,
-					));
-				}
-
-				self::setUserIdOption(intval($minMaxValue["MAX"]));
+				CUserCounter::addValueToPullMessage($row, $arSites, $pullMessage);
 			}
-			else
+
+			$strSQL = "
+				SELECT pc.CHANNEL_ID, uc.USER_ID, uc.SITE_ID, uc.CODE, uc.CNT
+				FROM b_user_counter uc
+				INNER JOIN b_pull_channel pc ON pc.USER_ID = uc.USER_ID
+				WHERE uc.USER_ID IN (".$userString.") AND uc.CODE LIKE '**L%'
+			";
+
+			$res = $DB->Query($strSQL, false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
+			while($row = $res->Fetch())
 			{
-				self::setUserIdOption('EMPTY');
+				CUserCounter::addValueToPullMessage($row, $arSites, $pullMessage);
 			}
+
+			$DB->Query("UPDATE b_user_counter SET SENT = '1' WHERE SENT = '0' AND USER_ID IN (".$userString.")");
+		}
+
+		$DB->Query("SELECT RELEASE_LOCK('".$uniq."_counterpull')");
+
+		foreach ($pullMessage as $channelId => $arMessage)
+		{
+			CPullStack::AddByChannel($channelId, Array(
+				'module_id' => 'main',
+				'command' => 'user_counter',
+				'expiry' => 3600,
+				'params' => $arMessage,
+			));
 		}
 	}
 }
-?>

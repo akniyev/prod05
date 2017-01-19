@@ -132,7 +132,7 @@ class PayMasterHandler extends WebMoneyHandler
 		if (!$serviceResult->isSuccess())
 		{
 			PaySystem\ErrorLog::add(array(
-				'ACTION' => $request->get('LMI_PREREQUEST'),
+				'ACTION' => 'processRequest',
 				'MESSAGE' => join(' ', $serviceResult->getErrorMessages())
 			));
 		}

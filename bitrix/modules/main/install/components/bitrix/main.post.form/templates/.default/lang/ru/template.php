@@ -26,4 +26,5 @@ $MESS["MPF_DRAG_ATTACHMENTS"] = "Перетащите файлы";
 $MESS["MPF_DRAG_ATTACHMENTS2"] = "Загрузить файлы?";
 $MESS["MPF_PIN_EDITOR_PANNEL"] = "Закрепить панель с кнопками";
 $MESS["MPF_PIN_EDITOR_PANNEL_OFF"] = "Открепить панель с кнопками";
+$MESS["MPF_IMPORTANT_TITLE"] = "Это важное сообщение";
 ?>

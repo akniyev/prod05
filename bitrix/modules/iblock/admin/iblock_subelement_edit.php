@@ -63,7 +63,7 @@ $arSubCatalog = false;
 $bCatalog = Loader::includeModule('catalog');
 if ($bCatalog)
 {
-	$arSubCatalog = CCatalogSKU::GetInfoByOfferIBlock($IBLOCK_ID);
+	$arSubCatalog = CCatalogSku::GetInfoByOfferIBlock($IBLOCK_ID);
 	if (empty($arSubCatalog) || !is_array($arSubCatalog))
 	{
 		$bCatalog = false;
@@ -725,6 +725,7 @@ do{ //one iteration loop
 				if ($arDETAIL_PICTURE["error"] == 0)
 					$arDETAIL_PICTURE["COPY_FILE"] = "Y";
 
+				$textIndex = ($bSubCopy ? $copyID : $ID);
 				$arFields = array(
 					"ACTIVE" => $_POST["SUB_ACTIVE"],
 					"MODIFIED_BY" => $USER->GetID(),
@@ -736,11 +737,11 @@ do{ //one iteration loop
 					"CODE" => trim($_POST["SUB_CODE"], " \t\n\r"),
 					"TAGS" => $_POST["SUB_TAGS"],
 					"PREVIEW_PICTURE" => $arPREVIEW_PICTURE,
-					"PREVIEW_TEXT" => $_POST["SUB_PREVIEW_TEXT_".$ID],
-					"PREVIEW_TEXT_TYPE" => $_POST["SUB_PREVIEW_TEXT_TYPE_".$ID],
+					"PREVIEW_TEXT" => $_POST["SUB_PREVIEW_TEXT_".$textIndex],
+					"PREVIEW_TEXT_TYPE" => $_POST["SUB_PREVIEW_TEXT_TYPE_".$textIndex],
 					"DETAIL_PICTURE" => $arDETAIL_PICTURE,
-					"DETAIL_TEXT" => $_POST["SUB_DETAIL_TEXT_".$ID],
-					"DETAIL_TEXT_TYPE" => $_POST["SUB_DETAIL_TEXT_TYPE_".$ID],
+					"DETAIL_TEXT" => $_POST["SUB_DETAIL_TEXT_".$textIndex],
+					"DETAIL_TEXT_TYPE" => $_POST["SUB_DETAIL_TEXT_TYPE_".$textIndex],
 					"TMP_ID" => $strSubTMP_ID,
 					"PROPERTY_VALUES" => $PROP,
 				);
@@ -1145,28 +1146,6 @@ else
 	$tabControl->BeginPrologContent();
 	CJSCore::Init(array('date'));
 
-	if(COption::GetOptionString("iblock", "use_htmledit", "Y")=="Y" && $bFileman)
-	{
-		//TODO:This dirty hack will be replaced by special method like calendar do
-		echo '<div style="display:none">';
-		CFileMan::AddHTMLEditorFrame(
-			"SOME_TEXT",
-			"",
-			"SOME_TEXT_TYPE",
-			"text",
-			array(
-				'height' => 450,
-				'width' => '100%'
-			),
-			"N",
-			0,
-			"",
-			"",
-			$arIBlock["LID"]
-		);
-		echo '</div>';
-	}
-
 	if($arTranslit["TRANSLITERATION"] == "Y")
 	{
 		CJSCore::Init(array('window','translit'));
@@ -1257,7 +1236,8 @@ echo GetFilterHiddens("find_");?>
 }
 if ($bSubCopy)
 {
-	?><input type="hidden" name="copyID" value="<? echo $ID; ?>"><?
+	?><input type="hidden" name="copyID" value="<? echo $ID; ?>">
+	<input type="hidden" name="action" value="copy"><?
 }?>
 <input type="hidden" name="IBLOCK_SECTION_ID" value="<?echo intval($IBLOCK_SECTION_ID)?>">
 <input type="hidden" name="PRODUCT_ID" value="<? echo $intProductID; ?>">

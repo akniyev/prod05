@@ -26,6 +26,13 @@
 			this.dbObject = window.openDatabase(params.name, params.version, params.displayName, params.capacity);
 	};
 
+	BX.dataBase.create = function(params)
+	{
+		return ((typeof window.openDatabase != 'undefined')
+				? new BX.dataBase(params)
+				: null
+		);
+	};
 
 	BX.dataBase.prototype.isTableExists = function (tableName, callback)
 	{

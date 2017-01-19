@@ -267,9 +267,9 @@ if ($_SERVER['REQUEST_METHOD'] == "POST" && !empty($_POST['Update']) && !$bReadO
 	if ($oldSimpleSearch != $newSimpleSearch)
 	{
 		if ($newSimpleSearch == 'Y')
-			UnRegisterModuleDependences('search', 'BeforeIndex', 'catalog', '\Bitrix\Catalog\SearchHandlers', 'onBeforeIndex');
+			UnRegisterModuleDependences('search', 'BeforeIndex', 'catalog', '\Bitrix\Catalog\Product\Search', 'onBeforeIndex');
 		else
-			RegisterModuleDependences('search', 'BeforeIndex', 'catalog', '\Bitrix\Catalog\SearchHandlers', 'onBeforeIndex');
+			RegisterModuleDependences('search', 'BeforeIndex', 'catalog', '\Bitrix\Catalog\Product\Search', 'onBeforeIndex');
 	}
 	unset($oldSimpleSearch, $newSimpleSearch);
 
@@ -699,7 +699,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST" && !empty($_POST['Update']) && !$bReadO
 						);
 
 						$languageIterator = Main\Localization\LanguageTable::getList(array(
-							'select' => array('ID'),
+							'select' => array('ID', 'SORT'),
 							'filter' => array('=ACTIVE' => 'Y'),
 							'order' => array('SORT' => 'ASC')
 						));
@@ -1134,6 +1134,15 @@ if ($_SERVER['REQUEST_METHOD'] == "POST" && !empty($_POST['Update']) && !$bReadO
 	{
 		CAgent::AddAgent('CCatalog::PreGenerateXML("yandex");', 'catalog', 'N', (int)Option::get('catalog', 'yandex_xml_period')*3600);
 	}
+
+	if(isset($_POST['catalog_subscribe_repeated_notify']))
+	{
+		$postValue = (string)$_POST['catalog_subscribe_repeated_notify'];
+		if($postValue === 'Y' || $postValue === 'N')
+		{
+			Option::set('catalog', 'subscribe_repeated_notify', $postValue);
+		}
+	}
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST['agent_start']) && !$bReadOnly && check_bitrix_sessid())
@@ -1469,6 +1478,17 @@ $viewedPeriod = (int)Option::get('catalog', 'viewed_period');
 		<input type="checkbox" name="product_form_show_offer_name" id="product_form_show_offer_name_y" value="Y" <?if ($searchShowOfferName == 'Y') echo " checked";?>>
 	</td>
 </tr>
+<tr class="heading">
+	<td colspan="2"><? echo Loc::getMessage("CAT_PRODUCT_SUBSCRIBE_TITLE"); ?></td>
+</tr>
+<tr>
+	<td width="40%"><? echo Loc::getMessage('CAT_PRODUCT_SUBSCRIBE_LABLE_REPEATED_NOTIFY'); ?></td>
+	<td width="60%">
+		<input type="hidden" name="catalog_subscribe_repeated_notify" value="N">
+		<input type="checkbox" name="catalog_subscribe_repeated_notify" value="Y"
+			<?if (Option::get('catalog', 'subscribe_repeated_notify') == 'Y') echo " checked";?>>
+	</td>
+</tr>
 <?
 	$tabControl->BeginNextTab();
 ?>
@@ -1645,7 +1665,7 @@ if ($strVal != '')
 }
 ?><select name="allowed_currencies[]" multiple size="5"><?
 $currencyIterator = Currency\CurrencyTable::getList(array(
-	'select' => array('CURRENCY', 'FULL_NAME' => 'RT_LANG.FULL_NAME'),
+	'select' => array('CURRENCY', 'FULL_NAME' => 'RT_LANG.FULL_NAME', 'SORT'),
 	'order' => array('SORT' => 'ASC', 'CURRENCY' => 'ASC'),
 	'runtime' => array(
 		'RT_LANG' => array(

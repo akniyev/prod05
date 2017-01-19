@@ -8,6 +8,7 @@ use Bitrix\Main\Type\DateTime;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Sale\PaySystem;
 use Bitrix\Sale\Payment;
+use Bitrix\Sale\PriceMaths;
 
 Loc::loadMessages(__FILE__);
 
@@ -86,8 +87,8 @@ class RoboxchangeHandler extends PaySystem\ServiceHandler
 	 */
 	private function isCorrectSum(Payment $payment, Request $request)
 	{
-		$sum = Payment::roundByFormatCurrency($request->get('OutSum'), $payment->getField('CURRENCY'));
-		$paymentSum = Payment::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
+		$sum = PriceMaths::roundByFormatCurrency($request->get('OutSum'), $payment->getField('CURRENCY'));
+		$paymentSum = PriceMaths::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
 
 		return $paymentSum == $sum;
 	}
@@ -219,16 +220,38 @@ class RoboxchangeHandler extends PaySystem\ServiceHandler
 	public static function getHandlerModeList()
 	{
 		return array(
-			'Qiwi29OceanR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_QIWIR_TERMINALS'),
-			'WMRM' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_WMRM_EMONEY'),
-			'YandexMerchantR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_YANDEXMERCHANTR_EMONEY'),
-			'AlfaBankOceanR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_ALFABANKOCEANR_BANK'),
-			'VTB24R' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_VTB24R_BANK'),
-			'BANKOCEAN3R' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_OCEANBANKOCEANR_BANK'),
-			'MegafonR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_MEGAFONR_MOBILE'),
-			'MtsR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_MTSR_MOBILE'),
-			'RapidaOceanEurosetR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_RAPIDAOCEANEUROSETR_OTHER'),
-			'RapidaOceanSvyaznoyR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_RAPIDAOCEANSVYAZNOYR_OTHER')
+			'' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_NO_CHOOSE'),
+			'WMR' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_WMRM_EMONEY'),
+			'AlfaBank' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_ALFABANKOCEANR_BANK'),
+			'BankCard' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_OCEANBANKOCEANR_BANK'),
+			'PhoneMegafon' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_MEGAFONR_MOBILE'),
+			'PhoneMTS' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_MTSR_MOBILE'),
+			'StoreEuroset' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_RAPIDAOCEANEUROSETR_OTHER'),
+			'PhoneTele2' => 'Tele2',
+			'PhoneBeeline' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_MMixplatBeelineRIBR'),
+			'BankRSB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_RussianStandardBankRIBR'),
+			'BankTrust' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BSSNationalBankTRUSTR'),
+			'BankTatfondbank' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BSSTatfondbankR'),
+			'BankPSB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_PSKBR'),
+			'HandyBank' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankMerchantOceanR'),
+			'HandyBankBO' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankBO'),
+			'StoreSvyaznoy' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_RapidaRIBSvyaznoyR'),
+			'HandyBankFB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankFB'),
+			'HandyBankFU' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankFU'),
+			'HandyBankKB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankKB'),
+			'HandyBankKSB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankKSB'),
+			'HandyBankLOB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankLOB'),
+			'HandyBankNSB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankNSB'),
+			'HandyBankTB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankTB'),
+			'HandyBankVIB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_HandyBankVIB'),
+			'BankMTEB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BSSMezhtopenergobankR'),
+			'BankMIN' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_MINBankR'),
+			'BankFBID' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BSSFederalBankForInnovationAndDevelopmentR'),
+			'BankInteza' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BSSIntezaR'),
+			'BankGorod' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BSSBankGorodR'),
+			'BankAVB' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BSSAvtovazbankR'),
+			'KUBank' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_KUBankR'),
+			'MobileRobokassa' => Loc::getMessage('SALE_HPS_ROBOXCHANGE_BANKOCEAN3CHECKR'),
 		);
 	}
 }

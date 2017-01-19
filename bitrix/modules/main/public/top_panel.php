@@ -601,7 +601,7 @@ class CTopPanel
 					"TEXT"=>GetMessage("top_panel_cache_comp"),
 					"TITLE"=>GetMessage("top_panel_cache_comp_title"),
 					"ICON"=>"panel-comp-cache",
-					"ACTION"=>"jsComponentUtils.ClearCache('component_name=".CUtil::addslashes(implode(",", $APPLICATION->aCachedComponents))."&site_id=".SITE_ID."');",
+					"ACTION"=>"jsComponentUtils.ClearCache('component_name=".CUtil::addslashes(implode(",", $APPLICATION->aCachedComponents))."&site_id=".SITE_ID."&".bitrix_sessid_get()."');",
 					"HK_ID" => "top_panel_cache_comp",
 				);
 			}
@@ -991,19 +991,38 @@ class CTopPanel
 	{
 		global $USER;
 
+		$userCodes = null;
+
 		//we have settings in the main module options
 		if($bShowPanel == false)
 		{
 			$arCodes = unserialize(COption::GetOptionString("main", "show_panel_for_users"));
-			if(!empty($arCodes) && $USER->CanAccess($arCodes))
-				$bShowPanel = true;
+			if(!empty($arCodes))
+			{
+				$userCodes = $USER->GetAccessCodes();
+				$diff = array_intersect($arCodes, $userCodes);
+				if(!empty($diff))
+				{
+					$bShowPanel = true;
+				}
+			}
 		}
 		//hiding the panel has the higher priority
 		if($bShowPanel == true)
 		{
 			$arCodes = unserialize(COption::GetOptionString("main", "hide_panel_for_users"));
-			if(!empty($arCodes) && $USER->CanAccess($arCodes))
-				$bShowPanel = false;
+			if(!empty($arCodes))
+			{
+				if($userCodes == null)
+				{
+					$userCodes = $USER->GetAccessCodes();
+				}
+				$diff = array_intersect($arCodes, $userCodes);
+				if(!empty($diff))
+				{
+					$bShowPanel = false;
+				}
+			}
 		}
 		return $bShowPanel;
 	}

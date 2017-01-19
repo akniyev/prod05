@@ -121,6 +121,8 @@ class Calculator
 		else
 			$weight = 0;
 
+
+
 		if(floatval($weight) <= 0)
 		{
 			$result->addError(new Error(Loc::getMessage('SALE_DLV_SRV_SPSR_ERROR_HTTP_PUBLIC')));
@@ -137,7 +139,7 @@ class Calculator
 			return $result;
 		}
 
-		$request .= '&ToCity='.$toCity.'&FromCity='.$fromCity.'&Weight='.$weight;
+		$request .= '&ToCity='.$toCity.'&FromCity='.$fromCity;
 
 		if(!empty($additional['NATURE']))
 			$request .= '&Nature='.$additional['NATURE'];
@@ -175,6 +177,8 @@ class Calculator
 		$maxWeight = 0;
 		$gabarit180 = false;
 		$price = 0;
+		$volume = 0;
+		$volumeWeight = 0;
 
 		/** @var \Bitrix\Sale\ShipmentItem $item */
 		foreach($shipment->getShipmentItemCollection() as $item)
@@ -187,9 +191,18 @@ class Calculator
 
 			$dimensions = $basketItem->getField('DIMENSIONS');
 
+			if(!is_array($dimensions) && strlen($dimensions) > 0)
+				$dimensions = unserialize($dimensions);
+
 			if(!empty($dimensions['WIDTH']) && !empty($dimensions['HEIGHT']) && !empty($dimensions['LENGTH']))
 			{
-				if(!$gabarit180 && $dimensions['WIDTH']+$dimensions['HEIGHT']+$dimensions['LENGTH'] > 1800) //mm
+				$width = floatval($dimensions['WIDTH']);
+				$height = floatval($dimensions['HEIGHT']);
+				$length = floatval($dimensions['LENGTH']);
+				$quantityItem = floatval($basketItem->getField('QUANTITY'));
+				$volume += $quantityItem*$width*$height*$length/1000 ; //cm
+
+				if(!$gabarit180 && $width+$height+$length > 1800) //mm
 				{
 					$request .= '&GabarythB=1';
 					$gabarit180 = true;
@@ -198,6 +211,11 @@ class Calculator
 
 			$price += $basketItem->getPrice();
 		}
+
+		if($volume > 0)
+			$volumeWeight = $volume / 5000;
+
+		$request .= '&Weight='.($volumeWeight > $weight ? $volumeWeight : $weight);
 
 		if($maxWeight > 200000) // gr
 			$request .= '&Weight200=1';

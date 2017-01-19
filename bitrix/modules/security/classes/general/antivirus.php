@@ -8,7 +8,7 @@ $s=<<<EOT
 Place tested html here
 
 EOT;
-cmodule::includemodule('security');
+CModule::IncludeModule('security');
 $Antivirus = new CSecurityAntiVirus("pre");
 $Antivirus->replace=1;
 $Antivirus->Analyze($s);
@@ -96,14 +96,14 @@ class CSecurityAntiVirus
 		}
 	}
 
-	function GetAuditTypes()
+	public static function GetAuditTypes()
 	{
 		return array(
 			"SECURITY_VIRUS" => "[SECURITY_VIRUS] ".GetMessage("SECURITY_VIRUS"),
 		);
 	}
 
-	function OnPageStart()
+	public static function OnPageStart()
 	{
 		if (CSecuritySystemInformation::isCliMode())
 			return;
@@ -187,7 +187,7 @@ class CSecurityAntiVirus
 		}
 	}
 
-	function OnEndBufferContent(&$content)
+	public static function OnEndBufferContent(&$content)
 	{
 		if (self::isSafetyRequest()) //Check only GET and POST request
 			return;
@@ -197,7 +197,7 @@ class CSecurityAntiVirus
 		$Antivirus->Analyze($content);
 	}
 
-	function OnAfterEpilog()
+	public static function OnAfterEpilog()
 	{
 		if (self::isSafetyRequest()) //Check only GET and POST request
 			return;
@@ -207,7 +207,7 @@ class CSecurityAntiVirus
 		define("BX_SECURITY_AV_AFTER_EPILOG", true);
 	}
 
-	function PHPShutdown()
+	public static function PHPShutdown()
 	{
 		if(defined("BX_SECURITY_AV_AFTER_EPILOG"))
 		{
@@ -237,7 +237,8 @@ class CSecurityAntiVirus
 	public static function UpdateWhiteList($arWhiteList)
 	{
 		global $DB, $CACHE_MANAGER;
-		$res = $DB->Query("DELETE FROM b_sec_white_list", false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
+
+		$DB->Query("DELETE FROM b_sec_white_list", false, "FILE: ".__FILE__."<br> LINE: ".__LINE__);
 		$i = 1;
 		foreach($arWhiteList as $white_str)
 		{
@@ -1009,6 +1010,7 @@ class CSecurityAntiVirus
 		}
 		else
 		{
+			$ll = 0;
 			$mxl = 0;
 			foreach($this->bodylines as $str)
 			{

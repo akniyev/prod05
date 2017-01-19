@@ -1,10 +1,12 @@
-<?
+<?php
+
 class CSearchFullText
 {
 	/**
 	 * @var CSearchFullText
 	 */
 	protected static $instance = null;
+
 	/**
 	 * Returns current instance of the full text indexer.
 	 *
@@ -29,37 +31,50 @@ class CSearchFullText
 		}
 		return static::$instance;
 	}
+
 	public function connect($connectionString)
 	{
 		return true;
 	}
+
 	public function truncate()
 	{
 	}
+
 	public function deleteById($ID)
 	{
 	}
+
 	public function replace($ID, $arFields)
 	{
 	}
+
 	public function update($ID, $arFields)
 	{
 	}
+
 	public function search($arParams, $aSort, $aParamsEx, $bTagsCloud)
 	{
 		return false;
 	}
+
 	function searchTitle($phrase = "", $arPhrase = array(), $nTopCount = 5, $arParams = array(), $bNotFilter = false, $order = "")
 	{
 		return false;
 	}
+
 	public function getErrorText()
 	{
 		return "";
 	}
+
 	public function getErrorNumber()
 	{
 		return 0;
 	}
+
+	function getRowFormatter()
+	{
+		return null;
+	}
 }
-?>

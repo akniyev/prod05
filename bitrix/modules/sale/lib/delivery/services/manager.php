@@ -36,7 +36,7 @@ class Manager
 
 	/* Directories where we can found handlers */
 	protected static $handlersDirectories = array();
-
+	
 	/**
 	 * Returns service field, caches results during hit.
 	 * @param int $deliveryId
@@ -242,6 +242,9 @@ class Manager
 
 				$service = self::$cachedFields[$storedId];
 
+				if(!class_exists($service["CLASS_NAME"]))
+					continue;
+
 				if($service["CLASS_NAME"]::canHasChildren())
 					$canHasChildren[$storedId] = true;
 
@@ -265,6 +268,21 @@ class Manager
 		else
 		{
 			$result = $active;
+		}
+
+		/*
+		 * Clean children if parent is not present in result.
+		 * We mean that it doesn't pass restrictions checks.
+		 * Or it is not active.
+		 */
+
+		foreach($result as $id => $fields)
+		{
+			if(intval($fields['PARENT_ID']) <= 0)
+				continue;
+
+			if(empty($result[$fields['PARENT_ID']]))
+				unset($result[$id]);
 		}
 
 		if($calculatingOnly)
@@ -294,7 +312,9 @@ class Manager
 			);
 		}
 
+		//Have restrictions and this restrictions successfully checked
 		$restrictedSrvIds = Restrictions\Manager::getRestrictedIds($shipment, $restrictionMode);
+		//Don't have any restrictions + successfully checked
 		$services = self::getActiveList(false, array_keys($restrictedSrvIds));
 
 		foreach($services as $srvParams)
@@ -446,7 +466,7 @@ class Manager
 			'\Bitrix\Sale\Delivery\Services\Automatic' => 'lib/delivery/services/automatic.php',
 			'\Bitrix\Sale\Delivery\Services\Configurable' => 'lib/delivery/services/configurable.php',
 			'\Bitrix\Sale\Delivery\Services\AutomaticProfile' => 'lib/delivery/services/automatic_profile.php',
-			'\Bitrix\Sale\Delivery\Services\EmptyDeliveryService' => 'lib/delivery/services/emptydeliveryservice.php',
+			'\Bitrix\Sale\Delivery\Services\EmptyDeliveryService' => 'lib/delivery/services/emptydeliveryservice.php'
 		);
 
 		\Bitrix\Main\Loader::registerAutoLoadClasses('sale', $result);
@@ -705,7 +725,7 @@ class Manager
 
 		if($res->isSuccess())
 		{
-			if(!empty($fields["CLASS_NAME"]))
+			if(!empty($fields["CLASS_NAME"]) && class_exists($fields["CLASS_NAME"]))
 				$fields["CLASS_NAME"]::onAfterUpdate($res->getId(), $fields);
 
 			if(isset($fields['CODE']))
@@ -752,7 +772,7 @@ class Manager
 
 		if($res->isSuccess())
 		{
-			if(!empty($className))
+			if(!empty($className) && class_exists($className))
 				$className::onAfterDelete($id);
 
 			self::deleteRelatedEntities($id);
@@ -926,7 +946,10 @@ class Manager
 	protected static function isDeliveryInShipments($deliveryId)
 	{
 		$res = ShipmentTable::getList(array(
-			'filter' => array("DELIVERY_ID" => $deliveryId),
+			'filter' => array(
+				"=DELIVERY_ID" => $deliveryId,
+				"=SYSTEM" => "N"
+			),
 			'select' => array("ID")
 		));
 

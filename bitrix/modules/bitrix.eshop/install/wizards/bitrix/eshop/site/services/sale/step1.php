@@ -1566,6 +1566,24 @@ if($bRus || COption::GetOptionString("eshop", "wizard_installed", "N", WIZARD_SI
 				"CONTACT_PERSON" => Array("TYPE" => "PROPERTY", "VALUE" => $arGeneralInfo["properies"][$arGeneralInfo["personType"]["fiz"]]["CONTACT_PERSON"]["ID"]),
 				"IS_FIZ" => "Y",
 			));
+			
+		$allPersonTypes = BusinessValue::getPersonTypes(true);
+		$personTypeId = $arGeneralInfo["personType"]["fiz"];
+		$domain = BusinessValue::INDIVIDUAL_DOMAIN;
+
+		if(!isset($allPersonTypes[$personTypeId]['DOMAIN']))
+		{
+			$r = Bitrix\Sale\Internals\BusinessValuePersonDomainTable::add(array(
+					'PERSON_TYPE_ID' => $personTypeId,
+					'DOMAIN'         => $domain,
+			));
+			if ($r->isSuccess())
+			{
+				$allPersonTypes[$personTypeId]['DOMAIN'] = $domain;
+				BusinessValue::getPersonTypes(true, $allPersonTypes);
+			}
+		}
+			
 		CSaleExport::Add(Array("PERSON_TYPE_ID" => $arGeneralInfo["personType"]["fiz"], "VARS" => $val));
 	}
 	if($personType["ur"] == "Y" && !$urExist)
@@ -1589,6 +1607,24 @@ if($bRus || COption::GetOptionString("eshop", "wizard_installed", "N", WIZARD_SI
 				"F_STREET" => Array("TYPE" => "PROPERTY", "VALUE" => $arGeneralInfo["properies"][$arGeneralInfo["personType"]["ur"]]["ADDRESS"]["ID"]),
 				"IS_FIZ" =>  "N",
 			));
+		
+		$allPersonTypes = BusinessValue::getPersonTypes(true);
+		$personTypeId = $arGeneralInfo["personType"]["ur"];
+		$domain = BusinessValue::ENTITY_DOMAIN;
+
+		if(!isset($allPersonTypes[$personTypeId]['DOMAIN']))
+		{
+			$r = Bitrix\Sale\Internals\BusinessValuePersonDomainTable::add(array(
+					'PERSON_TYPE_ID' => $personTypeId,
+					'DOMAIN'         => $domain,
+			));
+			if ($r->isSuccess())
+			{
+				$allPersonTypes[$personTypeId]['DOMAIN'] = $domain;
+				BusinessValue::getPersonTypes(true, $allPersonTypes);
+			}
+		}
+		
 		CSaleExport::Add(Array("PERSON_TYPE_ID" => $arGeneralInfo["personType"]["ur"], "VARS" => $val));
 	}
 	if ($shopLocalization == "ua" && !$fizUaExist)

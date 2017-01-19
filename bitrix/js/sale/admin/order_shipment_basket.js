@@ -1602,6 +1602,8 @@ BX.Sale.Admin.ShipmentBasketEdit.prototype.createBlockBarcode = function(basketC
 				var childrenValue = BX.findChildrenByClassName(parent, basketCode + '_barcode_value');
 
 				var iterator = 1;
+				if (countInputs == 0)
+					countInputs = 1;
 				while (iterator <= countInputs)
 				{
 					var div = BX.create('div', {

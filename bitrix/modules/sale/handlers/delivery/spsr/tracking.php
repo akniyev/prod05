@@ -58,14 +58,19 @@ class SpsrTracking extends \Bitrix\Sale\Delivery\Tracking\Base
 	public function getStatus($trackingNumber)
 	{
 		$results = $this->getStatuses(array($trackingNumber));
+		$result = new StatusResult();
 
 		if($results->isSuccess())
+		{
 			foreach($results->getData() as $statusResult)
 				if($statusResult->trackingNumber == $trackingNumber)
 					return $statusResult;
+		}
+		else
+		{
+			$result->addErrors($results->getErrors());
+		}
 
-		$result = new StatusResult();
-		$result->addErrors($results->getErrors());
 		return $result;
 	}
 
@@ -78,8 +83,14 @@ class SpsrTracking extends \Bitrix\Sale\Delivery\Tracking\Base
 		$result = new Result();
 		$resultData = array();
 		$request = new Request();
+		/** @var SpsrHandler $parentService */
+		$parentService = $this->deliveryService->getParentService();
+
+		if(!$parentService)
+			return $result;
+
 		/** @var \Bitrix\Sale\Result $res */
-		$res = $this->deliveryService->getParentService()->getSidResult();
+		$res = $parentService->getSidResult();
 
 		if($res->isSuccess())
 		{
@@ -93,7 +104,7 @@ class SpsrTracking extends \Bitrix\Sale\Delivery\Tracking\Base
 
 		$reqRes = $request->getInvoicesInfo(
 			$sid,
-			$this->deliveryService->getParentService()->getICN(),
+			$parentService->getICN(),
 			LANGUAGE_ID,
 			$trackingNumbers
 		);
@@ -206,5 +217,14 @@ class SpsrTracking extends \Bitrix\Sale\Delivery\Tracking\Base
 			$str = Encoding::convertEncoding($str, 'UTF-8', SITE_CHARSET);
 
 		return $str;
+	}
+
+	/**
+	 * @param string $trackingNumber
+	 * @return string Url were we can see tracking information
+	 */
+	public function getTrackingUrl($trackingNumber = '')
+	{
+		return 'http://www.spsr.ru/ru/service/monitoring';
 	}
 }

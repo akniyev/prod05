@@ -11,7 +11,7 @@
 /** @var string $componentPath */
 /** @var \Bitrix\Disk\Internals\BaseComponent $component */
 $this->IncludeLangFile("edit.php");
-CJSCore::Init(array("core", "uploader", "canvas"));
+CJSCore::Init(array("core", "uploader"));
 
 $m = GetMessage("MPF_ERROR1");
 $thumb = <<<HTML
@@ -88,9 +88,6 @@ BX.ready(function(){
 	});
 });
 BX.message({
-	MPF_CANCEL : '<?=GetMessageJS("MPF_CANCEL")?>',
-	MPF_PHOTO_CAMERA : '<?=GetMessageJS("MPF_PHOTO_CAMERA")?>',
-	MPF_PHOTO_GALLERY : '<?=GetMessageJS("MPF_PHOTO_GALLERY")?>',
 	MPF_PHOTO_DISK : '<?=GetMessageJS("MPF_PHOTO_DISK")?>',
 	MPF_INCORRECT_RESPONSE : '<?=GetMessageJS("MPF_INCORRECT_RESPONSE")?>',
 	DISK_NODE : '<?=CUtil::JSEscape($thumb)?>'

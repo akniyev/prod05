@@ -200,35 +200,21 @@ class currency extends CModule
 			case 'ru':
 				if (!$bitrix24)
 				{
+					$languageList = array();
 					$languageIterator = LanguageTable::getList(array(
 						'select' => array('ID'),
-						'filter' => array('=ID' => 'kz', '=ACTIVE' => 'Y')
+						'filter' => array('@ID' => array('kz', 'by', 'ua'), '=ACTIVE' => 'Y')
 					));
-					if ($existLanguage = $languageIterator->fetch())
-						$currencySetID = $existLanguage['ID'];
-					unset($existLanguage, $languageIterator);
-
-					if ($currencySetID == '')
-					{
-						$languageIterator = LanguageTable::getList(array(
-							'select' => array('ID'),
-							'filter' => array('=ID' => 'by', '=ACTIVE' => 'Y')
-						));
-						if ($existLanguage = $languageIterator->fetch())
-							$currencySetID = $existLanguage['ID'];
-						unset($existLanguage, $languageIterator);
-					}
-
-					if ($currencySetID == '')
-					{
-						$languageIterator = LanguageTable::getList(array(
-							'select' => array('ID'),
-							'filter' => array('=ID' => 'ua', '=ACTIVE' => 'Y')
-						));
-						if ($existLanguage = $languageIterator->fetch())
-							$currencySetID = $existLanguage['ID'];
-						unset($existLanguage, $languageIterator);
-					}
+					while ($language = $languageIterator->fetch())
+						$languageList[$language['ID']] = $language['ID'];
+					unset($language, $languageIterator);
+					if (isset($languageList['kz']))
+						$currencySetID = 'kz';
+					elseif (isset($languageList['by']))
+						$currencySetID = 'by';
+					elseif (isset($languageList['ua']))
+						$currencySetID = 'ua';
+					unset($languageList);
 				}
 				if ($currencySetID == '')
 					$currencySetID = $languageID;
@@ -242,10 +228,10 @@ class currency extends CModule
 		{
 			case 'by':
 				$addCurrency = array(
-					array('CURRENCY' => 'BYR', 'NUMCODE' => '974', 'AMOUNT' => 1, 'AMOUNT_CNT' => 1, 'SORT' => 100, 'BASE' => 'Y', 'CURRENT_BASE_RATE' => 1),
-					array('CURRENCY' => 'RUB', 'NUMCODE' => '643', 'AMOUNT' => 283.7, 'AMOUNT_CNT' => 1, 'SORT' => 200, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 283.7),
-					array('CURRENCY' => 'USD', 'NUMCODE' => '840', 'AMOUNT' => 21683, 'AMOUNT_CNT' => 1, 'SORT' => 300, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 21683),
-					array('CURRENCY' => 'EUR', 'NUMCODE' => '978', 'AMOUNT' => 24091, 'AMOUNT_CNT' => 1, 'SORT' => 400, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 24091)
+					array('CURRENCY' => 'BYN', 'NUMCODE' => '933', 'AMOUNT' => 1, 'AMOUNT_CNT' => 1, 'SORT' => 100, 'BASE' => 'Y', 'CURRENT_BASE_RATE' => 1),
+					array('CURRENCY' => 'RUB', 'NUMCODE' => '643', 'AMOUNT' => 0.31, 'AMOUNT_CNT' => 1, 'SORT' => 200, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 0.31),
+					array('CURRENCY' => 'USD', 'NUMCODE' => '840', 'AMOUNT' => 2.00, 'AMOUNT_CNT' => 1, 'SORT' => 300, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 2.00),
+					array('CURRENCY' => 'EUR', 'NUMCODE' => '978', 'AMOUNT' => 2.22, 'AMOUNT_CNT' => 1, 'SORT' => 400, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 2.22)
 				);
 				break;
 			case 'kz':
@@ -267,10 +253,10 @@ class currency extends CModule
 			case 'ru':
 				$addCurrency = array(
 					array('CURRENCY' => 'RUB', 'NUMCODE' => '643', 'AMOUNT' => 1, 'AMOUNT_CNT' => 1, 'SORT' => 100, 'BASE' => 'Y', 'CURRENT_BASE_RATE' => 1),
-					array('CURRENCY' => 'USD', 'NUMCODE' => '840', 'AMOUNT' => 64.36, 'AMOUNT_CNT' => 1, 'SORT' => 200, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 64.36),
-					array('CURRENCY' => 'EUR', 'NUMCODE' => '978', 'AMOUNT' => 70.60, 'AMOUNT_CNT' => 1, 'SORT' => 300, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 70.60),
-					array('CURRENCY' => 'UAH', 'NUMCODE' => '980', 'AMOUNT' => 27.69, 'AMOUNT_CNT' => 10, 'SORT' => 400, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 2.769),
-					array('CURRENCY' => 'BYR', 'NUMCODE' => '974', 'AMOUNT' => 36.90, 'AMOUNT_CNT' => 10000, 'SORT' => 500, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 0.00369)
+					array('CURRENCY' => 'USD', 'NUMCODE' => '840', 'AMOUNT' => 64.81, 'AMOUNT_CNT' => 1, 'SORT' => 200, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 64.81),
+					array('CURRENCY' => 'EUR', 'NUMCODE' => '978', 'AMOUNT' => 71.71, 'AMOUNT_CNT' => 1, 'SORT' => 300, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 71.71),
+					array('CURRENCY' => 'UAH', 'NUMCODE' => '980', 'AMOUNT' => 26.04, 'AMOUNT_CNT' => 10, 'SORT' => 400, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 2.604),
+					array('CURRENCY' => 'BYN', 'NUMCODE' => '933', 'AMOUNT' => 32.34, 'AMOUNT_CNT' => 1, 'SORT' => 500, 'BASE' => 'N', 'CURRENT_BASE_RATE' => 32.34)
 				);
 				break;
 			case 'de':

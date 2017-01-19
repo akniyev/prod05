@@ -136,6 +136,11 @@ abstract class Field
 		$this->entity = $entity;
 	}
 
+	public function resetEntity()
+	{
+		$this->entity = null;
+	}
+
 	/**
 	 * @param        $value
 	 * @param        $primary
@@ -404,6 +409,11 @@ abstract class Field
 	public function getName()
 	{
 		return $this->name;
+	}
+
+	public function setName($name)
+	{
+		$this->name = $name;
 	}
 
 	public function getTitle()

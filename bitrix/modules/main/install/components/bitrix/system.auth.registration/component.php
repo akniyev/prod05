@@ -10,9 +10,9 @@
  * Bitrix vars
  * @global CMain $APPLICATION
  * @global CUserTypeManager $USER_FIELD_MANAGER
- * @param array $arParams
- * @param array $arResult
- * @param CBitrixComponent $this
+ * @var array $arParams
+ * @var array $arResult
+ * @var CBitrixComponent $this
  */
 
 if (!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true)die();
@@ -106,9 +106,9 @@ elseif($arParams["AUTH_RESULT"] <> '')
 
 $arResult["USER_EMAIL"] = htmlspecialcharsbx(strlen($_REQUEST["sf_EMAIL"])>0 ? $_REQUEST["sf_EMAIL"] : $_REQUEST["USER_EMAIL"]);
 
-$arResult["USE_CAPTCHA"] = COption::GetOptionString("main", "captcha_registration", "N") == "Y" ? "Y" : "N";
+$arResult["USE_CAPTCHA"] = (COption::GetOptionString("main", "captcha_registration", "N") == "Y"? "Y" : "N");
 
-if ($arResult["USE_CAPTCHA"])
+if ($arResult["USE_CAPTCHA"] == "Y")
 {
 	$arResult["CAPTCHA_CODE"] = htmlspecialcharsbx($APPLICATION->CaptchaGetCode());
 }

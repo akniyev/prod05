@@ -7,9 +7,6 @@ class CPullWatch extends CAllPullWatch
 	public static function CheckExpireAgent()
 	{
 		global $DB, $pPERIOD;
-		if (!CPullOptions::ModuleEnable())
-			return "CPullWatch::CheckExpireAgent();";
-
 		$pPERIOD = 1200;
 
 		$strSql = "SELECT count(ID) CNT FROM b_pull_watch WHERE DATE_CREATE < DATE_SUB(NOW(), INTERVAL 32 MINUTE)";

@@ -32,6 +32,7 @@ use Bitrix\Main\Loader,
 				"SEF_RULE" => $arResult["FOLDER"].$arResult["URL_TEMPLATES"]["smart_filter"],
 				"SMART_FILTER_PATH" => $arResult["VARIABLES"]["SMART_FILTER_PATH"],
 				"PAGER_PARAMS_NAME" => $arParams["PAGER_PARAMS_NAME"],
+				"INSTANT_RELOAD" => $arParams["INSTANT_RELOAD"],
 			),
 			$component,
 			array('HIDE_ICONS' => 'Y')

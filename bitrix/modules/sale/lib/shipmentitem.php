@@ -12,12 +12,15 @@ class ShipmentItem
 	extends Internals\CollectableEntity
 {
 	/** @var BasketItem */
-	private $basketItem;
+	protected $basketItem;
 
-	private $shipmentItemStoreCollection = array();
+	/** @var  ShipmentItemStoreCollection */
+	protected $shipmentItemStoreCollection;
 
-	private static $errors = array();
+	/** @var array */
+	protected static $errors = array();
 
+	/** @var array */
 	protected static $mapFields = array();
 
 	/**
@@ -282,6 +285,18 @@ class ShipmentItem
 			throw new Main\ObjectNotFoundException('Entity "Shipment" not found');
 		}
 
+		/** @var ShipmentCollection $shipmentCollection */
+		if (!$shipmentCollection = $shipment->getCollection())
+		{
+			throw new Main\ObjectNotFoundException('Entity "ShipmentCollection" not found');
+		}
+
+		/** @var Order $order */
+		if (!$order = $shipmentCollection->getOrder())
+		{
+			throw new Main\ObjectNotFoundException('Entity "Order" not found');
+		}
+
 		if ($shipment->isShipped())
 		{
 			$result = new Result();
@@ -291,17 +306,20 @@ class ShipmentItem
 
 		if ($name == "QUANTITY")
 		{
-
 			/** @var BasketItem $basketItem */
 			if (!$basketItem = $this->getBasketItem())
 			{
-				throw new Main\ObjectNotFoundException('Entity "BasketItem" not found');
+				if ($value != 0)
+				{
+					throw new Main\ObjectNotFoundException('Entity "BasketItem" not found');
+				}
+				
 			}
 
 
 			$deltaQuantity = $value - $oldValue;
 
-			if ($deltaQuantity > 0)
+			if ($basketItem && $deltaQuantity > 0)
 			{
 
 				/** @var ShipmentCollection $shipmentCollection */
@@ -356,7 +374,7 @@ class ShipmentItem
 				}
 			}
 
-			if ($basketItem->isBundleParent())
+			if ($basketItem && $basketItem->isBundleParent())
 			{
 				$r = parent::onFieldModify($name, $oldValue, $value);
 				if (!$r->isSuccess())
@@ -401,7 +419,7 @@ class ShipmentItem
 				return $result;
 			}
 
-			if (!$basketItem->isBundleChild())
+			if ($basketItem && !$basketItem->isBundleChild())
 			{
 				if (!$this->isMathActionOnly())
 				{
@@ -419,26 +437,18 @@ class ShipmentItem
 				throw new Main\ObjectNotFoundException('Entity "ShipmentItemStoreCollection" not found');
 			}
 
-			/** @var Shipment $shipment */
-			if (!$shipment = $shipmentItemCollection->getShipment())
-			{
-				throw new Main\ObjectNotFoundException('Entity "Shipment" not found');
-			}
-
-			/** @var ShipmentCollection $shipmentCollection */
-			if (!$shipmentCollection = $shipment->getCollection())
-			{
-				throw new Main\ObjectNotFoundException('Entity "ShipmentCollection" not found');
-			}
-
-			/** @var Order $order */
-			if (!$order = $shipmentCollection->getOrder())
-			{
-				throw new Main\ObjectNotFoundException('Entity "Order" not found');
-			}
+			
 
 			if ($value == 0)
 			{
+				$basketItemName = Loc::getMessage("SALE_SHIPMENT_ITEM_BASKET_WRONG_BASKET_ITEM");
+				$basketItemProductId = '1';
+
+				if ($basketItem)
+				{
+					$basketItemName = $basketItem->getField('NAME');
+					$basketItemProductId = $basketItem->getProductId();
+				}
 
 				OrderHistory::addAction(
 					'SHIPMENT',
@@ -447,8 +457,8 @@ class ShipmentItem
 					$shipment->getId(),
 					null,
 					array(
-						'NAME' => $basketItem->getField('NAME'),
-						'PRODUCT_ID' => $basketItem->getProductId(),
+						'NAME' => $basketItemName,
+						'PRODUCT_ID' => $basketItemProductId,
 					)
 				);
 
@@ -478,8 +488,12 @@ class ShipmentItem
 				}
 			}
 
-
+			if (!$basketItem)
+			{
+				return $result;
+			}
 		}
+
 
 		return parent::onFieldModify($name, $oldValue, $value);
 	}
@@ -528,7 +542,7 @@ class ShipmentItem
 			return $basketItem->getBasketCode();
 		}
 
-		throw new Main\ObjectNotFoundException('Entity basketItem not found');
+		return null;
 	}
 
 	/**
@@ -632,8 +646,13 @@ class ShipmentItem
 		else
 		{
 			$fields['ORDER_DELIVERY_ID'] = $this->getParentShipmentId();
+			$this->setFieldNoDemand('ORDER_DELIVERY_ID', $fields['ORDER_DELIVERY_ID']);
+
 			$fields['DATE_INSERT'] = new Main\Type\DateTime();
+			$this->setFieldNoDemand('DATE_INSERT', $fields['DATE_INSERT']);
+
 			$fields["BASKET_ID"] = $this->basketItem->getId();
+			$this->setFieldNoDemand('BASKET_ID', $fields['BASKET_ID']);
 
 			if (intval($fields['BASKET_ID']) <= 0)
 			{
@@ -667,6 +686,7 @@ class ShipmentItem
 			if (!isset($fields['RESERVED_QUANTITY']))
 			{
 				$fields['RESERVED_QUANTITY'] = $this->getReservedQuantity() === null ? 0 : $this->getReservedQuantity();
+				$this->setFieldNoDemand('RESERVED_QUANTITY', $fields['RESERVED_QUANTITY']);
 			}
 
 			$r = Internals\ShipmentItemTable::add($fields);
@@ -770,21 +790,39 @@ class ShipmentItem
 	}
 
 	/**
-	 * @return bool
+	 * @return Internals\CollectableEntity|bool
+	 * @throws Main\ObjectNotFoundException
 	 */
 	protected function loadBasketItem()
 	{
 		/** @var ShipmentItemCollection $collection */
 		$collection = $this->getCollection();
-		$shipment = $collection->getShipment();
+
+		/** @var Shipment $shipment */
+		if (!$shipment = $collection->getShipment())
+		{
+			throw new Main\ObjectNotFoundException('Entity "Shipment" not found');
+		}
 
 		/** @var ShipmentCollection $shipmentCollection */
-		$shipmentCollection = $shipment->getCollection();
-		$order = $shipmentCollection->getOrder();
+		if (!$shipmentCollection = $shipment->getCollection())
+		{
+			throw new Main\ObjectNotFoundException('Entity "ShipmentCollection" not found');
+		}
 
-		$basketCollection = $order->getBasket();
+		/** @var Order $order */
+		if (!$order = $shipmentCollection->getOrder())
+		{
+			throw new Main\ObjectNotFoundException('Entity "Order" not found');
+		}
 
-		return $basketCollection->getItemById($this->getBasketId());
+		/** @var Basket $basket */
+		if (!$basket = $order->getBasket())
+		{
+			throw new Main\ObjectNotFoundException('Entity "Basket" not found');
+		}
+
+		return $basket->getItemById($this->getBasketId());
 	}
 
 	/**
@@ -1015,5 +1053,122 @@ class ShipmentItem
 		return Provider::tryUnreserveShipmentItem($this);
 	}
 
+
+	/**
+	 * @return Result
+	 * @throws Main\ObjectNotFoundException
+	 */
+	public function verify()
+	{
+		$result = new Result();
+
+		/** @var ShipmentItemCollection $shipmentItemCollection */
+		if (!$shipmentItemCollection = $this->getCollection())
+		{
+			throw new Main\ObjectNotFoundException('Entity "ShipmentItemCollection" not found');
+		}
+
+		/** @var Shipment $shipment */
+		if (!$shipment = $shipmentItemCollection->getShipment())
+		{
+			throw new Main\ObjectNotFoundException('Entity "Shipment" not found');
+		}
+
+		if (!$basketItem = $this->getBasketItem())
+		{
+			$result->addError( new ResultError(
+			   Loc::getMessage('SALE_SHIPMENT_ITEM_BASKET_ITEM_NOT_FOUND',  array(
+				   '#BASKET_ITEM_ID#' => $this->getBasketId(),
+				   '#SHIPMENT_ID#' => $shipment->getId(),
+				   '#SHIPMENT_ITEM_ID#' => $this->getId(),
+			   )),
+				'SALE_SHIPMENT_ITEM_BASKET_ITEM_NOT_FOUND')
+			);
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @param array $filter
+	 *
+	 * @return Main\DB\Result
+	 * @throws Main\ArgumentException
+	 */
+	public static function getList(array $filter)
+	{
+		return Internals\ShipmentItemTable::getList($filter);
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return ShipmentItem
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$shipmentItemClone = clone $this;
+		$shipmentItemClone->isClone = true;
+
+		/** @var Internals\Fields $fields */
+		if ($fields = $this->fields)
+		{
+			$shipmentItemClone->fields = $fields->createClone($cloneEntity);
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $shipmentItemClone;
+		}
+
+		/** @var BasketItem $basketItem */
+		if ($basketItem = $this->getBasketItem())
+		{
+			if (!$cloneEntity->contains($basketItem))
+			{
+				$cloneEntity[$basketItem] = $basketItem->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($basketItem))
+			{
+				$shipmentItemClone->basketItem = $cloneEntity[$basketItem];
+			}
+		}
+
+		/** @var ShipmentItemStoreCollection $shipmentItemStoreCollection */
+		if ($shipmentItemStoreCollection = $this->getShipmentItemStoreCollection())
+		{
+			if (!$cloneEntity->contains($shipmentItemStoreCollection))
+			{
+				$cloneEntity[$shipmentItemStoreCollection] = $shipmentItemStoreCollection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($shipmentItemStoreCollection))
+			{
+				$shipmentItemClone->shipmentItemStoreCollection = $cloneEntity[$shipmentItemStoreCollection];
+			}
+		}
+
+		if ($collection = $this->getCollection())
+		{
+			if (!$cloneEntity->contains($collection))
+			{
+				$cloneEntity[$collection] = $collection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($collection))
+			{
+				$shipmentItemClone->collection = $cloneEntity[$collection];
+			}
+		}
+
+		return $shipmentItemClone;
+	}
 
 }

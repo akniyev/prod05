@@ -93,10 +93,24 @@ if (isset($filter_mail))
 	$arFilter["EMAIL"] = trim($filter_mail);
 
 if (isset($filter_phone))
-	$arFilter["PERSONAL_PHONE"] = trim($filter_phone);
+{
+	if (strpos($filter_phone, '%') === false)
+	{
+		$filter_phone = '%'. $filter_phone .'%';
+	}
+
+	$arFilter["~PERSONAL_PHONE"] = trim($filter_phone);
+}
 
 if (isset($filter_mobile))
-	$arFilter["PERSONAL_MOBILE"] = trim($filter_mobile);
+{
+	if (strpos($filter_mobile, '%') === false)
+	{
+		$filter_mobile = '%'. $filter_mobile .'%';
+	}
+	
+	$arFilter["~PERSONAL_MOBILE"] = trim($filter_mobile);
+}
 
 if (!empty($find_last_login_1))
 {

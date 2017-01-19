@@ -55,6 +55,8 @@ class Discount
 	protected $convertedOrder = null;
 	/** @var int */
 	protected $useMode = null;
+	/** @var bool */
+	protected $orderRefresh = false;
 	/** @var array */
 	protected $saleOptions = array();
 
@@ -110,6 +112,9 @@ class Discount
 	 * @var array
 	 */
 	protected $fullDiscountList = array();
+
+	/** @var bool  */
+	protected $isClone = false;
 
 	protected function __construct()
 	{
@@ -236,6 +241,54 @@ class Discount
 	}
 
 	/**
+	 * Clone entity.
+	 *
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity	Clone repository.
+	 *
+	 * @return Discount
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+			return $cloneEntity[$this];
+
+		$discountClone = clone $this;
+		$discountClone->isClone = true;
+
+		if (!$cloneEntity->contains($this))
+			$cloneEntity[$this] = $discountClone;
+
+		if ($this->isOrderExists())
+		{
+			if ($cloneEntity->contains($this->order))
+				$discountClone->order = $cloneEntity[$this->order];
+		}
+		elseif ($this->isBasketExist())
+		{
+			if ($cloneEntity->contains($this->basket))
+				$discountClone->basket = $cloneEntity[$this->basket];
+		}
+
+		if ($this->isShipmentExists())
+		{
+			if ($cloneEntity->contains($this->shipment))
+				$discountClone->shipment = $cloneEntity[$this->shipment];
+		}
+
+		return $discountClone;
+	}
+
+	/**
+	 * Return true if discount is cloned.
+	 *
+	 * @return bool
+	 */
+	public function isClone()
+	{
+		return $this->isClone;
+	}
+	/**
 	 * Return apply mode list.
 	 *
 	 * @param bool $extendedMode			Get mode list with names.
@@ -306,6 +359,29 @@ class Discount
 	}
 
 	/**
+	 * Set full refresh status from edit order form.
+	 *
+	 * @param bool $state		Refresh or not order.
+	 * @return void
+	 */
+	public function setOrderRefresh($state)
+	{
+		if ($state !== true && $state !== false)
+			return;
+		$this->orderRefresh = $state;
+	}
+
+	/**
+	 * Return full refresh status.
+	 *
+	 * @return bool
+	 */
+	public function isOrderRefresh()
+	{
+		return $this->orderRefresh;
+	}
+
+	/**
 	 * Return flag new order.
 	 *
 	 * @return bool
@@ -329,10 +405,11 @@ class Discount
 		$basketCurrency = (string)$this->getBasketCurrency($code);
 		if ($basketCurrency == '')
 			throw new Main\ArgumentNullException('basket item currency');
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection PhpInternalEntityUsedInspection */
 		$this->basketBasePrice[$code] = (
 			$currency == $basketCurrency
 			? $price
-			: roundEx(\CCurrencyRates::convertCurrency($price, $currency, $basketCurrency), SALE_VALUE_PRECISION)
+			: PriceMaths::roundPrecision(\CCurrencyRates::convertCurrency($price, $currency, $basketCurrency))
 		);
 		unset($basketCurrency);
 	}
@@ -354,10 +431,11 @@ class Discount
 			$basketCurrency = (string)$this->getBasketCurrency($code);
 			if ($basketCurrency == '')
 				throw new Main\ArgumentNullException('basket item currency');
+			/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection PhpInternalEntityUsedInspection */
 			$this->basketBasePrice[$code] = (
 				$basketItem['CURRENCY'] == $basketCurrency
 				? $basketItem['PRICE']
-				: roundEx(\CCurrencyRates::convertCurrency($basketItem['PRICE'], $basketItem['CURRENCY'], $basketCurrency), SALE_VALUE_PRECISION)
+				: PriceMaths::roundPrecision(\CCurrencyRates::convertCurrency($basketItem['PRICE'], $basketItem['CURRENCY'], $basketCurrency))
 			);
 			unset($basketCurrency);
 		}
@@ -471,16 +549,24 @@ class Discount
 		$this->setUseMode(self::USE_MODE_FULL);
 		if ($this->isOrderExists() && !$this->isOrderNew())
 		{
-			if ($this->isMixedBasket())
+			if ($this->isOrderRefresh())
+				$this->setUseMode(self::USE_MODE_FULL);
+			elseif ($this->isMixedBasket())
 				$this->setUseMode(self::USE_MODE_MIXED);
 			elseif ($this->getOrder()->getCalculateType() == Order::SALE_ORDER_CALC_TYPE_REFRESH)
 				$this->setUseMode(self::USE_MODE_FULL);
 			else
 				$this->setUseMode(self::USE_MODE_APPLY);
+			if ($this->isOrderRefresh())
+			{
+				$this->setApplyResult(array());
+				DiscountCouponsManager::useSavedCouponsForApply(true);
+			}
 		}
 
 		$this->orderData = null;
 		$orderResult = $this->loadOrderData();
+
 		if (!$orderResult->isSuccess())
 		{
 			$process = false;
@@ -532,7 +618,7 @@ class Discount
 	 */
 	public function setApplyResult($applyResult)
 	{
-		if (!empty($applyResult) && is_array($applyResult))
+		if (is_array($applyResult))
 			$this->applyResult = $applyResult;
 
 		if (!empty($this->applyResult['DISCOUNT_LIST']))
@@ -707,6 +793,8 @@ class Discount
 	protected function initInstanceData()
 	{
 		$this->orderData = null;
+		$this->isClone = false;
+		$this->entityResultCache = array();
 		$this->setNewOrder();
 		$this->fillEmptyDiscountResult();
 
@@ -892,6 +980,7 @@ class Discount
 				'ID' => $order->getId(),
 				'USER_ID' => $order->getUserId(),
 				'SITE_ID' => $order->getSiteId(),
+				'LID' => $order->getSiteId(), // compatibility only
 				'ORDER_PRICE' => $order->getPrice(),
 				'ORDER_WEIGHT' => $basket->getWeight(),
 				'CURRENCY' => $order->getCurrency(),
@@ -902,7 +991,8 @@ class Discount
 				'DELIVERY_ID' => 0,
 				'CUSTOM_PRICE_DELIVERY' => 'N',
 				'SHIPMENT_CODE' => 0,
-				'SHIPMENT_ID' => 0
+				'SHIPMENT_ID' => 0,
+				'ORDER_PROP' => array()
 			);
 			$paymentCollection = $order->getPaymentCollection();
 			/** @var Payment $payment */
@@ -919,6 +1009,23 @@ class Discount
 			unset($payment, $paymentCollection);
 			if (!isset($this->orderData['PAY_SYSTEM_ID']))
 				$this->orderData['PAY_SYSTEM_ID'] = 0;
+
+			/** @var \Bitrix\Sale\PropertyValueCollection $shipmentCollection */
+			$propertyCollection = $order->getPropertyCollection();
+			/** @var \Bitrix\Sale\PropertyValue $orderProperty */
+			foreach ($propertyCollection as $orderProperty)
+				$this->orderData['ORDER_PROP'][$orderProperty->getPropertyId()] = $orderProperty->getValue();
+			unset($orderProperty);
+			foreach (static::getOrderPropertyCodes() as $propertyCode => $attribute)
+			{
+				$this->orderData[$propertyCode] = '';
+				$orderProperty = $propertyCollection->getAttribute($attribute);
+				if ($orderProperty instanceof PropertyValue)
+					$this->orderData[$propertyCode] = $orderProperty->getValue();
+				unset($orderProperty);
+			}
+			unset($propertyCode, $attribute);
+			unset($propertyCollection);
 		}
 		else
 		{
@@ -1302,8 +1409,9 @@ class Discount
 				if (!isset($basketData['BASE_PRICE']))
 					continue;
 
-				$this->orderData['BASKET_ITEMS'][$basketCode]['BASE_PRICE'] = (float)$basketData['BASE_PRICE'];
-				$this->basketBasePrice[$basketCode] = (float)$basketData['BASE_PRICE'];
+				$basketData['BASE_PRICE'] = (float)$basketData['BASE_PRICE'];
+				$this->orderData['BASKET_ITEMS'][$basketCode]['BASE_PRICE'] = $basketData['BASE_PRICE'];
+				$this->basketBasePrice[$basketCode] = $basketData['BASE_PRICE'];
 			}
 			unset($basketCode, $basketData);
 		}
@@ -1365,6 +1473,8 @@ class Discount
 		}
 		unset($basketDiscountResult);
 
+		$this->roundFullBasketPrices();
+
 		$this->fillBasketLastDiscount();
 		$applyMode = self::getApplyMode();
 		if ($applyMode == self::APPLY_MODE_FULL_LAST || $applyMode == self::APPLY_MODE_FULL_DISABLE)
@@ -1387,7 +1497,11 @@ class Discount
 		$this->loadDiscountList();
 		$executeResult = $this->executeDiscountList();
 		if (!$executeResult->isSuccess())
+		{
 			$result->addErrors($executeResult->getErrors());
+			unset($executeResult);
+			return $result;
+		}
 		unset($executeResult);
 
 		return $result;
@@ -1449,10 +1563,7 @@ class Discount
 				)
 			);
 
-			$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter] = array(
-				'BASKET' => array(),
-				'ORDER' => array()
-			);
+			$this->clearCurrentApplyBlock();
 
 			$couponsResult = $this->calculateApplyAdditionalCoupons();
 			if (!$couponsResult->isSuccess())
@@ -1520,10 +1631,7 @@ class Discount
 				)
 			);
 
-			$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter] = array(
-				'BASKET' => array(),
-				'ORDER' => array()
-			);
+			$this->clearCurrentApplyBlock();
 
 			$basketDiscountResult = $this->calculateFullBasketDiscount();
 			if (!$basketDiscountResult->isSuccess())
@@ -1533,6 +1641,8 @@ class Discount
 				return $result;
 			}
 			unset($basketDiscountResult);
+
+			$this->roundFullBasketPrices();
 
 			$couponsResult = $this->calculateApplyAdditionalCoupons();
 			if (!$couponsResult->isSuccess())
@@ -1623,17 +1733,20 @@ class Discount
 				));
 			}
 			unset($dataResult, $fields);
-			if (!empty($this->basketBasePrice))
+
+			$orderCurrency = $order->getCurrency();
+			foreach (array_keys($this->orderData['BASKET_ITEMS']) as $basketCode)
 			{
-				$orderCurrency = $order->getCurrency();
-				foreach ($this->basketBasePrice as $basketCode => $basePrice)
+				if (!isset($this->forwardBasketTable[$basketCode]))
+					continue;
+				$fields = array();
+				if (isset($this->basketBasePrice[$basketCode]))
 				{
-					if (!isset($this->forwardBasketTable[$basketCode]))
-						continue;
-					$fields = array(
-						'BASE_PRICE' => (string)$basePrice,
-						'BASE_PRICE_CURRENCY' => $orderCurrency
-					);
+					$fields['BASE_PRICE'] = (string)$this->basketBasePrice[$basketCode];
+					$fields['BASE_PRICE_CURRENCY'] = $orderCurrency;
+				}
+				if (!empty($fields))
+				{
 					Internals\OrderDiscountDataTable::saveBasketItemData(
 						$orderId,
 						$this->forwardBasketTable[$basketCode],
@@ -1641,8 +1754,10 @@ class Discount
 						false
 					);
 				}
-				unset($basketCode, $basePrice);
+				unset($fields);
 			}
+			unset($basketCode);
+			unset($orderCurrency);
 		}
 
 		if ($process)
@@ -1969,6 +2084,9 @@ class Discount
 		$ruleDescr = array();
 		$ruleIndex = 0;
 
+		$roundList = array();
+		$roundIndex = 0;
+
 		$applyBlock = &$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter];
 
 		if (!empty($applyBlock['BASKET']))
@@ -1999,6 +2117,7 @@ class Discount
 					$ruleIndex++;
 				}
 				unset($discount);
+				unset($basketId);
 			}
 			unset($basketId, $basketCode, $discountList);
 		}
@@ -2024,6 +2143,7 @@ class Discount
 							'APPLY_BLOCK_COUNTER' => $this->discountResultCounter,
 							'ACTION_BLOCK_LIST' => $applyData['ACTION_BLOCK_LIST']
 						);
+						unset($basketId);
 						$ruleDescr[$ruleIndex] = array(
 							'MODULE_ID' => $this->discountsCache[$orderDiscountId]['MODULE_ID'],
 							'ORDER_DISCOUNT_ID' => $orderDiscountId,
@@ -2057,6 +2177,27 @@ class Discount
 				}
 			}
 			unset($discount);
+		}
+
+		if (!empty($applyBlock['BASKET_ROUND']))
+		{
+			foreach ($applyBlock['BASKET_ROUND'] as $basketCode => $roundData)
+			{
+				$basketId = $this->forwardBasketTable[$basketCode];
+				$roundList[$roundIndex] = array(
+					'ORDER_ID' => $orderId,
+					'APPLY_BLOCK_COUNTER' => $this->discountResultCounter,
+					'ORDER_ROUND' => 'N',
+					'ENTITY_TYPE' => Internals\OrderRoundTable::ENTITY_TYPE_BASKET,
+					'ENTITY_ID' => $basketId,
+					'ENTITY_VALUE' => $basketId,
+					'APPLY' => $roundData['APPLY'],
+					'ROUND_RULE' => $roundData['ROUND_RULE']
+				);
+				$roundIndex++;
+				unset($basketId);
+			}
+			unset($roundData, $basketCode);
 		}
 
 		unset($applyBlock);
@@ -2095,6 +2236,26 @@ class Discount
 				unset($ruleResult);
 			}
 			unset($ruleRow);
+		}
+
+		if (!empty($roundList))
+		{
+			foreach ($roundList as $roundRow)
+			{
+				$roundResult = Internals\OrderRoundTable::add($roundRow);
+				if (!$roundResult->isSuccess())
+				{
+					$process = false;
+					$result->addError(new Main\Entity\EntityError(
+						Loc::getMessage('BX_SALE_DISCOUNT_ERR_SAVE_APPLY_RULES'),
+						self::ERROR_ID
+					));
+					unset($roundResult);
+					break;
+				}
+				unset($roundResult);
+			}
+			unset($roundRow);
 		}
 
 		unset($process);
@@ -2197,11 +2358,10 @@ class Discount
 
 		$applyBlock = &$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter]['BASKET'];
 
-		$basketCodeList = $this->getBasketCodes(true);
-		foreach ($basketCodeList as &$basketCode)
+		foreach ($this->getBasketCodes(true) as $basketCode)
 		{
 			if ($this->isOrderNew() && array_key_exists($basketCode, $applyBlock))
-				unset($this->$applyBlock[$basketCode]);
+				unset($applyBlock[$basketCode]);
 			if (empty($this->basketDiscountList[$basketCode]))
 				continue;
 
@@ -2296,7 +2456,7 @@ class Discount
 			}
 			unset($discount, $index);
 		}
-		unset($basketCode, $basketCodeList);
+		unset($basketCode);
 
 		unset($applyBlock);
 
@@ -2321,8 +2481,7 @@ class Discount
 
 		$applyBlock = &$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter]['BASKET'];
 
-		$basketCodeList = $this->getBasketCodes(false);
-		foreach ($basketCodeList as &$basketCode)
+		foreach ($this->getBasketCodes(false) as $basketCode)
 		{
 			if ($this->isCustomPriceByCode($basketCode))
 			{
@@ -2392,7 +2551,7 @@ class Discount
 			}
 			unset($index, $discount);
 		}
-		unset($basketCode, $basketCodeList);
+		unset($basketCode);
 
 		unset($applyBlock);
 
@@ -2417,6 +2576,8 @@ class Discount
 			return $result;
 		}
 		unset($basketDiscountResult);
+
+		$this->roundApplyBasketPrices();
 
 		if (!empty($this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter]['ORDER']))
 		{
@@ -2479,6 +2640,7 @@ class Discount
 			}
 			unset($discount, $indexDiscount, $currentList);
 		}
+
 		$this->fillEmptyCurrentStep();
 
 		return $result;
@@ -2861,6 +3023,65 @@ class Discount
 	}
 
 	/**
+	 * Round prices.
+	 *
+	 * @return void
+	 */
+	protected function roundFullBasketPrices()
+	{
+		foreach ($this->getBasketCodes(true) as $basketCode)
+		{
+			$roundResult = OrderDiscountManager::roundPrice(
+				$this->orderData['BASKET_ITEMS'][$basketCode],
+				array()
+			);
+			if (empty($roundResult) || !is_array($roundResult))
+				continue;
+			$this->orderData['BASKET_ITEMS'][$basketCode]['PRICE'] = $roundResult['PRICE'];
+			$this->orderData['BASKET_ITEMS'][$basketCode]['DISCOUNT_PRICE'] = $roundResult['DISCOUNT_PRICE'];
+
+			$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter]['BASKET_ROUND'][$basketCode] = array(
+				'APPLY' => 'Y',
+				'ROUND_RULE' => $roundResult['ROUND_RULE']
+			);
+
+			unset($roundResult);
+		}
+		unset($basketCode);
+	}
+
+	/**
+	 * Round prices.
+	 *
+	 * @return void
+	 */
+	protected function roundApplyBasketPrices()
+	{
+		if (empty($this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter]['BASKET_ROUND']))
+			return;
+
+		$roundBlock = &$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter]['BASKET_ROUND'];
+
+		foreach ($this->getBasketCodes(false) as $basketCode)
+		{
+			if (empty($roundBlock[$basketCode]))
+				continue;
+			if ($roundBlock[$basketCode]['APPLY'] != 'Y')
+				continue;
+			$roundResult = OrderDiscountManager::roundPrice(
+				$this->orderData['BASKET_ITEMS'][$basketCode],
+				$roundBlock[$basketCode]['ROUND_RULE']
+			);
+			if (empty($roundResult) || !is_array($roundResult))
+				continue;
+			$this->orderData['BASKET_ITEMS'][$basketCode]['PRICE'] = $roundResult['PRICE'];
+			$this->orderData['BASKET_ITEMS'][$basketCode]['DISCOUNT_PRICE'] = $roundResult['DISCOUNT_PRICE'];
+		}
+		unset($basketCode);
+		unset($roundBlock);
+	}
+
+	/**
 	 * Convert discount for saving in order.
 	 *
 	 * @param array $discount			Raw discount data.
@@ -3213,7 +3434,6 @@ class Discount
 		unset($discountApply, $couponApply);
 	}
 
-
 	/**
 	 * Fill prices in apply results.
 	 *
@@ -3222,12 +3442,13 @@ class Discount
 	protected function getApplyPrices()
 	{
 		$customPrice = isset($this->orderData['CUSTOM_PRICE_DELIVERY']) && $this->orderData['CUSTOM_PRICE_DELIVERY'] == 'Y';
+		/** @noinspection PhpInternalEntityUsedInspection */
 		$delivery = array(
 			'BASE_PRICE' => $this->orderData['BASE_PRICE_DELIVERY'],
 			'PRICE' => $this->orderData['PRICE_DELIVERY'],
 			'DISCOUNT' => (
 				!$customPrice
-				? roundEx($this->orderData['PRICE_DELIVERY_DIFF'], SALE_VALUE_PRECISION)
+				? PriceMaths::roundPrecision($this->orderData['PRICE_DELIVERY_DIFF'])
 				: 0
 			)
 		);
@@ -3236,7 +3457,7 @@ class Discount
 			if ($delivery['DISCOUNT'] > 0)
 				$delivery['PRICE'] = $delivery['BASE_PRICE'] - $delivery['DISCOUNT'];
 			else
-				$delivery['PRICE'] = roundEx($delivery['PRICE'], SALE_VALUE_PRECISION);
+				$delivery['PRICE'] = PriceMaths::roundPrecision($delivery['PRICE']);
 		}
 		unset($customPrice);
 
@@ -3249,14 +3470,14 @@ class Discount
 				$basket[$basketCode] = array(
 					'BASE_PRICE' => $basketItem['BASE_PRICE'],
 					'PRICE' => $basketItem['PRICE'],
-					'DISCOUNT' => (!$customPrice ? roundEx($basketItem['DISCOUNT_PRICE'], SALE_VALUE_PRECISION) : 0)
+					'DISCOUNT' => (!$customPrice ? PriceMaths::roundPrecision($basketItem['DISCOUNT_PRICE']) : 0)
 				);
 				if (!$customPrice)
 				{
 					if ($basket[$basketCode]['DISCOUNT'] > 0)
 						$basket[$basketCode]['PRICE'] = $basket[$basketCode]['BASE_PRICE'] - $basket[$basketCode]['DISCOUNT'];
 					else
-						$basket[$basketCode]['PRICE'] = roundEx($basket[$basketCode]['PRICE'], SALE_VALUE_PRECISION);
+						$basket[$basketCode]['PRICE'] = PriceMaths::roundPrecision($basket[$basketCode]['PRICE']);
 				}
 				unset($customPrice);
 			}
@@ -3533,7 +3754,11 @@ class Discount
 	 */
 	protected function isNewBasketItemByCode($code)
 	{
-		return (!isset($this->orderData['BASKET_ITEMS'][$code]['ID']) || $this->orderData['BASKET_ITEMS'][$code]['ID'] <= 0);
+		return (
+			$this->getUseMode() == self::USE_MODE_FULL
+			|| !isset($this->orderData['BASKET_ITEMS'][$code]['ID'])
+			|| $this->orderData['BASKET_ITEMS'][$code]['ID'] <= 0
+		);
 	}
 
 	/**
@@ -3544,7 +3769,10 @@ class Discount
 	 */
 	protected static function isNewBasketItem($item)
 	{
-		return (!isset($item['ID']) || $item['ID'] <= 0);
+		return (
+			!isset($item['ID'])
+			|| $item['ID'] <= 0
+		);
 	}
 
 	/**
@@ -3563,6 +3791,7 @@ class Discount
 			{
 				if (!$basketItem->isChanged())
 					continue;
+				/** @noinspection PhpInternalEntityUsedInspection */
 				if (in_array('PRODUCT_ID', $basketItem->getFields()->getChangedKeys()))
 				{
 					$result = true;
@@ -3588,6 +3817,7 @@ class Discount
 			$basketItem = $this->getBasket()->getItemByBasketCode($code);
 			if ($basketItem instanceof BasketItem)
 			{
+				/** @noinspection PhpInternalEntityUsedInspection */
 				if (in_array('PRODUCT_ID', $basketItem->getFields()->getChangedKeys()))
 					$result = true;
 			}
@@ -3687,19 +3917,15 @@ class Discount
 	 */
 	protected function fillEmptyDiscountResult()
 	{
+		$this->discountResultCounter = 0;
 		$this->discountResult = array(
-			'APPLY_BLOCKS' => array(
-				0 => array(
-					'BASKET' => array(),
-					'ORDER' => array()
-				)
-			),
+			'APPLY_BLOCKS' => array(),
 			'DISCOUNT_LIST' => array(),
 			'COUPON_LIST' => array(),
 			'DELIVERY_LIST' => array(),
 			'SHIPMENT_LIST' => array()
 		);
-		$this->discountResultCounter = 0;
+		$this->clearCurrentApplyBlock();
 	}
 
 	/**
@@ -3740,6 +3966,15 @@ class Discount
 		return $result;
 	}
 
+	/**
+	 * Internal. Fill current apply block empty data.
+	 *
+	 * @return void
+	 */
+	protected function clearCurrentApplyBlock()
+	{
+		$this->discountResult['APPLY_BLOCKS'][$this->discountResultCounter] = static::getEmptyApplyBlock();
+	}
 	/**
 	 * Internal. Clear current step data.
 	 *
@@ -3967,6 +4202,7 @@ class Discount
 	{
 		if (!array_key_exists('USER_ID', $this->orderData))
 			return;
+		/** @noinspection PhpMethodOrClassCallIsNotCaseSensitiveInspection */
 		$userGroups = \CUser::getUserGroup($this->orderData['USER_ID']);
 		Main\Type\Collection::normalizeArrayValuesByInt($userGroups);
 		$filter['@GROUP_ID'] = $userGroups;
@@ -4172,6 +4408,8 @@ class Discount
 	 */
 	protected function fillBasketLastDiscount()
 	{
+		if ($this->getUseMode() != self::USE_MODE_FULL)
+			return;
 		$applyMode = self::getApplyMode();
 		if ($applyMode == self::APPLY_MODE_ADD)
 			return;
@@ -4183,8 +4421,6 @@ class Discount
 			case self::APPLY_MODE_FULL_DISABLE:
 				foreach ($codeList as &$code)
 				{
-					if (!$this->isNewBasketItemByCode($code) && !$this->isBasketItemChanged($code))
-						continue;
 					if (isset($this->basketDiscountList[$code]) && !empty($this->basketDiscountList[$code]))
 						$this->orderData['BASKET_ITEMS'][$code]['LAST_DISCOUNT'] = 'Y';
 				}
@@ -4194,8 +4430,6 @@ class Discount
 			case self::APPLY_MODE_FULL_LAST:
 				foreach ($codeList as &$code)
 				{
-					if (!$this->isNewBasketItemByCode($code) && !$this->isBasketItemChanged($code))
-						continue;
 					if (!isset($this->basketDiscountList[$code]) || empty($this->basketDiscountList[$code]))
 						continue;
 					$lastDiscount = end($this->basketDiscountList[$code]);
@@ -4591,5 +4825,35 @@ class Discount
 	protected static function getInstanceIndexByFuser($fuser, $site)
 	{
 		return '0|'.$fuser.'|'.$site;
+	}
+
+	/**
+	 * Return order property codes for translate to order fields.
+	 *
+	 * @return array
+	 */
+	protected static function getOrderPropertyCodes()
+	{
+		return array(
+			'DELIVERY_LOCATION' => 'IS_LOCATION',
+			'USER_EMAIL' => 'IS_EMAIL',
+			'PAYER_NAME' => 'IS_PAYER',
+			'PROFILE_NAME' => 'IS_PROFILE_NAME',
+			'DELIVERY_LOCATION_ZIP' => 'IS_ZIP'
+		);
+	}
+
+	/**
+	 * Return empty apply block
+	 *
+	 * @return array
+	 */
+	protected static function getEmptyApplyBlock()
+	{
+		return array(
+			'BASKET' => array(),
+			'BASKET_ROUND' => array(),
+			'ORDER' => array()
+		);
 	}
 }

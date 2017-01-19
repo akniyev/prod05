@@ -2,6 +2,7 @@
 namespace Bitrix\Sale\Delivery\Restrictions;
 
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Sale\Internals\CollectableEntity;
 
 Loc::loadMessages(__FILE__);
 
@@ -59,7 +60,7 @@ class ByProductCategory extends Base
 		return $result;
 	}
 
-	public static function extractParams(\Bitrix\Sale\Shipment $shipment)
+	public static function extractParams(CollectableEntity $shipment)
 	{
 		if(!\Bitrix\Main\Loader::includeModule('iblock'))
 			return array();

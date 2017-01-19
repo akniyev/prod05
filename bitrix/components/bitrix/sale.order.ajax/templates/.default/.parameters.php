@@ -200,8 +200,15 @@ $arTemplateParameters = array(
 		"REFRESH" => "Y",
 		"PARENT" => "BASE"
 	),
+	"ALLOW_NEW_PROFILE" => array(
+		"NAME" => GetMessage("ALLOW_NEW_PROFILE"),
+		"TYPE" => "CHECKBOX",
+		"DEFAULT" => "N",
+		"HIDDEN" => $arCurrentValues['ALLOW_USER_PROFILES'] !== 'Y' ? 'Y' : 'N',
+		"PARENT" => "BASE"
+	),
 	"USE_YM_GOALS" => array(
-		"NAME" => GetMessage("USE_YM_GOALS"),
+		"NAME" => GetMessage("USE_YM_GOALS1"),
 		"TYPE" => "CHECKBOX",
 		"DEFAULT" => "N",
 		"REFRESH" => "Y",
@@ -303,16 +310,6 @@ if ($arCurrentValues['USE_YM_GOALS'] == 'Y')
 	);
 }
 
-if ($arCurrentValues['ALLOW_USER_PROFILES'] == 'Y')
-{
-	$arTemplateParameters["ALLOW_NEW_PROFILE"] = array(
-		"NAME" => GetMessage("ALLOW_NEW_PROFILE"),
-		"TYPE" => "CHECKBOX",
-		"DEFAULT" => "Y",
-		"PARENT" => "BASE"
-	);
-}
-
 if ($arCurrentValues['SHOW_MAP_IN_PROPS'] == 'Y')
 {
 	$arDelivery = array();
@@ -362,7 +359,7 @@ while ($arPerson = $dbPerson->GetNext())
 	if (!empty($arPers2Prop))
 	{
 		$arTemplateParameters["PROPS_FADE_LIST_".$arPerson["ID"]] =  array(
-			"NAME" => GetMessage("PROPS_FADE_LIST").' ('.$arPerson["NAME"].')',
+			"NAME" => GetMessage("PROPS_FADE_LIST").' ('.$arPerson["NAME"].')'.'['.$arPerson["LID"].']',
 			"TYPE" => "LIST",
 			"MULTIPLE" => "Y",
 			"VALUES" => $arPers2Prop,
@@ -595,6 +592,18 @@ $arTemplateParameters["USE_CUSTOM_ERROR_MESSAGES"] =  array(
 
 if ($arCurrentValues['USE_CUSTOM_ERROR_MESSAGES'] == 'Y')
 {
+	$arTemplateParameters["MESS_SUCCESS_PRELOAD_TEXT"] =  array(
+		"NAME" => GetMessage("SUCCESS_PRELOAD_TEXT"),
+		"TYPE" => "STRING",
+		"DEFAULT" => GetMessage("SUCCESS_PRELOAD_TEXT_DEFAULT"),
+		"PARENT" => "ERROR_MESSAGE_SETTINGS"
+	);
+	$arTemplateParameters["MESS_FAIL_PRELOAD_TEXT"] =  array(
+		"NAME" => GetMessage("FAIL_PRELOAD_TEXT"),
+		"TYPE" => "STRING",
+		"DEFAULT" => GetMessage("FAIL_PRELOAD_TEXT_DEFAULT"),
+		"PARENT" => "ERROR_MESSAGE_SETTINGS"
+	);
 	$arTemplateParameters["MESS_DELIVERY_CALC_ERROR_TITLE"] =  array(
 		"NAME" => GetMessage("DELIVERY_CALC_ERROR_TITLE"),
 		"TYPE" => "STRING",

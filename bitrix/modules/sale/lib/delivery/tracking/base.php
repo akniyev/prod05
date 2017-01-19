@@ -73,4 +73,13 @@ abstract class Base
 			$this->params[$paramKey]
 		);
 	}
+
+	/**
+	 * @param string $trackingNumber
+	 * @return string Url were we can see tracking information
+	 */
+	public function getTrackingUrl($trackingNumber = '')
+	{
+		return '';
+	}
 }

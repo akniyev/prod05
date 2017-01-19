@@ -43,4 +43,8 @@ $MESS["CM_CONTRACTORS"] = "Поставщики";
 $MESS["CM_STORE_DOCS"] = "Документы";
 $MESS["MEASURE"] = "Единицы измерения";
 $MESS["MEASURE_ALT"] = "Список единиц измерения";
+$MESS["PRICES_SECTION"] = "Цены";
+$MESS["PRICES_SECTION_TITLE"] = "Типы цен, округление, наценки";
+$MESS["PRICE_ROUND"] = "Округление";
+$MESS["PRICE_ROUND_TITLE"] = "Округление цен";
 ?>

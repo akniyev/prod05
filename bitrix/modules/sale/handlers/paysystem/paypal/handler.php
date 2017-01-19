@@ -10,6 +10,7 @@ use Bitrix\Sale\PaySystem;
 use Bitrix\Main\Application;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Web\HttpClient;
+use Bitrix\Sale\PriceMaths;
 
 Loc::loadMessages(__FILE__);
 
@@ -149,8 +150,12 @@ class PayPalHandler extends PaySystem\ServiceHandler implements PaySystem\IPrePa
 
 		$serviceResult->setPsData($fields);
 
-		$paymentSum = Payment::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
-		$payPalSum = Payment::roundByFormatCurrency($keys["mc_gross"], $payment->getField('CURRENCY'));
+		$paymentSum = PriceMaths::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
+
+		$payPalSum = (float)$keys["mc_gross"];
+		if ($keys["tax"])
+			$payPalSum -= (float)$keys["tax"];
+		$payPalSum = PriceMaths::roundByFormatCurrency($payPalSum, $payment->getField('CURRENCY'));
 
 		if ($paymentSum == $payPalSum
 			&& ToLower($keys["receiver_email"]) == ToLower($this->getBusinessValue($payment, "PAYPAL_BUSINESS"))
@@ -202,8 +207,12 @@ class PayPalHandler extends PaySystem\ServiceHandler implements PaySystem\IPrePa
 
 		$serviceResult->setPsData($fields);
 
-		$paymentSum = Payment::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
-		$payPalSum = Payment::roundByFormatCurrency($request->get("mc_gross"), $payment->getField('CURRENCY'));
+		$paymentSum = PriceMaths::roundByFormatCurrency($this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY'), $payment->getField('CURRENCY'));
+
+		$payPalSum = (float)$request->get("mc_gross");
+		if ($request->get('tax'))
+			$payPalSum -= (float)$request->get('tax');
+		$payPalSum = PriceMaths::roundByFormatCurrency($payPalSum, $payment->getField('CURRENCY'));
 
 		if ($paymentSum == $payPalSum
 			&& ToLower($request->get("receiver_email")) == ToLower($this->getBusinessValue($payment, "PAYPAL_BUSINESS"))
@@ -263,7 +272,7 @@ class PayPalHandler extends PaySystem\ServiceHandler implements PaySystem\IPrePa
 
 	/**
 	 * @param Payment $payment
-	 * @param Request $request
+	 * @param Request|null $request
 	 * @return PaySystem\ServiceResult
 	 */
 	public function initiatePay(Payment $payment, Request $request = null)

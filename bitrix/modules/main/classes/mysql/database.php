@@ -464,7 +464,12 @@ abstract class CDatabaseMysql extends CAllDatabase
 							$strInsert2 .= ", '".intval($value)."'";
 							break;
 						case "real":
-							$strInsert2 .= ", '".doubleval($value)."'";
+							$value = doubleval($value);
+							if(!is_finite($value))
+							{
+								$value = 0;
+							}
+							$strInsert2 .= ", '".$value."'";
 							break;
 						default:
 							$strInsert2 .= ", '".$this->ForSql($value)."'";
@@ -518,6 +523,10 @@ abstract class CDatabaseMysql extends CAllDatabase
 							break;
 						case "real":
 							$value = doubleval($value);
+							if(!is_finite($value))
+							{
+								$value = 0;
+							}
 							break;
 						case "datetime":
 						case "timestamp":
@@ -632,7 +641,7 @@ abstract class CDatabaseMysql extends CAllDatabase
 		return $rows;
 	}
 
-	function Add($tablename, $arFields, $arCLOBFields = Array(), $strFileDir="", $ignore_errors=false, $error_position="", $arOptions=array())
+	public function Add($tablename, $arFields, $arCLOBFields = Array(), $strFileDir="", $ignore_errors=false, $error_position="", $arOptions=array())
 	{
 		global $DB;
 
@@ -807,9 +816,13 @@ abstract class CDBResultMysql extends CAllDBResult
 		if($this->bNavStart || $this->bFromArray)
 		{
 			if(!is_array($this->arResult))
+			{
 				$res = false;
+			}
 			elseif($res = current($this->arResult))
+			{
 				next($this->arResult);
+			}
 		}
 		else
 		{

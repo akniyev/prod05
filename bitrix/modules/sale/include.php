@@ -161,6 +161,7 @@ CModule::AddAutoloadClasses(
 		'\Bitrix\Sale\Internals\Input\Manager' => 'lib/internals/input.php',
 		'\Bitrix\Sale\Internals\Input\Base'    => 'lib/internals/input.php',
 		'\Bitrix\Sale\Internals\Input\File'    => 'lib/internals/input.php',
+		'\Bitrix\Sale\Internals\Input\StringInput'    => 'lib/internals/input.php',
 
 		'\Bitrix\Sale\Internals\SiteCurrencyTable' => 'lib/internals/sitecurrency.php',
 
@@ -253,8 +254,8 @@ CModule::AddAutoloadClasses(
 		"\\Bitrix\\Sale\\Internals\\Fields" => "lib/internals/fields.php",
 		"\\Bitrix\\Sale\\Result" => "lib/result.php",
 		"\\Bitrix\\Sale\\ResultError" => "lib/result.php",
+		"\\Bitrix\\Sale\\ResultSerializable" => "lib/resultserializable.php",
 		"\\Bitrix\\Sale\\EventActions" => "lib/eventactions.php",
-
 
 		"\\Bitrix\\Sale\\Internals\\PaymentBase" => "lib/internals/paymentbase.php",
 		"\\Bitrix\\Sale\\BasketBase" => "lib/basketbase.php",
@@ -322,6 +323,10 @@ CModule::AddAutoloadClasses(
 		"\\Bitrix\\Sale\\Internals\\Pool" => "lib/internals/pool.php",
 		"\\Bitrix\\Sale\\Internals\\UserBudgetPool" => "lib/internals/userbudgetpool.php",
 		"\\Bitrix\\Sale\\Internals\\EventsPool" => "lib/internals/eventspool.php",
+		"\\Bitrix\\Sale\\Internals\\Events" => "lib/internals/events.php",
+
+		"\\Bitrix\\Sale\\PriceMaths" => "lib/pricemaths.php",
+		"\\Bitrix\\Sale\\BasketComponentHelper" => "lib/basketcomponenthelper.php",
 
 		"IPaymentOrder" => "lib/internals/paymentinterface.php",
 		"IShipmentOrder" => "lib/internals/shipmentinterface.php",
@@ -378,6 +383,7 @@ CModule::AddAutoloadClasses(
 		"Bitrix\\Sale\\Location\\Admin\\ExternalServiceHelper" => "lib/location/admin/externalservicehelper.php",
 		"Bitrix\\Sale\\Location\\Admin\\SearchHelper" => "lib/location/admin/searchhelper.php",
 
+
 		// util
 		"Bitrix\\Sale\\Location\\Util\\Process" => "lib/location/util/process.php",
 		"Bitrix\\Sale\\Location\\Util\\CSVReader" => "lib/location/util/csvreader.php",
@@ -404,6 +410,7 @@ CModule::AddAutoloadClasses(
 		"Bitrix\\Sale\\Delivery\\DeliveryLocationTable" => "lib/delivery/deliverylocation.php",
 		"Bitrix\\Sale\\Tax\\RateLocationTable" => "lib/tax/ratelocation.php",
 
+		'Bitrix\Sale\Location\Comparator' => 'lib/location/comparator.php',
 		////////////////////////////
 
 		"CSaleBasketFilter" => "general/sale_cond.php",
@@ -473,6 +480,7 @@ CModule::AddAutoloadClasses(
 		'\Bitrix\Sale\Internals\OrderDiscountDataTable' => 'lib/internals/orderdiscount.php',
 		'\Bitrix\sale\Internals\OrderCouponsTable' => 'lib/internals/orderdiscount.php',
 		'\Bitrix\sale\Internals\OrderModulesTable' => 'lib/internals/orderdiscount.php',
+		'\Bitrix\sale\Internals\OrderRoundTable' => 'lib/internals/orderround.php',
 		'\Bitrix\sale\Internals\OrderRulesTable' => 'lib/internals/orderdiscount.php',
 		'\Bitrix\Sale\Internals\OrderRulesDescrTable' => 'lib/internals/orderdiscount.php',
 		'\Bitrix\Sale\Internals\AccountNumberGenerator' => 'lib/internals/accountnumber.php',
@@ -480,11 +488,15 @@ CModule::AddAutoloadClasses(
 		'\Bitrix\Sale\DiscountCouponsManager' => 'lib/discountcoupon.php',
 		'\Bitrix\Sale\OrderDiscountManager' => 'lib/orderdiscount.php',
 
+		'\Bitrix\Sale\Services\Base\RestClient' => 'lib/services/base/restclient.php',
 		'\Bitrix\Sale\PaySystem\Service' => 'lib/paysystem/service.php',
 		'\Bitrix\Sale\PaySystem\Manager' => 'lib/paysystem/manager.php',
 		'\Bitrix\Sale\PaySystem\BaseServiceHandler' => 'lib/paysystem/baseservicehandler.php',
 		'\Bitrix\Sale\PaySystem\ServiceHandler' => 'lib/paysystem/servicehandler.php',
 		'\Bitrix\Sale\PaySystem\IRefund' => 'lib/paysystem/irefund.php',
+		'\Bitrix\Sale\PaySystem\IRequested' => 'lib/paysystem/irequested.php',
+		'\Bitrix\Sale\PaySystem\IRefundExtended' => 'lib/paysystem/irefundextended.php',
+		'\Bitrix\Sale\PaySystem\Cert' => 'lib/paysystem/cert.php',
 		'\Bitrix\Sale\PaySystem\IPayable' => 'lib/paysystem/ipayable.php',
 		'\Bitrix\Sale\PaySystem\ICheckable' => 'lib/paysystem/icheckable.php',
 		'\Bitrix\Sale\PaySystem\IPrePayable' => 'lib/paysystem/iprepayable.php',
@@ -494,8 +506,13 @@ CModule::AddAutoloadClasses(
 		'\Bitrix\Sale\Services\PaySystem\Restrictions\Manager' => 'lib/services/paysystem/restrictions/manager.php',
 		'\Bitrix\Sale\Services\Base\Restriction' => 'lib/services/base/restriction.php',
 		'\Bitrix\Sale\Services\Base\RestrictionManager' => 'lib/services/base/restrictionmanager.php',
+		'\Bitrix\sale\Internals\YandexSettingsTable' => 'lib/internals/yandexsettings.php',
 
 		'\Bitrix\Sale\Notify' => 'lib/notify.php',
+
+		'CAdminSaleList' => 'general/admin_lib.php',
+		'Bitrix\Sale\Helpers\Admin\SkuProps' => 'lib/helpers/admin/skuprops.php',
+		'Bitrix\Sale\Helpers\Admin\Product' => 'lib/helpers/admin/product.php'
 	)
 );
 
@@ -840,13 +857,27 @@ function getRatio($arBasketItems)
 {
 	if (Loader::includeModule('catalog'))
 	{
+		static $cacheRatio = array();
 		$map = array();
 		$arElementId = array();
 		foreach ($arBasketItems as $key => $arItem)
 		{
-			$arElementId[$arItem["PRODUCT_ID"]] = $arItem["PRODUCT_ID"];
+			$hash = md5((!empty($arItem['PRODUCT_PROVIDER_CLASS']) ? $arItem['PRODUCT_PROVIDER_CLASS']: "")."|".(!empty($arItem['MODULE']) ? $arItem['MODULE']: "")."|".$arItem["PRODUCT_ID"]);
+
+			if (array_key_exists($hash, $cacheRatio))
+			{
+				$arBasketItems[$key]["MEASURE_RATIO"] = $cacheRatio[$hash];
+			}
+			else
+			{
+				$arElementId[$arItem["PRODUCT_ID"]] = $arItem["PRODUCT_ID"];
+			}
+
 			if (!isset($map[$arItem["PRODUCT_ID"]]))
+			{
 				$map[$arItem["PRODUCT_ID"]] = array();
+			}
+
 			$map[$arItem["PRODUCT_ID"]][] = $key;
 		}
 
@@ -857,8 +888,17 @@ function getRatio($arBasketItems)
 			{
 				if (empty($map[$arRatio["PRODUCT_ID"]]))
 					continue;
+
 				foreach ($map[$arRatio["PRODUCT_ID"]] as $key)
+				{
 					$arBasketItems[$key]["MEASURE_RATIO"] = $arRatio["RATIO"];
+
+					$itemData = $arBasketItems[$key];
+
+					$hash = md5((!empty($itemData['PRODUCT_PROVIDER_CLASS']) ? $itemData['PRODUCT_PROVIDER_CLASS']: "")."|".(!empty($itemData['MODULE']) ? $itemData['MODULE']: "")."|".$itemData["PRODUCT_ID"]);
+					
+					$cacheRatio[$hash] = $arRatio["RATIO"];
+				}
 				unset($key);
 			}
 			unset($arRatio, $dbRatio);

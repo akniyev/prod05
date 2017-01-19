@@ -15,16 +15,16 @@ Loc::loadMessages(__FILE__);
 class PersonType extends Base\Restriction
 {
 	/**
-	 * @param $personTypeId
-	 * @param array $params
-	 * @param int $paymentId
+	 * @param $params
+	 * @param array $restrictionParams
+	 * @param int $serviceId
 	 * @return bool
 	 */
-	protected static function check($personTypeId, array $params, $paymentId = 0)
+	protected static function check($params, array $restrictionParams, $serviceId = 0)
 	{
-		if (is_array($params) && isset($params['PERSON_TYPE_ID']))
+		if (is_array($restrictionParams) && isset($restrictionParams['PERSON_TYPE_ID']))
 		{
-			return in_array($personTypeId, $params['PERSON_TYPE_ID']);
+			return in_array($params, $restrictionParams['PERSON_TYPE_ID']);
 		}
 
 		return true;
@@ -63,11 +63,11 @@ class PersonType extends Base\Restriction
 	}
 
 	/**
-	 * @param $paySystemId
+	 * @param $entityId
 	 * @return array
 	 * @throws \Bitrix\Main\ArgumentException
 	 */
-	public static function getParamsStructure($paySystemId = null)
+	public static function getParamsStructure($entityId = 0)
 	{
 		$personTypeList = array();
 

@@ -55,9 +55,10 @@ abstract class EntityCompatibility
 	}
 
 	/**
+	 * @internal
 	 * @return array
 	 */
-	protected static function getAliasFields()
+	public static function getAliasFields()
 	{
 		return array();
 	}
@@ -167,6 +168,7 @@ abstract class EntityCompatibility
 		$aliasFields = static::getAliasFields();
 		foreach($filter as $fieldName => $fieldValue)
 		{
+			$fieldName = ToUpper($fieldName);
 			$filterMatch = $this->query->explodeFilterKey($fieldName);
 			$fieldClearName = $filterMatch['alias'];
 
@@ -225,6 +227,7 @@ abstract class EntityCompatibility
 
 		foreach($select as $fieldName)
 		{
+			$fieldName = ToUpper($fieldName);
 			if (!in_array($fieldName, $this->getQueryAliasList()))
 			{
 				if (isset($aliasFields[$fieldName]))
@@ -578,8 +581,12 @@ abstract class EntityCompatibility
 		if (!($value instanceof DateTime)
 			&& !($value instanceof Date))
 		{
+			if ($value === null)
+				return null;
+
 			if (strval($value) == '')
 				return false;
+
 
 			$setValue = null;
 

@@ -7,7 +7,8 @@ Loc::loadMessages(__FILE__);
 
 if(!defined('B24NETWORK_URL'))
 {
-	define('B24NETWORK_URL', 'https://www.bitrix24.net');
+	$defaultValue = \Bitrix\Main\Config\Option::get('socialservices', 'network_url', 'https://www.bitrix24.net');
+	define('B24NETWORK_URL', $defaultValue);
 }
 
 class CSocServBitrix24Net extends CSocServAuth
@@ -345,6 +346,7 @@ class CBitrix24NetOAuthInterface
 	protected $code = false;
 	protected $access_token = false;
 	protected $accessTokenExpires = 0;
+	protected $lastAuth = null;
 	protected $refresh_token = '';
 	protected $scope = array(
 		'auth',
@@ -485,6 +487,11 @@ class CBitrix24NetOAuthInterface
 			"&checkword=".$checkword;
 	}
 
+	public function getLastAuth()
+	{
+		return $this->lastAuth;
+	}
+
 	public function GetAccessToken($redirect_uri = '')
 	{
 		if($this->code === false)
@@ -527,7 +534,14 @@ class CBitrix24NetOAuthInterface
 			'grant_type' => 'authorization_code',
 		)));
 
-		$arResult = Json::decode($result);
+		try
+		{
+			$arResult = Json::decode($result);
+		}
+		catch(\Bitrix\Main\ArgumentException $e)
+		{
+			$arResult = array("error" => "ERROR_RESPONSE", "error_description" => "Wrong response from Network");
+		}
 
 		if(isset($arResult["access_token"]) && $arResult["access_token"] <> '')
 		{
@@ -538,6 +552,8 @@ class CBitrix24NetOAuthInterface
 
 			$this->access_token = $arResult["access_token"];
 			$this->accessTokenExpires = time() + $arResult["expires_in"];
+
+			$this->lastAuth = $arResult;
 
 			return true;
 		}
@@ -568,7 +584,14 @@ class CBitrix24NetOAuthInterface
 			'grant_type' => 'refresh_token',
 		)));
 
-		$arResult = Json::decode($result);
+		try
+		{
+			$arResult = Json::decode($result);
+		}
+		catch(\Bitrix\Main\ArgumentException $e)
+		{
+			$arResult = array("error" => "ERROR_RESPONSE", "error_description" => "Wrong response from Network");
+		}
 
 		if(isset($arResult["access_token"]) && $arResult["access_token"] <> '')
 		{

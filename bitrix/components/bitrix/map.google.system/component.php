@@ -13,7 +13,7 @@ if (!defined('BX_GMAP_SCRIPT_LOADED'))
 	if ($arParams['DEV_MODE'] != 'Y')
 	{
 		$scheme = (CMain::IsHTTPS() ? "https" : "http");
-		$APPLICATION->AddHeadString('<script src="'.$scheme.'://maps.google.com/maps/api/js?sensor=false&language='.LANGUAGE_ID.'" charset="utf-8"></script>');
+		$APPLICATION->AddHeadString('<script src="'.$scheme.'://maps.google.com/maps/api/js?key='.$arParams['API_KEY'].'&language='.LANGUAGE_ID.'" charset="utf-8"></script>');
 
 		define('BX_GMAP_SCRIPT_LOADED', 1);
 	}

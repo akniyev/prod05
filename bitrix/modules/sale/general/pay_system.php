@@ -234,6 +234,12 @@ class CAllSalePaySystem
 
 	public static function GetList($arOrder = array("SORT" => "ASC", "NAME" => "ASC"), $arFilter = array(), $arGroupBy = false, $arNavStartParams = false, $arSelectFields = array())
 	{
+		if (array_key_exists("PSA_PERSON_TYPE_ID", $arFilter))
+		{
+			$arFilter['PERSON_TYPE_ID'] = $arFilter['PSA_PERSON_TYPE_ID'];
+			unset($arFilter["PSA_PERSON_TYPE_ID"]);
+		}
+
 		$salePaySystemFields = array('ID', 'NAME', 'ACTIVE', 'SORT', 'DESCRIPTION');
 		$ignoredFields = array('LID', 'CURRENCY', 'PERSON_TYPE_ID');
 
@@ -264,6 +270,12 @@ class CAllSalePaySystem
 
 		if (isset($arFilter['PERSON_TYPE_ID']))
 			$select = array_merge($select, array('PSA_ID' => 'ID', 'PSA_NAME', 'ACTION_FILE', 'RESULT_FILE', 'NEW_WINDOW', 'PERSON_TYPE_ID', 'PARAMS', 'TARIF', 'HAVE_PAYMENT', 'HAVE_ACTION', 'HAVE_RESULT', 'HAVE_PREPAY', 'HAVE_RESULT_RECEIVE', 'ENCODING', 'LOGOTIP'));
+
+		if (in_array('PARAMS', $select) && !array_key_exists('PSA_ID', $select))
+			$select['PSA_ID'] = 'ID';
+
+		if (in_array('PARAMS', $select) && !in_array('PERSON_TYPE_ID', $select))
+			$select[] = 'PERSON_TYPE_ID';
 
 		$order = array();
 		foreach ($arOrder as $key => $value)
@@ -318,6 +330,13 @@ class CAllSalePaySystem
 				$oldHandler = array_search($data['ACTION_FILE'], CSalePaySystemAction::getOldToNewHandlersMap());
 				if ($oldHandler !== false)
 					$data['ACTION_FILE'] = $oldHandler;
+			}
+
+			if (array_key_exists('PARAMS', $data))
+			{
+				$params = CSalePaySystemAction::getParamsByConsumer('PAYSYSTEM_'.$data['PSA_ID'], $data['PERSON_TYPE_ID']);
+				$params['BX_PAY_SYSTEM_ID'] = array('TYPE' => '', 'VALUE' => $data['PSA_ID']);
+				$data['PARAMS'] = serialize($params);
 			}
 
 			foreach ($data as $key => $value)

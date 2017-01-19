@@ -50,8 +50,13 @@ array(
 */
 function ArrayMultiply(&$arResult, $arTuple, $arTemp = array())
 {
+	global $csvFile, $DATA_FILE_NAME, $num_rows_writed;
 	if(count($arTuple) == 0)
-		$arResult[] = $arTemp;
+	{
+		//$arResult[] = $arTemp;
+		$csvFile->SaveFile($_SERVER["DOCUMENT_ROOT"].$DATA_FILE_NAME, $arTemp);
+		$num_rows_writed++;
+	}
 	else
 	{
 		$head = array_shift($arTuple);
@@ -363,12 +368,6 @@ if ($_SERVER['REQUEST_METHOD'] == "POST" && $STEP > 1 && check_bitrix_sessid())
 
 					ArrayMultiply($arResFields, $arTuple);
 				}
-
-				foreach($arResFields as $arTuple)
-				{
-					$csvFile->SaveFile($_SERVER["DOCUMENT_ROOT"].$DATA_FILE_NAME, $arTuple);
-					$num_rows_writed++;
-				}
 			}
 		}
 
@@ -380,13 +379,13 @@ if ($_SERVER['REQUEST_METHOD'] == "POST" && $STEP > 1 && check_bitrix_sessid())
 <div id="result">
 	<div style="text-align: center; margin: 20px;">
 <?echo GetMessage("IBLOCK_ADM_EXP_LINES_EXPORTED", array("#LINES#" => "<b>".intval($num_rows_writed)."</b>")) ?><br />
-<?echo GetMessage("IBLOCK_ADM_EXP_DOWNLOAD_RESULT", array("#HREF#" => "<a href=\"".htmlspecialcharsbx($DATA_FILE_NAME)."\">".htmlspecialcharsex($DATA_FILE_NAME)."</a>")) ?>
+<?echo GetMessage("IBLOCK_ADM_EXP_DOWNLOAD_RESULT", array("#HREF#" => "<a href=\"".htmlspecialcharsbx($DATA_FILE_NAME)."\">".htmlspecialcharsbx($DATA_FILE_NAME)."</a>")) ?>
 	</div>
 </div>
 
 <script type="text/javaScript">
 top.BX.closeWait();
-var w = top.BX.WindowManager.Get()
+var w = top.BX.WindowManager.Get();
 w.SetTitle('<?=CUtil::JSEscape(GetMessage("IBLOCK_ADM_EXP_PAGE_TITLE")." ".$STEP)?>');
 w.SetHead('');
 w.ClearButtons();

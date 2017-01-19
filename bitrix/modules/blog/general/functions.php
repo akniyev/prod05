@@ -128,7 +128,6 @@ class blogTextParser extends CTextParser
 			AddEventHandler("main", "TextParserBefore", Array("blogTextParser", "ParserCut"));
 			AddEventHandler("main", "TextParserBefore", Array("blogTextParser", "ParserBlogImageBefore"));
 			AddEventHandler("main", "TextParserAfterTags", Array("blogTextParser", "ParserBlogImage"));
-			AddEventHandler("main", "TextParserAfterTags", Array("blogTextParser", "ParserUser"));
 			AddEventHandler("main", "TextParserAfterTags", Array("blogTextParser", "ParserTag"));
 			AddEventHandler("main", "TextParserAfter", Array("blogTextParser", "ParserCutAfter"));
 			AddEventHandler("main", "TextParserVideoConvert", Array("blogTextParser", "blogConvertVideo"));
@@ -185,60 +184,6 @@ class blogTextParser extends CTextParser
 		return $this->convert_blog_image('', $matches[2], '', 'mail');
 	}
 
-	function ParserUser(&$text, &$obj)
-	{
-		if($obj->allow["USER"] != "N" && is_callable(array($obj, 'convert_blog_user')))
-		{
-			$text = preg_replace_callback(
-				"/\[user\s*=\s*([^\]]*)\](.+?)\[\/user\]/is".BX_UTF_PCRE_MODIFIER,
-				array($obj, "convertBlogUser"),
-				$text
-			);
-		}
-	}
-
-	function convertBlogUser($matches)
-	{
-		static $arExtranetUser = false;
-		static $arEmailUser = false;
-
-		if ($arExtranetUser === false)
-		{
-			$arExtranetUser = \Bitrix\Socialnetwork\ComponentHelper::getExtranetUserIdList();
-		}
-
-		if ($arEmailUser === false)
-		{
-			$arEmailUser = \Bitrix\Socialnetwork\ComponentHelper::getEmailUserIdList();
-		}
-
-		$type = false;
-
-		if (
-			isset($matches[1])
-			&& intval($matches[1]) > 0
-		)
-		{
-			$userId = intval($matches[1]);
-			if (
-				!empty($arExtranetUser)
-				&& in_array($userId, $arExtranetUser)
-			)
-			{
-				$type = 'extranet';
-			}
-			elseif (
-				!empty($arEmailUser)
-				&& in_array($userId, $arEmailUser)
-			)
-			{
-				$type = 'email';
-			}
-		}
-
-		return $this->convert_blog_user($matches[1], $matches[2], $type);
-	}
-
 	function ParserTag(&$text, &$obj)
 	{
 		if($obj->allow["TAG"] != "N" && is_callable(array($obj, 'convert_blog_tag')))
@@ -256,63 +201,6 @@ class blogTextParser extends CTextParser
 		return $this->convert_blog_tag($matches[1]);
 	}
 
-	function convert_blog_user($userId = 0, $name = "", $type = false)
-	{
-		$userId = IntVal($userId);
-		if($userId <= 0)
-		{
-			return;
-		}
-		$anchor_id = RandString(8);
-
-		$pathToUser = $this->pathToUser;
-		switch($type)
-		{
-			case 'extranet':
-				$classAdditional = ' blog-p-user-name-extranet';
-				break;
-			case 'email':
-				$classAdditional = ' blog-p-user-name-email';
-				$pathToUser .= '';
-				if (
-					$this->pathToUserEntityType && strlen($this->pathToUserEntityType) > 0
-					&& intval($this->pathToUserEntityId) > 0
-				)
-				{
-					$pathToUser .= (strpos($pathToUser, '?') === false ? '?' : '&').'entityType='.$this->pathToUserEntityType.'&entityId='.intval($this->pathToUserEntityId);
-				}
-				break;
-			default:
-				$classAdditional = '';
-		}
-
-
-		if (
-			$this->pathToUserEntityType && strlen($this->pathToUserEntityType) > 0
-			&& intval($this->pathToUserEntityId) > 0
-		)
-		{
-			$ajaxPage = $this->ajaxPage.(strpos($pathToUser, '?') === false ? '?' : '&').'entityType='.$this->pathToUserEntityType.'&entityId='.intval($this->pathToUserEntityId);
-		}
-
-		return (
-			!$this->bPublic
-				? '<a class="blog-p-user-name'.$classAdditional.'" id="bp_'.$anchor_id.'" href="'.CComponentEngine::MakePathFromTemplate($pathToUser, array("user_id" => $userId)).'">'.
-				(
-					!$this->bMobile
-					&& $ajaxPage
-						? '<script type="text/javascript">BX.tooltip(\''.$userId.'\', "bp_'.$anchor_id.'", "'.CUtil::JSEscape($ajaxPage).'");</script>'
-						: ''
-				)
-				: ''
-		).
-		$name.
-		(
-			!$this->bPublic
-				? '</a>'
-				: ''
-		);
-	}
 	function convert_blog_tag($name = "")
 	{
 		if(strlen($name) <= 0)
@@ -322,69 +210,7 @@ class blogTextParser extends CTextParser
 
 	function convert4mail($text, $arImages = Array())
 	{
-		$text = Trim($text);
-		if (strlen($text)<=0) return "";
-		$arPattern = array();
-		$arReplace = array();
-
-		$arPattern[] = "/\[(code|quote)(.*?)\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\n>================== \\1 ===================\n";
-
-		$arPattern[] = "/\[\/(code|quote)(.*?)\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\n>===========================================\n";
-
-		$arPattern[] = "/\<WBR[\s\/]?\>/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "";
-
-		$arPattern[] = "/^(\r|\n)+?(.*)$/";
-		$arReplace[] = "\\2";
-
-		$arPattern[] = "/\[b\](.+?)\[\/b\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\\1";
-
-		$arPattern[] = "/\[i\](.+?)\[\/i\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\\1";
-
-		$arPattern[] = "/\[u\](.+?)\[\/u\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "_\\1_";
-
-		$arPattern[] = "/\[s\](.+?)\[\/s\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "_\\1_";
-
-		$arPattern[] = "/\[(\/?)(color|font|size|left|right|center)([^\]]*)\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "";
-
-		$arPattern[] = "/\[url\](\S+?)\[\/url\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "(URL: \\1)";
-
-		$arPattern[] = "/\[url\s*=\s*(\S+?)\s*\](.*?)\[\/url\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\\2 (URL: \\1)";
-
-		$arPattern[] = "/\[img([^\]]*)\](.+?)\[\/img\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "(IMAGE: \\2)";
-
-		$arPattern[] = "/\[video([^\]]*)\](.+?)\[\/video[\s]*\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "(VIDEO: \\2)";
-
-		$arPattern[] = "/\[(\/?)list\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\n";
-
-		$arPattern[] = "/\[table\](.*?)\[\/table\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\\1\n";
-		$arPattern[] = "/\[tr\](.*?)\[\/tr\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\\1\n";
-		$arPattern[] = "/\[td\](.*?)\[\/td\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\\1\t";
-
-		$arPattern[] = "/\[user([^\]]*)\](.+?)\[\/user\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "\\2";
-
-		$arPattern[] = "/\[DOCUMENT([^\]]*)\]/is".BX_UTF_PCRE_MODIFIER;
-		$arReplace[] = "";
-		
-
-		$text = preg_replace($arPattern, $arReplace, $text);
-		$text = str_replace("&shy;", "", $text);
+		$text = parent::convert4mail($text);
 
 		$serverName = ((defined("SITE_SERVER_NAME") && strlen(SITE_SERVER_NAME) > 0) ? SITE_SERVER_NAME : COption::GetOptionString("main", "server_name", ""));
 		if (strlen($serverName) <=0)
@@ -647,6 +473,45 @@ class blogTextParser extends CTextParser
 		return $text;
 	}
 
+	function render_user($fields)
+	{
+		$classAdditional = (!empty($fields['CLASS_ADDITIONAL']) ? $fields['CLASS_ADDITIONAL'] : '');
+		$pathToUser = (!empty($fields['PATH_TO_USER']) ? $fields['PATH_TO_USER'] : '');
+		$userId = (!empty($fields['USER_ID']) ? $fields['USER_ID'] : '');
+		$userName = (!empty($fields['USER_NAME']) ? $fields['USER_NAME'] : '');
+
+		$ajaxPage = $this->ajaxPage;
+
+		if (
+			$this->pathToUserEntityType && strlen($this->pathToUserEntityType) > 0
+			&& intval($this->pathToUserEntityId) > 0
+		)
+		{
+			$ajaxPage = $ajaxPage.(strpos($pathToUser, '?') === false ? '?' : '&').'entityType='.$this->pathToUserEntityType.'&entityId='.intval($this->pathToUserEntityId);
+		}
+
+		$anchorId = RandString(8);
+
+		$res = (
+			!$this->bPublic
+				? '<a class="blog-p-user-name'.$classAdditional.'" id="bp_'.$anchorId.'" href="'.CComponentEngine::MakePathFromTemplate($pathToUser, array("user_id" => $userId)).'">'.
+				(
+					!$this->bMobile
+					&& $ajaxPage
+						? '<script type="text/javascript">BX.tooltip(\''.$userId.'\', "bp_'.$anchorId.'", "'.CUtil::JSEscape($ajaxPage).'");</script>'
+						: ''
+				)
+				: ''
+			).
+			$userName.
+			(
+				!$this->bPublic
+					? '</a>'
+					: ''
+			);
+
+		return $res;
+	}
 }
 class CBlogTools
 {

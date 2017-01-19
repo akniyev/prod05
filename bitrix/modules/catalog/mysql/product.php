@@ -82,16 +82,14 @@ class CCatalogProduct extends CAllCatalogProduct
 		$boolSubscribe = false;
 		if (!empty($strUpdate))
 		{
-			if (isset($arFields["QUANTITY"]) && $arFields["QUANTITY"] > 0)
+			if(Catalog\SubscribeTable::checkPermissionSubscribe($arFields['SUBSCRIBE']))
 			{
-				if (!isset($arFields["OLD_QUANTITY"]))
+				$strQuery = 'select ID, QUANTITY, AVAILABLE from b_catalog_product where ID = '.$ID;
+				$rsProducts = $DB->Query($strQuery, false, "File: ".__FILE__."<br>Line: ".__LINE__);
+				if ($arProduct = $rsProducts->Fetch())
 				{
-					$strQuery = 'select ID, QUANTITY from b_catalog_product where ID = '.$ID;
-					$rsProducts = $DB->Query($strQuery, false, "File: ".__FILE__."<br>Line: ".__LINE__);
-					if ($arProduct = $rsProducts->Fetch())
-					{
-						$arFields["OLD_QUANTITY"] = doubleval($arProduct['QUANTITY']);
-					}
+					$arFields["OLD_QUANTITY"] = doubleval($arProduct['QUANTITY']);
+					Catalog\SubscribeTable::setOldProductAvailable($ID, $arProduct['AVAILABLE']);
 				}
 				if (isset($arFields["OLD_QUANTITY"]))
 				{

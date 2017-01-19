@@ -8,6 +8,7 @@ use Bitrix\Main\Type\DateTime;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Sale\PaySystem;
 use Bitrix\Sale\Payment;
+use Bitrix\Sale\PriceMaths;
 
 class LiqPayHandler extends PaySystem\ServiceHandler
 {
@@ -87,7 +88,7 @@ class LiqPayHandler extends PaySystem\ServiceHandler
 		$sum = $this->getValueByTag($this->getOperationXml($request), 'amount');
 		$paymentSum = $this->getBusinessValue($payment, 'PAYMENT_SHOULD_PAY');
 
-		return Payment::roundByFormatCurrency($paymentSum, $payment->getField('CURRENCY')) == Payment::roundByFormatCurrency($sum, $payment->getField('CURRENCY'));
+		return PriceMaths::roundByFormatCurrency($paymentSum, $payment->getField('CURRENCY')) == PriceMaths::roundByFormatCurrency($sum, $payment->getField('CURRENCY'));
 	}
 
 	/**
@@ -96,7 +97,8 @@ class LiqPayHandler extends PaySystem\ServiceHandler
 	 */
 	public function getPaymentIdFromRequest(Request $request)
 	{
-		return $this->getValueByTag($this->getOperationXml($request), 'payment_id');
+		$orderId = $this->getValueByTag($this->getOperationXml($request), 'order_id');
+		return str_replace("PAYMENT_", "", $orderId);
 	}
 
 	/**
@@ -130,13 +132,15 @@ class LiqPayHandler extends PaySystem\ServiceHandler
 			));
 		}
 
+		$status = $this->getValueByTag($this->getOperationXml($request), 'status');
+
 		if ($this->isCorrectHash($payment, $request))
 		{
-			if ($request->get('status') == 'success')
+			if ($status == 'success')
 			{
 				return $this->processNoticeAction($payment, $request);
 			}
-			else if (($request->get('status') == 'wait_secure'))
+			else if ($status == 'wait_secure')
 			{
 				return new PaySystem\ServiceResult();
 			}
@@ -171,7 +175,7 @@ class LiqPayHandler extends PaySystem\ServiceHandler
 		$statusMessage = 'status: '.$this->getValueByTag($response, 'status').'; ';
 		$statusMessage .= 'transaction_id: '.$this->getValueByTag($response, 'transaction_id').'; ';
 		$statusMessage .= 'pay_way: '.$this->getValueByTag($response, 'pay_way').'; ';
-		$statusMessage .= 'payment_id: '.$this->getValueByTag($response, 'payment_id').'; ';
+		$statusMessage .= 'payment_id: '.$this->getValueByTag($response, 'order_id').'; ';
 
 
 		$fields = array(

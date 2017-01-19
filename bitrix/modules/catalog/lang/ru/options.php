@@ -153,4 +153,7 @@ $MESS["CAT_PROC_REINDEX_SETS_AVAILABLE_ALERT"] = "Внимание! Выполн
 $MESS["CAT_PRODUCT_SETTINGS_STATUS_YES"] = "Да";
 $MESS["CAT_PRODUCT_SETTINGS_STATUS_NO"] = "Нет";
 $MESS["CAT_PRODUCT_SETTINGS_CHANGE"] = "Изменить";
+$MESS["CAT_PRODUCT_SUBSCRIBE_TITLE"] = "Подписка на товары";
+$MESS["CAT_PRODUCT_SUBSCRIBE_LABLE_ENABLE"] = "Разрешить подписку на товары";
+$MESS["CAT_PRODUCT_SUBSCRIBE_LABLE_REPEATED_NOTIFY"] = "Отправка дополнительного письма при повторном отсутствии товара";
 ?>

@@ -16,6 +16,7 @@ class CIBlockPropertySectionAutoComplete extends CIBlockPropertyElementAutoCompl
 			"GetPropertyFieldHtmlMulty" => array(__CLASS__,'GetPropertyFieldHtmlMulty'),
 			"GetAdminListViewHTML" => array(__CLASS__,"GetAdminListViewHTML"),
 			"GetPublicViewHTML" => array(__CLASS__, "GetPublicViewHTML"),
+			"GetPublicEditHTML" => array(__CLASS__, "GetPublicEditHTML"),
 			"GetAdminFilterHTML" => array(__CLASS__,'GetAdminFilterHTML'),
 			"GetSettingsHTML" => array(__CLASS__,'GetSettingsHTML'),
 			"PrepareSettings" => array(__CLASS__,'PrepareSettings'),
@@ -86,15 +87,23 @@ class CIBlockPropertySectionAutoComplete extends CIBlockPropertyElementAutoCompl
 		{
 			ob_start();
 			?><?
-			$strRandControlID = $strHTMLControlName["VALUE"].'_'.mt_rand(0, 10000);
 			$control_id = $APPLICATION->IncludeComponent(
 				"bitrix:main.lookup.input",
 				"iblockedit",
 				array(
-					"CONTROL_ID" => preg_replace("/[^a-zA-Z0-9_]/i", "x", $strRandControlID),
+					"CONTROL_ID" => preg_replace(
+						"/[^a-zA-Z0-9_]/i",
+						"x",
+						$strHTMLControlName["VALUE"].'_'.mt_rand(0, 10000)
+					),
 					"INPUT_NAME" => $strHTMLControlName["VALUE"],
 					"INPUT_NAME_STRING" => "inp_".$strHTMLControlName["VALUE"],
-					"INPUT_VALUE_STRING" => htmlspecialcharsback(static::GetValueForAutoComplete($arProperty,$arValue,$arSymbols['BAN_SYM'],$arSymbols['REP_SYM'])),
+					"INPUT_VALUE_STRING" => htmlspecialcharsback(static::GetValueForAutoComplete(
+						$arProperty,
+						$arValue,
+						$arSymbols['BAN_SYM'],
+						$arSymbols['REP_SYM']
+					)),
 					"START_TEXT" => Loc::getMessage('BT_UT_SAUTOCOMPLETE_MESS_INVITE'),
 					"MULTIPLE" => $arProperty["MULTIPLE"],
 					"MAX_WIDTH" => $arSettings['MAX_WIDTH'],
@@ -191,12 +200,15 @@ class CIBlockPropertySectionAutoComplete extends CIBlockPropertyElementAutoCompl
 
 			ob_start();
 			?><?
-			$strRandControlID = $strHTMLControlName["VALUE"].'_'.mt_rand(0, 10000);
 			$control_id = $APPLICATION->IncludeComponent(
 				"bitrix:main.lookup.input",
 				"iblockedit",
 				array(
-					"CONTROL_ID" => preg_replace("/[^a-zA-Z0-9_]/i", "x", $strRandControlID),
+					"CONTROL_ID" => preg_replace(
+						"/[^a-zA-Z0-9_]/i",
+						"x",
+						$strHTMLControlName["VALUE"].'_'.mt_rand(0, 10000)
+					),
 					"INPUT_NAME" => $strHTMLControlName['VALUE'].'[]',
 					"INPUT_NAME_STRING" => "inp_".$strHTMLControlName['VALUE'],
 					"INPUT_VALUE_STRING" => $strResultValue,
@@ -313,6 +325,69 @@ class CIBlockPropertySectionAutoComplete extends CIBlockPropertyElementAutoCompl
 			}
 		}
 		return $strResult;
+	}
+
+	public static function GetPublicEditHTML($property, $value, $control)
+	{
+		global $APPLICATION;
+
+		$multi = (isset($property['MULTIPLE']) && $property['MULTIPLE'] == 'Y');
+		$settings = static::PrepareSettings($property);
+		$symbols = static::GetSymbols($settings);
+
+		ob_start();
+
+		if ($multi)
+		{
+			$resultValue = static::GetValueForAutoCompleteMulti(
+				$property,
+				$value,
+				$symbols['BAN_SYM'],
+				$symbols['REP_SYM']
+			);
+			$resultValue = (is_array($resultValue) ? htmlspecialcharsback(implode("\n",$resultValue)) : '');
+		}
+		else
+		{
+			$resultValue = htmlspecialcharsback(static::GetValueForAutoComplete(
+				$property,
+				$value,
+				$symbols['BAN_SYM'],
+				$symbols['REP_SYM']
+			));
+		}
+
+		$controlId = $APPLICATION->IncludeComponent(
+			'bitrix:main.lookup.input',
+			'iblockedit',
+			array(
+				'CONTROL_ID' => preg_replace(
+					"/[^a-zA-Z0-9_]/i",
+					"x",
+					$control['VALUE'].'_'.mt_rand(0, 10000)
+				),
+				'INPUT_NAME' => $control['VALUE'].($multi ? '[]' : ''),
+				'INPUT_NAME_STRING' => 'inp_'.$control['VALUE'],
+				'INPUT_VALUE_STRING' => $resultValue,
+				'START_TEXT' => Loc::getMessage('BT_UT_SAUTOCOMPLETE_MESS_INVITE'),
+				'MULTIPLE' => $property['MULTIPLE'],
+				'IBLOCK_ID' => $property['LINK_IBLOCK_ID'],
+				'BAN_SYM' => $symbols['BAN_SYM_STRING'],
+				'REP_SYM' => $symbols['REP_SYM_STRING'],
+				'MAX_WIDTH' => $settings['MAX_WIDTH'],
+				'MIN_HEIGHT' => $settings['MIN_HEIGHT'],
+				'MAX_HEIGHT' => $settings['MAX_HEIGHT'],
+				'FILTER' => 'Y',
+				'TYPE' => 'SECTION'
+			),
+			(isset($control['PARENT_COMPONENT']) ? $control['PARENT_COMPONENT'] : null),
+			array('HIDE_ICONS' => 'Y')
+		);
+
+		$result = ob_get_contents();
+		ob_end_clean();
+
+		return $result;
 	}
 
 	public static function PrepareSettings($arFields)

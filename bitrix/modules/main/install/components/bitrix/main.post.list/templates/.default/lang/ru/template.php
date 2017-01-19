@@ -6,6 +6,7 @@ $MESS["BPC_MES_SHOW"] = "Показать";
 $MESS["BPC_MES_HIDE"] = "Скрыть";
 $MESS["BPC_MES_DELETE_POST_CONFIRM"] = "Вы уверены, что хотите удалить комментарий?";
 $MESS["BPC_MES_DELETE"] = "Удалить";
+$MESS["BPC_MES_CREATE_TASK"] = "Создать задачу";
 $MESS["B_B_MS_ADD_COMMENT"] = "Добавить комментарий";
 $MESS["BLOG_C_HIDE"] = "Свернуть комментарии";
 $MESS["BLOG_C_VIEW"] = "Смотреть предыдущие комментарии";

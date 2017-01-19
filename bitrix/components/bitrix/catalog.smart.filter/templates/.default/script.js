@@ -5,6 +5,7 @@ function JCSmartFilter(ajaxURL, viewMode, params)
 	this.timer = null;
 	this.cacheKey = '';
 	this.cache = [];
+	this.popups = [];
 	this.viewMode = viewMode;
 	if (params && params.SEF_SET_FILTER_URL)
 	{
@@ -164,6 +165,15 @@ JCSmartFilter.prototype.postHandler = function (result, fromCache)
 
 	if (!!result && !!result.ITEMS)
 	{
+		for(var popupId in this.popups)
+		{
+			if (this.popups.hasOwnProperty(popupId))
+			{
+				this.popups[popupId].destroy();
+			}
+		}
+		this.popups = [];
+
 		for(var PID in result.ITEMS)
 		{
 			if (result.ITEMS.hasOwnProperty(PID))
@@ -398,7 +408,7 @@ JCSmartFilter.prototype.hideFilterProps = function(element)
 JCSmartFilter.prototype.showDropDownPopup = function(element, popupId)
 {
 	var contentNode = element.querySelector('[data-role="dropdownContent"]');
-	BX.PopupWindowManager.create("smartFilterDropDown"+popupId, element, {
+	this.popups["smartFilterDropDown"+popupId] = BX.PopupWindowManager.create("smartFilterDropDown"+popupId, element, {
 		autoHide: true,
 		offsetLeft: 0,
 		offsetTop: 3,
@@ -406,7 +416,8 @@ JCSmartFilter.prototype.showDropDownPopup = function(element, popupId)
 		draggable: {restrict:true},
 		closeByEsc: true,
 		content: contentNode
-	}).show();
+	});
+	this.popups["smartFilterDropDown"+popupId].show();
 };
 
 JCSmartFilter.prototype.selectDropDownItem = function(element, controlId)

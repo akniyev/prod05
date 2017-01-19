@@ -4,6 +4,7 @@ namespace Bitrix\Sale\Delivery\Inputs;
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/sale/lib/internals/input.php");
 
 use Bitrix\Main\ArgumentException;
+use Bitrix\Main\ArgumentTypeException;
 use Bitrix\Sale\Delivery\DeliveryLocationTable;
 use	Bitrix\Sale\Internals\Input;
 use Bitrix\Main\Localization\Loc;
@@ -12,8 +13,11 @@ Loc::loadMessages(__FILE__);
 
 class Period extends Input\Base
 {
-	public static function getViewHtmlSingle(array $input, array $values)
+	public static function getViewHtmlSingle(array $input, $values)
 	{
+		if(!is_array($values))
+			throw new ArgumentTypeException('values', 'array');
+
 		self::checkArgs($input, $values);
 
 		return $input["ITEMS"]["FROM"]["NAME"].": ".Input\Manager::getViewHtml($input["ITEMS"]["FROM"], $values["FROM"]).
@@ -48,13 +52,19 @@ class Period extends Input\Base
 			" ".Input\Manager::getEditHtml($name."[TYPE]", $input["ITEMS"]["TYPE"], $values["TYPE"]);
 	}
 
-	public static function getError(array $input, array $values)
+	public static function getError(array $input, $values)
 	{
+		if(!is_array($values))
+			throw new ArgumentTypeException('values', 'array');
+
 		return self::getErrorSingle($input, $values);
 	}
 
-	public static function getErrorSingle(array $input, array $values)
+	public static function getErrorSingle(array $input, $values)
 	{
+		if(!is_array($values))
+			throw new ArgumentTypeException('values', 'array');
+
 		self::checkArgs($input, $values);
 
 		$errors = array();
@@ -222,8 +232,11 @@ class MultiControlString extends Input\Base
 		return $result;
 	}
 
-	public static function getErrorSingle(array $input, array $values)
+	public static function getErrorSingle(array $input, $values)
 	{
+		if(!is_array($values))
+			throw new ArgumentTypeException('values', 'array');
+
 		$errors = array();
 
 		foreach($input["ITEMS"] as $key => $item)
@@ -251,7 +264,7 @@ Input\Manager::register('DELIVERY_MULTI_CONTROL_STRING', array(
 
 class LocationMulti extends Input\Base
 {
-	public static function getViewHtml(array $input, $values)
+	public static function getViewHtml(array $input, $value = null)
 	{
 		$result = "";
 
@@ -280,7 +293,7 @@ class LocationMulti extends Input\Base
 		return $result;
 	}
 
-	public static function getEditHtml($name, array $input, $values)
+	public static function getEditHtml($name, array $input, $values = null)
 	{
 		global $APPLICATION;
 
@@ -366,7 +379,7 @@ Input\Manager::register('LOCATION_MULTI', array(
 
 class ProductCategories extends Input\Base
 {
-	public static function getViewHtml(array $input, $values)
+	public static function getViewHtml(array $input, $values = null)
 	{
 		if(!is_array($values))
 			return '';
@@ -380,8 +393,11 @@ class ProductCategories extends Input\Base
 		return $result;
 	}
 
-	public static function getEditHtml($name, array $input, $values)
+	public static function getEditHtml($name, array $input, $values = null)
 	{
+		if(!is_array($values))
+			$values = array();
+
 		$result = '<br><a style="color:#113c7d;text-decoration:none;border-bottom:1px dashed #113c7d;font-weight: bold;" href="javascript:void(0);" id="'.$input["ID"].'" onclick="window.open(\''.$input["URL"].'\',\'choose category\',\'width=850,height=600\');">'.Loc::getMessage('SALE_DELIVERY_INP_ADD').'</a><br><br>'.
 			'<script type="text/javascript">'.$input["SCRIPT"].'</script>'.
 			'<script type="text/javascript">BX.message({SALE_DELIVERY_INP_DELETE: "'.Loc::getMessage("SALE_DELIVERY_INP_DELETE").'"});</script>';

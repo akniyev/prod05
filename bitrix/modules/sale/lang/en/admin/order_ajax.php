@@ -17,4 +17,7 @@ $MESS["SALE_OA_ERROR_PAYMENT_ID_WRONG"] = "Invalid shipment ID.";
 $MESS["SALE_OA_ERROR_UNMARK_RIGHTS"] = "Insufficient permission to unset order issue flag.";
 $MESS["SALE_OA_ERROR_LOAD_PAYMENT"] = "Cannot find payment ID #";
 $MESS["SALE_OA_ERROR_LOAD_SHIPMENT"] = "Cannot find shipment ID #";
+$MESS["SALE_OA_ERROR_HAPPENED2"] = "Error processing request. The most possible reasons include: a user does not have sufficient permissions; PHP session storage is experiencing issues; POST request gets truncated by PHP or the web server.";
+$MESS["SALE_OA_ERROR_DELETE_SHIPMENT_PERMISSION"] = "You do not have permission to delete this shipment.";
+$MESS["SALE_OA_ERROR_DELETE_PAYMENT_PERMISSION"] = "You do not have permission to delete this payment.";
 ?>

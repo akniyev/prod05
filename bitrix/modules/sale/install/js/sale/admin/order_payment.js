@@ -41,12 +41,17 @@ BX.Sale.Admin.OrderPayment = function(params)
 		context: this
 	};
 
+	updater["PAYMENT_COMPANY_ID"] = {
+		callback: this.updateCompany,
+		context: this
+	};
+
 
 	BX.Sale.Admin.OrderEditPage.registerFieldsUpdaters(updater);
 
 	if (this.viewForm)
 	{
-		var psUpdateLink = BX('ps_update');
+		var psUpdateLink = BX('ps_update_'+this.index);
 
 		var orderId = BX('ID');
 		if (orderId)
@@ -87,7 +92,8 @@ BX.Sale.Admin.OrderPayment.prototype.initPaymentSum = function()
 {
 	var sumField = BX('PAYMENT_SUM_'+this.index);
 	if (sumField)
-		BX.bind(sumField, 'change', function()
+	{
+		BX.bind(sumField, 'change', function ()
 		{
 			BX.Sale.Admin.OrderEditPage.autoPriceChange = false;
 
@@ -98,6 +104,14 @@ BX.Sale.Admin.OrderPayment.prototype.initPaymentSum = function()
 				);
 			}
 		});
+	}
+};
+
+BX.Sale.Admin.OrderPayment.prototype.updateCompany = function(companyList)
+{
+	var company = BX('PAYMENT_COMPANY_ID_'+this.index);
+	if (company)
+		company.innerHTML = companyList;
 };
 
 BX.Sale.Admin.OrderPayment.prototype.updatePaySystemList = function(paySystemList)
@@ -741,56 +755,63 @@ BX.Sale.Admin.OrderPayment.prototype.initPaidPopup = function()
 					}
 				}
 			}, this)
-		},
-		{
-			'ID': 'RETURN',
-			'TEXT': BX.message('PAYMENT_PAID_RETURN'),
-			'ONCLICK': BX.proxy(function ()
-			{
-				if (this.viewForm)
-				{
-					this.showReturnWindow('return');
-				}
-				else
-				{
-					if (BX("PAYMENT_PAID_"+indexes[k]))
-						BX("PAYMENT_PAID_"+indexes[k]).value = 'N';
-
-					var obOperation = BX("OPERATION_ID_"+this.index);
-					if (obOperation)
-						obOperation.disabled = false;
-
-					var isReturn = BX("PAYMENT_IS_RETURN_"+indexes[k]);
-					if (isReturn)
-						isReturn.value = 'Y';
-
-					this.changeNotPaidStatus('NO');
-
-					for (var i in generalStatusFields)
-					{
-						if (!generalStatusFields.hasOwnProperty(i))
-							continue;
-						BX.style(generalStatusFields[i], 'display', 'table-row');
-					}
-					for (var i in returnStatusFields)
-					{
-						if (!returnStatusFields.hasOwnProperty(i))
-							continue;
-						BX.style(returnStatusFields[i], 'display', 'table-row');
-					}
-
-					BX.bind(BX('OPERATION_ID_'+this.index), 'change', function() {
-						var tr = BX.findParent(this, {tag: 'tr'});
-						if (tr)
-						{
-							var style = (this.value != 'Y') ? 'none' : 'table-row';
-							BX.style(tr.nextElementSibling, 'display', style);
-						}
-					});
-				}
-			}, this)
 		}
 	];
+
+	if (Object.keys(this.psToReturn).length > 0)
+	{
+		menu.push(
+			{
+				'ID': 'RETURN',
+				'TEXT': BX.message('PAYMENT_PAID_RETURN'),
+				'ONCLICK': BX.proxy(function ()
+				{
+					if (this.viewForm)
+					{
+						this.showReturnWindow('return');
+					}
+					else
+					{
+						if (BX("PAYMENT_PAID_" + indexes[k]))
+							BX("PAYMENT_PAID_" + indexes[k]).value = 'N';
+
+						var obOperation = BX("OPERATION_ID_" + this.index);
+						if (obOperation)
+							obOperation.disabled = false;
+
+						var isReturn = BX("PAYMENT_IS_RETURN_" + indexes[k]);
+						if (isReturn)
+							isReturn.value = 'Y';
+
+						this.changeNotPaidStatus('NO');
+
+						for (var i in generalStatusFields)
+						{
+							if (!generalStatusFields.hasOwnProperty(i))
+								continue;
+							BX.style(generalStatusFields[i], 'display', 'table-row');
+						}
+						for (var i in returnStatusFields)
+						{
+							if (!returnStatusFields.hasOwnProperty(i))
+								continue;
+							BX.style(returnStatusFields[i], 'display', 'table-row');
+						}
+
+						BX.bind(BX('OPERATION_ID_' + this.index), 'change', function ()
+						{
+							var tr = BX.findParent(this, {tag: 'tr'});
+							if (tr)
+							{
+								var style = (this.value != 'Y') ? 'none' : 'table-row';
+								BX.style(tr.nextElementSibling, 'display', style);
+							}
+						});
+					}
+				}, this)
+			}
+		);
+	}
 
 	if (!this.viewForm)
 	{
@@ -809,6 +830,8 @@ BX.Sale.Admin.OrderPayment.prototype.initPaidPopup = function()
 						var paymentPaid = BX("PAYMENT_PAID_"+indexes[k]);
 						if (paymentPaid)
 							paymentPaid.value = 'Y';
+
+						this.changePaidStatus('YES');
 
 						var obOperation = BX("OPERATION_ID_"+this.index);
 						if (obOperation)

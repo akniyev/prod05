@@ -416,7 +416,7 @@ class CAllBlog
 	}
 
 	//*************** COMMON UTILS *********************/
-	function GetFilterOperation($key)
+	public static function GetFilterOperation($key)
 	{
 		$strNegative = "N";
 		if (substr($key, 0, 1)=="!")
@@ -475,7 +475,7 @@ class CAllBlog
 		return array("FIELD" => $key, "NEGATIVE" => $strNegative, "OPERATION" => $strOperation, "OR_NULL" => $strOrNull);
 	}
 
-	function PrepareSql(&$arFields, $arOrder, &$arFilter, $arGroupBy, $arSelectFields, $obUserFieldsSql = false)
+	public static function PrepareSql(&$arFields, $arOrder, &$arFilter, $arGroupBy, $arSelectFields, $obUserFieldsSql = false)
 	{
 		global $DB;
 
@@ -930,7 +930,7 @@ class CAllBlog
 		return False;
 	}
 
-	function GetByOwnerID($ID, $arGroup = Array())
+	public static function GetByOwnerID($ID, $arGroup = Array())
 	{
 		global $DB;
 
@@ -1412,7 +1412,7 @@ class CAllBlog
 		return $rssText;
 	}
 
-	function PreparePath($blogUrl, $siteID = False, $is404 = True, $userID = 0, $groupID = 0)
+	public static function PreparePath($blogUrl, $siteID = False, $is404 = True, $userID = 0, $groupID = 0)
 	{
 		$blogUrl = Trim($blogUrl);
 		if (!$siteID)
@@ -1470,9 +1470,11 @@ class CAllBlog
 	
 	function BuildRSSAll($GroupId = 0, $type = "RSS .92", $numPosts = 10, $siteID = SITE_ID, $postTemplate="", $userTemplate="", $arAvBlog = Array(), $arPathTemplates = Array(), $arGroupID = Array(), $bUserSocNet = "N")
 	{
+		global $USER;
+
 		$GroupId = IntVal($GroupId);
 		$numPosts = IntVal($numPosts);
-		$user_id = IntVal($GLOBALS["USER"]->GetID());
+		$user_id = IntVal($USER->GetID());
 		$type = strtolower(preg_replace("/[^a-zA-Z0-9.]/is", "", $type));
 		if ($type != "rss2.0" && $type != "atom.03")
 			$type = "rss.92";
@@ -1729,7 +1731,7 @@ class CAllBlog
 		return $rssText;
 	}
 	
-	function DeleteSocnetRead($ID)
+	public static function DeleteSocnetRead($ID)
 	{
 		global $DB;
 		$ID = IntVal($ID);
@@ -1752,6 +1754,8 @@ class CAllBlog
 	
 	function SendPing($blogName, $blogUrl, $blogXml = "")
 	{
+		global $APPLICATION;
+
 		if (defined("SITE_CHARSET") && strlen(SITE_CHARSET) > 0)
 			$serverCharset = SITE_CHARSET;
 		else
@@ -1778,7 +1782,7 @@ class CAllBlog
 		$query .= "	</params>
 		</methodCall>";
 
-		$query = $GLOBALS["APPLICATION"]->ConvertCharset($query, $serverCharset, "UTF-8");
+		$query = $APPLICATION->ConvertCharset($query, $serverCharset, "UTF-8");
 		
 		if($urls = COption::GetOptionString("blog", "send_blog_ping_address", "http://ping.blogs.yandex.ru/RPC2\r\nhttp://rpc.weblogs.com/RPC2"))
 		{
@@ -1810,7 +1814,7 @@ class CAllBlog
 							$out .= "Content-type: text/xml\r\n";
 							$out .= "User-Agent: bitrixBlog\r\n";
 							$out .= "Content-length: ".strlen($query)."\r\n\r\n";
-							$out = $GLOBALS["APPLICATION"]->ConvertCharset($out, $serverCharset, "UTF-8");
+							$out = $APPLICATION->ConvertCharset($out, $serverCharset, "UTF-8");
 							$out .= $query;
 							
 							fwrite($fp, $out);

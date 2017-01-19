@@ -4,6 +4,7 @@ namespace Bitrix\Main\UrlPreview;
 
 use Bitrix\Main\Context;
 use Bitrix\Main\Text\Encoding;
+use Bitrix\Main\Web\HttpClient;
 use Bitrix\Main\Web\Uri;
 
 class HtmlDocument
@@ -166,7 +167,9 @@ class HtmlDocument
 	{
 		if(strlen($image) > 0)
 		{
-			$this->metadata['IMAGE'] = $this->normalizeImageUrl($image);
+			$imageUrl = $this->normalizeImageUrl($image);
+			if(!is_null($imageUrl) && $this->validateImage($imageUrl))
+				$this->metadata['IMAGE'] = $imageUrl;
 		}
 	}
 
@@ -463,6 +466,30 @@ class HtmlDocument
 		if(strlen($url) > self::MAX_IMAGE_URL_LENGTH)
 			$url = null;
 		return $url;
+	}
+
+	/**
+	 * Validates mime-type of the image
+	 * @param string $url Absolute image's URL.
+	 * @return bool
+	 */
+	protected function validateImage($url)
+	{
+		$httpClient = new HttpClient();
+		$httpClient->setTimeout(5);
+		$httpClient->setStreamTimeout(5);
+		$httpClient->setHeader('User-Agent', UrlPreview::USER_AGENT, true);
+		if(!$httpClient->query('GET', $url))
+			return false;
+
+		if($httpClient->getStatus() !== 200)
+			return false;
+
+		$contentType = strtolower($httpClient->getHeaders()->getContentType());
+		if(strpos($contentType, 'image/') === 0)
+			return true;
+		else
+			return false;
 	}
 
 	/**

@@ -402,6 +402,21 @@ foreach($deliveryItems as $code => $fields)
 					"SERVICE_TYPE" => \Bitrix\Sale\Services\Base\RestrictionManager::SERVICE_TYPE_SHIPMENT,
 					"CLASS_NAME" => '\Bitrix\Sale\Delivery\Restrictions\ByLocation'
 				));
+
+				//Link delivery "pickup" to store
+				if($fields["NAME"] == GetMessage("SALE_WIZARD_COUR1"))
+				{
+					\Bitrix\Main\Loader::includeModule('catalog');
+					$dbStores = CCatalogStore::GetList(array(), array("ACTIVE" => 'Y'), false, false, array("ID"));
+
+					if($store = $dbStores->Fetch())
+					{
+						\Bitrix\Sale\Delivery\ExtraServices\Manager::saveStores(
+							$newId,
+							array($store['ID'])
+						);
+					}
+				}
 			}
 		}
 	}
@@ -669,7 +684,8 @@ if(IntVal($userGroupID) > 0)
 	}
 	
 	$SiteDir = "";
-	if(WIZARD_SITE_ID != "s1"){
+	if(WIZARD_SITE_ID != "s1")
+	{
 		$SiteDir = "/site_" . WIZARD_SITE_ID;
 	}
 	WizardServices::SetFilePermission(Array($siteID, $SiteDir . "/index.php"), Array($userGroupID => "W"));

@@ -148,7 +148,7 @@ class CAllCatalogDiscountSave
 		$arFields['TYPE'] = self::ENTITY_ID;
 		$arFields["RENEWAL"] = 'N';
 		$arFields['PRIORITY'] = 1;
-		$arFields['LAST_DISCOUNT'] = 'Y';
+		$arFields['LAST_DISCOUNT'] = 'N';
 		$arFields['VERSION'] = Catalog\DiscountTable::ACTUAL_VERSION;
 
 		if ((is_set($arFields, "SITE_ID") || $strAction=="ADD") && empty($arFields["SITE_ID"]))
@@ -546,6 +546,8 @@ class CAllCatalogDiscountSave
 					$arDiscSave['TYPE'] = (int)$arDiscSave['TYPE'];
 					$arDiscSave['MODULE_ID'] = 'catalog';
 					$arDiscSave['MICROTIME'] = $intCurrentTime;
+					$arDiscSave['LAST_DISCOUNT'] = 'N';
+					$arDiscSave['PRIORITY'] = 1;
 
 					self::$discountResultCache[$cacheKey][] = $arDiscSave;
 				}

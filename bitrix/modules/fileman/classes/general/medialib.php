@@ -1768,6 +1768,58 @@ window.bx_req_res = {
 					$cache->CleanDir(self::$cachePath.$path);
 		}
 	}
+
+	public static function AutosaveImage($file = false)
+	{
+		$res = CMedialibCollection::GetList(array(
+			'arFilter' => array(
+				'ACTIVE' => 'Y',
+				'NAME' => GetMessage('ML_AUTOSAVE_DEFAULT_COL')
+			)
+		));
+		$result = false;
+
+		if (!$res || count($res) == 0)
+		{
+			$colId = CMedialibCollection::Edit(array(
+				'arFields' => array(
+					'NAME' => GetMessage('ML_AUTOSAVE_DEFAULT_COL'),
+					'DESCRIPTION' => GetMessage('ML_AUTOSAVE_DEFAULT_COL_DEF'),
+					'OWNER_ID' => $GLOBALS['USER']->GetId(),
+					'KEYWORDS' => '',
+					'ACTIVE' => "Y",
+					'ML_TYPE' => 'image'
+				)
+			));
+		}
+		else
+		{
+			$colId = $res[0]['ID'];
+		}
+
+		if ($colId && $file)
+		{
+			$res = CMedialibItem::Edit(array(
+				'file' => $file,
+				'path' => '',
+				'arFields' => array(
+					'NAME' => $file['name']
+				),
+				'arCollections' => array($colId)
+			));
+
+			if ($res && $res['ID'] > 0)
+			{
+				$item = CMedialibItem::GetList(array('id' => $res['ID']));
+				if (is_array($item) && count($item) > 0)
+				{
+					$result = $item[0];
+				}
+			}
+		}
+
+		return $result;
+	}
 }
 
 class CMedialibCollection
@@ -1838,7 +1890,7 @@ class CMedialibCollection
 		$res = $DB->Query($strSql, false, $err_mess.__LINE__);
 		$arResult = Array();
 		while($arRes = $res->Fetch())
-			$arResult[]=$arRes;
+			$arResult[] = $arRes;
 
 		return $arResult;
 	}

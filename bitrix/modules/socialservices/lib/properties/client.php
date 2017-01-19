@@ -15,7 +15,7 @@ Loc::loadMessages(__FILE__);
 
 class Client
 {
-	const SERVICE_HOST = 'http://properties.bitrix.info';
+	const SERVICE_HOST = 'https://properties.bitrix.info';
 	const REST_URI = '/rest/';
 	const REGISTER_URI = '/oauth/register/';
 	const SCOPE = 'ps';

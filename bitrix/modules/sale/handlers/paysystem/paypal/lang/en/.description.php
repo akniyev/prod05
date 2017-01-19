@@ -34,4 +34,7 @@ $MESS["SALE_HPS_PAYPAL_LS"] = "PayPal user interface language";
 $MESS["SALE_HPS_PAYPAL_LC_RUSSIAN"] = "Russian";
 $MESS["SALE_HPS_PAYPAL_LC_GERMAN"] = "German";
 $MESS["SALE_HPS_PAYPAL_LC_ENGLISH"] = "English";
+$MESS["SALE_HPS_PAYPAL_DESC_RESTRICTION"] = "No payment amount limits";
+$MESS["SALE_HPS_PAYPAL_DESC_COMMISSION"] = "Purchases in Russia without commission";
+$MESS["SALE_HPS_PAYPAL_DESC_RETURN"] = "Refunds are not supported";
 ?>

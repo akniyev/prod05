@@ -6,7 +6,6 @@ namespace Bitrix\Sale;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Main;
 use Bitrix\Sale;
-use Bitrix\Sale\Internals\ShipmentItemStoreTable;
 
 Loc::loadMessages(__FILE__);
 
@@ -46,7 +45,7 @@ class ShipmentItemStore
 	{
 		if (empty(static::$mapFields))
 		{
-			static::$mapFields = parent::getAllFieldsByMap(ShipmentItemStoreTable::getMap());
+			static::$mapFields = parent::getAllFieldsByMap(Sale\Internals\ShipmentItemStoreTable::getMap());
 		}
 		return static::$mapFields;
 
@@ -258,7 +257,7 @@ class ShipmentItemStore
 
 		$items = array();
 
-		$itemDataList = Internals\ShipmentItemStoreTable::getList(
+		$itemDataList = Sale\Internals\ShipmentItemStoreTable::getList(
 			array(
 				'filter' => array('ORDER_DELIVERY_BASKET_ID' => $id),
 				'order' => array('DATE_CREATE' => 'ASC', 'ID' => 'ASC')
@@ -354,9 +353,12 @@ class ShipmentItemStore
 					throw new Main\ArgumentNullException('quantity');
 
 				$fields['DATE_MODIFY'] = new Main\Type\DateTime();
+				$this->setFieldNoDemand('DATE_MODIFY', $fields['DATE_MODIFY']);
+				
 				$fields['MODIFIED_BY'] = $USER->GetID();
+				$this->setFieldNoDemand('MODIFIED_BY', $fields['MODIFIED_BY']);
 
-				$r = Internals\ShipmentItemStoreTable::update($id, $fields);
+				$r = Sale\Internals\ShipmentItemStoreTable::update($id, $fields);
 				if (!$r->isSuccess())
 				{
 					OrderHistory::addAction(
@@ -380,12 +382,19 @@ class ShipmentItemStore
 		{
 
 			if (!isset($fields["ORDER_DELIVERY_BASKET_ID"]))
+			{
 				$fields['ORDER_DELIVERY_BASKET_ID'] = $this->getParentShipmentItemId();
+				$this->setFieldNoDemand('ORDER_DELIVERY_BASKET_ID', $fields['ORDER_DELIVERY_BASKET_ID']);
+			}
 
 			if (!isset($fields["BASKET_ID"]))
+			{
 				$fields['BASKET_ID'] = $basketItem->getId();
+				$this->setFieldNoDemand('BASKET_ID', $fields['BASKET_ID']);
+			}
 
 			$fields['DATE_CREATE'] = new Main\Type\DateTime();
+			$this->setFieldNoDemand('DATE_CREATE', $fields['DATE_CREATE']);
 
 			if (!isset($fields["QUANTITY"]))
 				return $result;
@@ -399,7 +408,7 @@ class ShipmentItemStore
 				return $result;
 			}
 
-			$r = Internals\ShipmentItemStoreTable::add($fields);
+			$r = Sale\Internals\ShipmentItemStoreTable::add($fields);
 			if (!$r->isSuccess())
 			{
 				OrderHistory::addAction(
@@ -525,5 +534,73 @@ class ShipmentItemStore
 		}
 	}
 
+	/**
+	 * @param array $filter
+	 *
+	 * @return Main\DB\Result
+	 * @throws Main\ArgumentException
+	 */
+	public static function getList(array $filter)
+	{
+		return Sale\Internals\ShipmentItemStoreTable::getList($filter);
+	}
+
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return ShipmentItemStore
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$shipmentItemStoreClone = clone $this;
+		$shipmentItemStoreClone->isClone = true;
+
+		/** @var Internals\Fields $fields */
+		if ($fields = $this->fields)
+		{
+			$shipmentItemStoreClone->fields = $fields->createClone($cloneEntity);
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $shipmentItemStoreClone;
+		}
+
+		/** @var BasketItem $basketItem */
+		if ($basketItem = $this->getBasketItem())
+		{
+			if (!$cloneEntity->contains($basketItem))
+			{
+				$cloneEntity[$basketItem] = $basketItem->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($basketItem))
+			{
+				$shipmentItemStoreClone->basketItem = $cloneEntity[$basketItem];
+			}
+		}
+
+		if ($collection = $this->getCollection())
+		{
+			if (!$cloneEntity->contains($collection))
+			{
+				$cloneEntity[$collection] = $collection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($collection))
+			{
+				$shipmentItemStoreClone->collection = $cloneEntity[$collection];
+			}
+		}
+
+		return $shipmentItemStoreClone;
+	}
 
 }

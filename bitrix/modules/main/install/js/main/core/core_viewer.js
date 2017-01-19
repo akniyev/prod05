@@ -281,7 +281,7 @@ BX.CViewCoreElement.prototype.localEditProcess = function(obElementViewer, param
 	{
 		if(!this.isFromUserLib && editUrl)
 		{
-			if (editUrl.indexOf(window.location.hostname) === -1) {
+			if (editUrl.indexOf('/') === 0) {
 				window.location.origin = window.location.origin || (window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: ''));
 				editUrl = window.location.origin + editUrl;
 			}
@@ -318,7 +318,7 @@ BX.CViewCoreElement.prototype.localViewProcess = function(obElementViewer)
 	{
 		if(!this.isFromUserLib && downloadUrl)
 		{
-			if (downloadUrl.indexOf(window.location.hostname) === -1) {
+			if (downloadUrl.indexOf('/') === 0) {
 				window.location.origin = window.location.origin || (window.location.protocol + "//" + window.location.hostname + (window.location.port ? ':' + window.location.port: ''));
 				downloadUrl = window.location.origin + downloadUrl;
 			}
@@ -347,7 +347,19 @@ BX.CViewCoreElement.prototype.getTextForSave = function(){
 
 BX.CViewCoreElement.prototype.getComplexEditButton = function(selfViewer, params)
 {
+	var titleHint = '';
 	var enableEdit = params.enableEdit || false;
+	if(params.isLocked)
+	{
+		enableEdit = false;
+		titleHint = BX.message('JS_CORE_VIEWER_DOCUMENT_IS_LOCKED_BY');
+	}
+	if(!params.enableEdit)
+	{
+		titleHint = BX.message('JS_CORE_VIEWER_DISABLE_EDIT_BY_PERM');
+	}
+
+
 	var initEditService = selfViewer.initEditService();
 	var editBtn = BX.create('span', {
 			props: {
@@ -356,7 +368,7 @@ BX.CViewCoreElement.prototype.getComplexEditButton = function(selfViewer, params
 		},
 		events: {
 			click: BX.delegate(function(e){
-				if(!this.editUrl)
+				if(!enableEdit || !this.editUrl)
 				{
 					return BX.PreventDefault(e);
 				}
@@ -379,7 +391,7 @@ BX.CViewCoreElement.prototype.getComplexEditButton = function(selfViewer, params
 	return BX.create('span', {
 		props: {
 			className: 'bx-viewer-btn-split ' + (enableEdit? '' : 'bx-viewer-btn-split-disable'),
-			title: enableEdit? '' : BX.message('JS_CORE_VIEWER_DISABLE_EDIT_BY_PERM')
+			title: titleHint
 		},
 		children: [
 			BX.create('span', {
@@ -402,7 +414,7 @@ BX.CViewCoreElement.prototype.getComplexEditButton = function(selfViewer, params
 				events: {
 					click: BX.delegate(function(event)
 					{
-						if(!this.getCurrent().editUrl)
+						if(!enableEdit || !this.getCurrent().editUrl)
 						{
 							return BX.PreventDefault(event);
 						}
@@ -866,6 +878,7 @@ BX.CViewEditableElement = function(params)
 	BX.CViewEditableElement.superclass.constructor.apply(this, arguments);
 	this.askConvert = !!params.askConvert;
 	this.editUrl = params.editUrl? this.addToLinkSessid(params.editUrl) : '';
+	this.lockedBy = params.lockedBy;
 	this.fakeEditUrl = params.fakeEditUrl || false;
 	this.historyPageUrl = params.historyPageUrl || '';
 	this.downloadUrl = params.downloadUrl || '';
@@ -1165,6 +1178,7 @@ BX.CViewEditableElement.prototype.openEditConfirm = function(obElementViewer)
 			text : BX.message('JS_CORE_VIEWER_IFRAME_SAVE_DOC'),
 			className : "popup-window-button-accept",
 			events : { click : BX.delegate(function() {
+					window.onbeforeunload = null;
 
 					this.showLoading({text: this.getCurrent().getTextForSave()});
 
@@ -1227,6 +1241,7 @@ BX.CViewEditableElement.prototype.openEditConfirm = function(obElementViewer)
 		new BX.PopupWindowButton({
 			text : BX.message('JS_CORE_VIEWER_IFRAME_CANCEL'),
 			events : { click : BX.delegate(function() {
+					window.onbeforeunload = null;
 					this.runActionByCurrentElement('discard', this.getCurrent().getDataForCommit());
 					this.closeConfirm();
 					try{
@@ -1267,10 +1282,23 @@ BX.CViewEditableElement.prototype.editFileProcess = function(obElementViewer)
 		editUrl,
 		this.title
 	));
+
+	window.onbeforeunload = BX.delegate(this.onUnload, this);
+
 	this.openEditConfirm(obElementViewer);
 
 	return false;
 }
+
+BX.CViewEditableElement.prototype.onUnload = function()
+{
+	try
+	{
+		this.runAction('discard', this.getDataForCommit());
+	}
+	catch (e)
+	{}
+};
 
 BX.CViewEditableElement.prototype.setDataForCommit = function(data)
 {
@@ -1324,6 +1352,8 @@ BX.CViewEditableElement.prototype.getDataForCommit = function()
 
 BX.CViewEditableElement.prototype.commitFile = function(parameters)
 {
+	window.onbeforeunload = null;
+
 	parameters = parameters || {};
 	if(!parameters || !parameters.obElementViewer)
 	{
@@ -1348,6 +1378,14 @@ BX.CViewEditableElement.prototype.commitFile = function(parameters)
 		sessid: BX.bitrix_sessid()
 	},
 	onsuccess: BX.delegate(function(result){
+
+		if(result.originalIsLocked)
+		{
+			BX.CViewer.objNowInShow.close();
+			BX.Disk.InformationPopups.showWarningLockedDocument({link: BX.Disk.getUrlToShowObjectInGrid(result.forkedObject.id)});
+			return;
+		}
+
 		var newName = result.newName;
 		var oldName = result.oldName;
 		if(newName)
@@ -1366,6 +1404,8 @@ BX.CViewEditableElement.prototype.commitFile = function(parameters)
 		{
 			parameters.success(this, result);
 		}
+
+		BX.onCustomEvent(this, 'onIframeElementConverted', [this, newName, oldName]);
 	}, this)});
 
 	return false;
@@ -1969,13 +2009,11 @@ BX.CViewIframeElement.prototype.load = function(successLoadCallback, errorLoadCa
 					},
 					text: this.title
 				}),
-				BX.create('a', {
+				BX.create('span', {
 					props: {
 						className: 'bx-viewer-file-last-v',
 						title: this.title,
-						alt: this.title,
-						href: this.historyPageUrl,
-						target: '_blank'
+						alt: this.title
 					},
 					text: this.version?
 						BX.message('JS_CORE_VIEWER_THROUGH_VERSION').replace('#NUMBER#', this.version > 0? this.version : ''):
@@ -2074,13 +2112,11 @@ BX.CViewWithoutPreviewEditableElement.prototype.load = function(successLoadCallb
 				},
 				text: this.title
 			}),
-			BX.create('a', {
+			BX.create('span', {
 				props: {
 					className: 'bx-viewer-file-last-v',
 					title: this.title,
-					alt: this.title,
-					href: this.historyPageUrl,
-					target: '_blank'
+					alt: this.title
 				},
 				text: this.version?
 					BX.message('JS_CORE_VIEWER_THROUGH_VERSION').replace('#NUMBER#', this.version > 0? this.version : ''):
@@ -2336,13 +2372,11 @@ BX.CViewErrorIframeElement.prototype.load = function(successLoadCallback)
 				},
 				text: this.title
 			}),
-			BX.create('a', {
+			BX.create('span', {
 				props: {
 					className: 'bx-viewer-file-last-v',
 					title: this.title,
-					alt: this.title,
-					href: this.historyPageUrl,
-					target: '_blank'
+					alt: this.title
 				},
 				text: this.version?
 					BX.message('JS_CORE_VIEWER_THROUGH_VERSION').replace('#NUMBER#', this.version > 0? this.version : ''):
@@ -4313,6 +4347,7 @@ BX.CViewer.prototype.createErrorIframeElementFromEditable = function(editableEle
 		objectId: editableElement.objectId,
 
 		editUrl: editableElement.editUrl,
+		lockedBy: editableElement.lockedBy,
 		urlToPost: editableElement.urlToPost,
 		idToPost: editableElement.idToPost,
 		downloadUrl: editableElement.downloadUrl,
@@ -4323,7 +4358,8 @@ BX.CViewer.prototype.createErrorIframeElementFromEditable = function(editableEle
 		buttons: []
 	});
 	errorElement.buttons.push(errorElement.getComplexEditButton(this, {
-		enableEdit: !!errorElement.editUrl
+		enableEdit: !!errorElement.editUrl,
+		isLocked: !!errorElement.lockedBy && errorElement.lockedBy != BX.message('USER_ID')
 	}));
 	errorElement.buttons.push(errorElement.getComplexSaveButton(this, {
 		downloadUrl: errorElement.downloadUrl
@@ -4355,6 +4391,7 @@ BX.CViewer.prototype.createWithoutPreviewEditableElement = function(element, par
 		relativePath: element.getAttribute('data-bx-relativePath'),
 
 		editUrl: element.getAttribute('data-bx-edit'),
+		lockedBy: element.getAttribute('data-bx-lockedBy'),
 		fakeEditUrl: element.getAttribute('data-bx-fakeEdit'),
 		urlToPost: element.getAttribute('data-bx-urlToPost'),
 		idToPost: element.getAttribute('data-bx-idToPost'),
@@ -4375,7 +4412,8 @@ BX.CViewer.prototype.createWithoutPreviewEditableElement = function(element, par
 	}
 
 	nonPreviewEditableElement.buttons.push(nonPreviewEditableElement.getComplexEditButton(this, {
-		enableEdit: !!nonPreviewEditableElement.editUrl
+		enableEdit: !!nonPreviewEditableElement.editUrl,
+		isLocked: !!nonPreviewEditableElement.lockedBy && nonPreviewEditableElement.lockedBy != BX.message('USER_ID')
 	}));
 	nonPreviewEditableElement.buttons.push(nonPreviewEditableElement.getComplexSaveButton(this, {
 		downloadUrl: nonPreviewEditableElement.downloadUrl
@@ -4396,6 +4434,7 @@ BX.CViewer.prototype.createIframeElement = function(element, params)
 		relativePath: element.getAttribute('data-bx-relativePath'),
 
 		editUrl: element.getAttribute('data-bx-edit'),
+		lockedBy: element.getAttribute('data-bx-lockedBy'),
 		fakeEditUrl: element.getAttribute('data-bx-fakeEdit'),
 		urlToPost: element.getAttribute('data-bx-urlToPost'),
 		idToPost: element.getAttribute('data-bx-idToPost'),
@@ -4416,7 +4455,8 @@ BX.CViewer.prototype.createIframeElement = function(element, params)
 	}
 
 	iframeElement.buttons.push(iframeElement.getComplexEditButton(this, {
-		enableEdit: !!iframeElement.editUrl
+		enableEdit: !!iframeElement.editUrl,
+		isLocked: !!iframeElement.lockedBy && iframeElement.lockedBy != BX.message('USER_ID')
 	}));
 	iframeElement.buttons.push(iframeElement.getComplexSaveButton(this, {
 		downloadUrl: iframeElement.downloadUrl,

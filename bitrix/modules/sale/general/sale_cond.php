@@ -1,5 +1,6 @@
 <?
-use Bitrix\Main\Loader,
+use Bitrix\Main,
+	Bitrix\Main\Loader,
 	Bitrix\Main\Localization\Loc,
 	Bitrix\Sale;
 
@@ -1538,21 +1539,33 @@ class CSaleCondCtrlOrderFields extends CSaleCondCtrlComplex
 
 		$linearDeliveryList = array();
 		$deliveryList = array();
+		$groupIds = array();
+		$iterator = Sale\Delivery\Services\Table::getList(array(
+			'select' => array('ID', 'CLASS_NAME'),
+			'filter' => array('=CLASS_NAME' => '\Bitrix\Sale\Delivery\Services\Group')
+		));
+		while ($row = $iterator->fetch())
+			$groupIds[] = (int)$row['ID'];
+		unset($row, $iterator);
+
 		$deliveryIterator = Sale\Delivery\Services\Table::getList(array(
-			'select' => array('ID', 'CODE', 'NAME', 'PARENT_ID'),
-			'order' => array('PARENT_ID' => 'ASC', 'SORT' =>'ASC', 'NAME' => 'ASC')
+			'select' => array('ID', 'CODE', 'NAME', 'PARENT_ID', 'SORT', 'CLASS_NAME'),
+			'order' => array('ID' => 'ASC')
 		));
 		while ($delivery = $deliveryIterator->fetch())
 		{
+			if ($delivery['CLASS_NAME'] == '\Bitrix\Sale\Delivery\Services\Group')
+				continue;
 			$deliveryId = (int)$delivery['ID'];
 			$parentId = (int)$delivery['PARENT_ID'];
-			if ($parentId > 0)
+			if ($parentId > 0 && !in_array($parentId, $groupIds))
 			{
 				if (isset($deliveryList[$parentId]))
 				{
 					$deliveryList[$parentId]['PROFILES'][$deliveryId] = array(
 						'ID' => $deliveryId,
 						'TITLE' => $delivery['NAME'],
+						'SORT' => (int)$delivery['SORT']
 					);
 				}
 			}
@@ -1561,15 +1574,18 @@ class CSaleCondCtrlOrderFields extends CSaleCondCtrlComplex
 				$deliveryList[$deliveryId] = array(
 					'ID' => $deliveryId,
 					'TITLE' => $delivery['NAME'],
+					'SORT' => (int)$delivery['SORT'],
 					'PROFILES' => array()
 				);
 			}
 			unset($parentId, $deliveryId);
 		}
 		unset($delivery, $deliveryIterator);
+		unset($groupIds);
 		if (!empty($deliveryList))
 		{
-			foreach ($deliveryList as &$delivery)
+			Main\Type\Collection::sortByColumn($deliveryList, array('SORT' => SORT_ASC, 'TITLE' => SORT_ASC, 'ID' => SORT_ASC));
+			foreach ($deliveryList as $delivery)
 			{
 				if (empty($delivery['PROFILES']))
 				{
@@ -1577,9 +1593,11 @@ class CSaleCondCtrlOrderFields extends CSaleCondCtrlComplex
 				}
 				else
 				{
-					foreach ($delivery['PROFILES'] as $profile)
-						$linearDeliveryList[$profile['ID']] = $profile['TITLE'];
-					unset($profile);
+					$profileList = $delivery['PROFILES'];
+					Main\Type\Collection::sortByColumn($profileList, array('SORT' => SORT_ASC, 'TITLE' => SORT_ASC, 'ID' => SORT_ASC));
+					foreach ($profileList as $profile)
+						$linearDeliveryList[$profile['ID']] = $delivery['TITLE'].': '.$profile['TITLE'];
+					unset($profile, $profileList);
 				}
 			}
 			unset($delivery);

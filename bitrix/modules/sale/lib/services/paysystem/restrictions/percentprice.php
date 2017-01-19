@@ -3,6 +3,7 @@
 namespace Bitrix\Sale\Services\PaySystem\Restrictions;
 
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Sale\Internals\CollectableEntity;
 use Bitrix\Sale\Services\Base;
 use Bitrix\Sale\Payment;
 
@@ -24,19 +25,19 @@ class PercentPrice extends Price
 	}
 
 	/**
-	 * @param Payment $payment
+	 * @param CollectableEntity $entity
 	 * @return array
 	 */
-	protected static function extractParams(Payment $payment)
+	protected static function extractParams(CollectableEntity $entity)
 	{
 		/** @var \Bitrix\sale\PaymentCollection $collection */
-		$collection = $payment->getCollection();
+		$collection = $entity->getCollection();
 
 		/** @var \Bitrix\Sale\Order $order */
 		$order = $collection->getOrder();
 
 		return array(
-			'PRICE_PAYMENT' => $payment->getField('SUM'),
+			'PRICE_PAYMENT' => $entity->getField('SUM'),
 			'PRICE_ORDER' => $order->getPrice() - $order->getSumPaid(),
 		);
 	}
@@ -58,11 +59,11 @@ class PercentPrice extends Price
 	}
 
 	/**
-	 * @param $paySystemId
+	 * @param $entityId
 	 * @return array
 	 * @throws \Bitrix\Main\ArgumentException
 	 */
-	public static function getParamsStructure($paySystemId = null)
+	public static function getParamsStructure($entityId = 0)
 	{
 		return array(
 			"MIN_VALUE" => array(

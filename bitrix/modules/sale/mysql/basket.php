@@ -454,15 +454,25 @@ class CSaleBasket extends CAllSaleBasket
 		//TODO: is order converted?
 		if ($isOrderConverted == "Y")
 		{
-			/** @var \Bitrix\Sale\BasketItem $basketItem */
-			if (!($basketItem = \Bitrix\Sale\Compatible\BasketCompatibility::add($arFields)))
+			/** @var \Bitrix\Sale\Result $result */
+			$result = \Bitrix\Sale\Compatible\BasketCompatibility::add($arFields);
+			if (!$result->isSuccess())
 			{
-				$APPLICATION->ThrowException(Localization\Loc::getMessage('BT_MOD_SALE_BASKET_ERR_ID_ABSENT'), "BASKET_ITEM");
+				foreach($result->getErrorMessages() as $error)
+				{
+					$APPLICATION->ThrowException($error);
+				}
+
 				return false;
 			}
 
-			$ID = $basketItem->getId();
-			$arFields['QUANTITY'] = $basketItem->getQuantity();
+			$ID = $result->getId();
+
+			$basketItemData = $result->getData();
+			if (array_key_exists('QUANTITY', $basketItemData))
+			{
+				$arFields['QUANTITY'] = $basketItemData['QUANTITY'];
+			}
 		}
 		else
 		{
@@ -786,7 +796,7 @@ class CSaleBasket extends CAllSaleBasket
 		if ($FUSER_ID <= 0)
 			return false;
 
-		$arFilter = array("FUSER_ID" => $FUSER_ID);
+		$arFilter = array("FUSER_ID" => $FUSER_ID, 'SET_PARENT_ID' => false);
 		if (!$bIncOrdered)
 			$arFilter["ORDER_ID"] = "NULL";
 

@@ -71,6 +71,9 @@ if ($boolLocked)
 else
 	\Bitrix\Sale\Order::lock($ID);
 
+$customTabber = new CAdminTabEngine("OnAdminSaleOrderView", array("ID" => $ID));
+$customDraggableBlocks = new CAdminDraggableBlockEngine('OnAdminSaleOrderViewDraggable', array('ORDER' => $saleOrder));
+
 /** @var Bitrix\Sale\Order $saleOrder */
 Admin\OrderEdit::initCouponsData(
 	$saleOrder->getUserId(),
@@ -211,14 +214,17 @@ $aMenu[] = array(
 	"LINK" => '/bitrix/admin/sale_order_create.php?lang='.LANGUAGE_ID."&SITE_ID=".$saleOrder->getSiteId()."&ID=".$ID."&".bitrix_sessid_get().GetFilterParams("filter_")
 );
 
-if(!$boolLocked)
+if(CSaleOrder::CanUserDeleteOrder($ID, $arUserGroups, $USER->GetID()))
 {
-	$aMenu[] = array(
-		"TEXT" => Loc::getMessage("SALE_OVIEW_DELETE"),
-		"TITLE"=> Loc::getMessage("SALE_OVIEW_DELETE_TITLE"),
-		"LINK" => "javascript:if(confirm('".GetMessageJS("SALE_OVIEW_DEL_MESSAGE")."')) window.location='sale_order.php?ID=".$ID."&action=delete&lang=".LANGUAGE_ID."&".bitrix_sessid_get().urlencode(GetFilterParams("filter_"))."'",
-		"WARNING" => "Y"
-	);
+	if(!$boolLocked)
+	{
+		$aMenu[] = array(
+			"TEXT" => Loc::getMessage("SALE_OVIEW_DELETE"),
+			"TITLE"=> Loc::getMessage("SALE_OVIEW_DELETE_TITLE"),
+			"LINK" => "javascript:if(confirm('".GetMessageJS("SALE_OVIEW_DEL_MESSAGE")."')) window.location='sale_order.php?ID=".$ID."&action=delete&lang=".LANGUAGE_ID."&".bitrix_sessid_get().urlencode(GetFilterParams("filter_"))."'",
+			"WARNING" => "Y"
+		);
+	}
 }
 
 $context = new CAdminContextMenu($aMenu);
@@ -246,12 +252,24 @@ $defaultBlocksOrder = array(
 	"basket"
 );
 
+$fastNavItems = array();
+
+foreach($defaultBlocksOrder as $item)
+	$fastNavItems[$item] = Loc::getMessage("SALE_OVIEW_BLOCK_TITLE_".toUpper($item));
+
+foreach($customDraggableBlocks->getBlocksBrief() as $blockId => $blockParams)
+{
+	$defaultBlocksOrder[] = $blockId;
+	$fastNavItems[$blockId] = $blockParams['TITLE'];
+}
+
+$basketPrefix = "sale_order_basket";
 $formId = "sale_order_view";
 
 $orderBasket = new Admin\Blocks\OrderBasket(
 	$saleOrder,
 	"BX.Sale.Admin.OrderBasketObj",
-	"sale_order_basket",
+	$basketPrefix,
 	true,
 	Admin\Blocks\OrderBasket::VIEW_MODE
 );
@@ -266,11 +284,7 @@ echo Admin\Blocks\OrderFinanceInfo::getScripts();
 echo Admin\Blocks\OrderShipment::getScripts();
 echo Admin\Blocks\OrderAnalysis::getScripts();
 echo $orderBasket->getScripts(true);
-
-$fastNavItems = array();
-
-foreach($defaultBlocksOrder as $item)
-	$fastNavItems[$item] = Loc::getMessage("SALE_OVIEW_BLOCK_TITLE_".toUpper($item));
+echo $customDraggableBlocks->getScripts();
 
 // navigation
 echo Admin\OrderEdit::getFastNavigationHtml($fastNavItems);
@@ -289,6 +303,8 @@ $aTabs = array(
 );
 
 $tabControl = new CAdminTabControlDrag($formId, $aTabs, $moduleId, false, true);
+$tabControl->AddTabs($customTabber);
+
 $tabControl->Begin();
 
 //TAB order --
@@ -315,7 +331,7 @@ if (empty($statusOnPaid) && (empty($statusOnAllowDelivery) || empty($statusOnPai
 		foreach ($blocksOrder as $blockCode)
 		{
 			echo '<a id="'.$blockCode.'"></a>';
-			$tabControl->DraggableBlockBegin(Loc::getMessage("SALE_OVIEW_BLOCK_TITLE_".toUpper($blockCode)), $blockCode);
+			$tabControl->DraggableBlockBegin($fastNavItems[$blockCode], $blockCode);
 
 			switch ($blockCode)
 			{
@@ -349,6 +365,9 @@ if (empty($statusOnPaid) && (empty($statusOnAllowDelivery) || empty($statusOnPai
 				case "basket":
 					echo $orderBasket->getView();
 					echo '<div style="display: none;">'.$orderBasket->settingsDialog->getHtml().'</div>';
+					break;
+				default:
+					echo $customDraggableBlocks->getBlockContent($blockCode, $tabControl->selectedTab);
 					break;
 			}
 			$tabControl->DraggableBlockEnd();
@@ -392,7 +411,7 @@ $tabControl->End();
 <script type="text/javascript">
 	BX.ready( function(){
 		BX.Sale.Admin.OrderAjaxer.sendRequest(
-			BX.Sale.Admin.OrderEditPage.ajaxRequests.getOrderTails("<?=$saleOrder->getId()?>", 'view'),
+			BX.Sale.Admin.OrderEditPage.ajaxRequests.getOrderTails("<?=$saleOrder->getId()?>", "view", "<?=$basketPrefix?>"),
 			true
 		);
 	});

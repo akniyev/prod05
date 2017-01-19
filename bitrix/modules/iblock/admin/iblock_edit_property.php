@@ -1,9 +1,12 @@
 <?
+use Bitrix\Main\Loader,
+	Bitrix\Iblock;
+
 define("STOP_STATISTICS", true);
 define("BX_SECURITY_SHOW_MESSAGE", true);
 
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_admin_before.php");
-CModule::IncludeModule("iblock");
+Loader::includeModule("iblock");
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/iblock/prolog.php");
 IncludeModuleLangFile(__FILE__);
 
@@ -31,7 +34,7 @@ define('DEF_LIST_VALUE_COUNT',5);
 * 		MULTIPLE = Y/N
 * )
 */
-function __AddListValueIDCell($intPropID,$arPropInfo)
+function __AddListValueIDCell($intPropID)
 {
 	return ((int)$intPropID > 0 ? $intPropID : '&nbsp;');
 }
@@ -56,9 +59,9 @@ function __AddListValueDefCell($intPropID,$arPropInfo)
 	return '<input type="'.('Y' == $arPropInfo['MULTIPLE'] ? 'checkbox' : 'radio').'" name="PROPERTY_VALUES_DEF'.('Y' == $arPropInfo['MULTIPLE'] ? '[]' : '').'" id="PROPERTY_VALUES_DEF_'.$arPropInfo['ID'].'" value="'.$arPropInfo['ID'].'" '.('Y' == $arPropInfo['DEF'] ? 'checked="checked"' : '').'>';
 }
 
-function __AddListValueRow($intPropID,$arPropInfo)
+function __AddListValueRow($intPropID, $arPropInfo)
 {
-	return '<tr><td class="bx-digit-cell">'.__AddListValueIDCell($intPropID,$arPropInfo).'</td>
+	return '<tr><td class="bx-digit-cell">'.__AddListValueIDCell($intPropID).'</td>
 	<td>'.__AddListValueXmlIDCell($intPropID,$arPropInfo).'</td>
 	<td>'.__AddListValueValueCell($intPropID,$arPropInfo).'</td>
 	<td style="text-align:center">'.__AddListValueSortCell($intPropID,$arPropInfo).'</td>
@@ -73,7 +76,7 @@ $arDisabledPropFields = array(
 	'VERSION',
 );
 
-$arDefPropInfo = array(
+$defaultListValueSettings = array(
 	'ID' => 'ntmp_xxx',
 	'XML_ID' => '',
 	'VALUE' => '',
@@ -86,19 +89,19 @@ $arDefPropInfo = array(
 	'ID' => 0,
 	'IBLOCK_ID' => 0,
 	'FILE_TYPE' => '',
-	'LIST_TYPE' => 'L',
+	'LIST_TYPE' => Iblock\PropertyTable::LISTBOX,
 	'ROW_COUNT' => '1',
 	'COL_COUNT' => '30',
 	'LINK_IBLOCK_ID' => '0',
 	'DEFAULT_VALUE' => '',
 	'USER_TYPE_SETTINGS' => false,
-	'WITH_DESCRIPTION' => '',
-	'SEARCHABLE' => '',
-	'FILTRABLE' => '',
+	'WITH_DESCRIPTION' => 'N',
+	'SEARCHABLE' => 'N',
+	'FILTRABLE' => 'N',
 	'ACTIVE' => 'Y',
-	'MULTIPLE_CNT' => '5',
+	'MULTIPLE_CNT' => Iblock\PropertyTable::DEFAULT_MULTIPLE_CNT,
 	'XML_ID' => '',
-	'PROPERTY_TYPE' => 'S',
+	'PROPERTY_TYPE' => Iblock\PropertyTable::TYPE_STRING,
 	'NAME' => '',
 	'HINT' => '',
 	'USER_TYPE' => '',
@@ -108,7 +111,7 @@ $arDefPropInfo = array(
 	'CODE' => '',
 	'SHOW_DEL' => 'N',
 	'VALUES' => false,
-	'SECTION_PROPERTY' => $bSectionPopup? "N": "Y",
+	'SECTION_PROPERTY' => $bSectionPopup? 'N': 'Y',
 	'SMART_FILTER' => 'N',
 	'DISPLAY_TYPE' => '',
 	'DISPLAY_EXPANDED' => 'N',
@@ -141,7 +144,7 @@ $arHiddenPropFields = array(
 if ($_SERVER["REQUEST_METHOD"] == "POST" && !check_bitrix_sessid())
 {
 	require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_admin_after.php");
-	$APPLICATION->AuthForm(GetMessage("ACCESS_DENIED"));
+	$APPLICATION->AuthForm('');
 	require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/epilog_admin.php");
 	die();
 }
@@ -171,7 +174,7 @@ elseif ($intIBlockID > 0)
 		if (!CIBlockRights::UserHasRightTo($intIBlockID, $intIBlockID, "iblock_edit"))
 		{
 			require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_admin_after.php");
-			$APPLICATION->AuthForm(GetMessage("ACCESS_DENIED"));
+			$APPLICATION->AuthForm('');
 			require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/epilog_admin.php");
 			die();
 		}
@@ -202,7 +205,7 @@ if (!strlen($str_PROPERTY_ID))
 
 $arListValues = array();
 
-if(CModule::IncludeModule('highloadblock') && isset($_POST['PROPERTY_DIRECTORY_VALUES']) && is_array($_POST['PROPERTY_DIRECTORY_VALUES']))
+if(Loader::includeModule('highloadblock') && isset($_POST['PROPERTY_DIRECTORY_VALUES']) && is_array($_POST['PROPERTY_DIRECTORY_VALUES']))
 {
 	if (isset($_POST["HLB_NEW_TITLE"]) && $_POST["PROPERTY_USER_TYPE_SETTINGS"]["TABLE_NAME"] == '-1')
 	{
@@ -604,7 +607,7 @@ elseif(!$bReload && $_SERVER["REQUEST_METHOD"] == "POST" && (isset($_POST["save"
 				elseif($arFields['PROPERTY_TYPE'] == "E" && !$arFields['USER_TYPE'])
 					$type = GetMessage("IBLOCK_PROP_E");
 				elseif($arFields['USER_TYPE'] && is_array($ar = CIBlockProperty::GetUserType($arFields['USER_TYPE'])))
-					$type = htmlspecialcharsex($ar["DESCRIPTION"]);
+					$type = htmlspecialcharsEx($ar["DESCRIPTION"]);
 				else
 					$type = GetMessage("IBLOCK_PROP_S");
 
@@ -615,7 +618,9 @@ elseif(!$bReload && $_SERVER["REQUEST_METHOD"] == "POST" && (isset($_POST["save"
 							"'.CUtil::JSEscape($type).'",
 							'.intval($arFields["SORT"]).',
 							"'.CUtil::JSEscape($arFields['PROPERTY_TYPE']).'",
-							"'.CUtil::JSEscape($arFields['USER_TYPE']).'"
+							"'.CUtil::JSEscape($arFields['USER_TYPE']).'",
+							"'.CUtil::JSEscape($arFields['CODE']).'",
+							""
 						);
 						top.BX.closeWait();
 						top.BX.WindowManager.Get().AllowClose();
@@ -663,6 +668,8 @@ if (isset($_REQUEST['saveresult']))
 			}
 		}
 	}
+	unset($strFieldName);
+	unset($arFieldsList);
 
 	if (isset($_POST['PROPERTY_SECTION_PROPERTY']))
 		$arProperty['SECTION_PROPERTY'] = $_POST['PROPERTY_SECTION_PROPERTY'];
@@ -706,10 +713,10 @@ if (isset($_REQUEST['saveresult']))
 		$TextParser->ApplyHtmlSpecChars(false);
 		$arProperty['FILTER_HINT'] = $TextParser->SanitizeHtml($arProperty['FILTER_HINT']);
 	}
-	$arProperty['MULTIPLE_CNT'] = intval($arProperty['MULTIPLE_CNT']);
-	if (0 >= $arProperty['MULTIPLE_CNT'])
-		$arProperty['MULTIPLE_CNT'] = DEF_LIST_VALUE_COUNT;
-	$arProperty['WITH_DESCRIPTION'] = ('Y' == $arProperty['WITH_DESCRIPTION'] ? 'Y' : 'N');
+	$arProperty['MULTIPLE_CNT'] = (int)$arProperty['MULTIPLE_CNT'];
+	if ($arProperty['MULTIPLE_CNT'] <= 0)
+		$arProperty['MULTIPLE_CNT'] = Iblock\PropertyTable::DEFAULT_MULTIPLE_CNT;
+	$arProperty['WITH_DESCRIPTION'] = ($arProperty['WITH_DESCRIPTION'] == 'Y' ? 'Y' : 'N');
 
 	if(!empty($arListValues))
 		$arProperty["VALUES"] = $arListValues;
@@ -725,7 +732,7 @@ if (isset($_REQUEST['saveresult']))
 	}
 	$arProperty['PROPINFO'] = base64_encode(serialize($arHidden));
 
-	$strResult = CUtil::PhpToJsObject($arProperty);
+	$strResult = CUtil::PhpToJSObject($arProperty);
 	?><script type="text/javascript">
 	arResult = <? echo $strResult; ?>;
 	if (top.<? echo $strReceiver; ?>)
@@ -779,10 +786,10 @@ if(!$bFullForm)
 	$arProperty['ACTIVE'] = ('Y' == $arProperty['ACTIVE'] ? 'Y' : 'N');
 	$arProperty['SECTION_PROPERTY'] = ('N' == $arProperty['SECTION_PROPERTY'] ? 'N' : 'Y');
 	$arProperty['SMART_FILTER'] = ('Y' == $arProperty['SMART_FILTER'] ? 'Y' : 'N');
-	$arProperty['MULTIPLE_CNT'] = intval($arProperty['MULTIPLE_CNT']);
-	if (0 >= $arProperty['MULTIPLE_CNT'])
-		$arProperty['MULTIPLE_CNT'] = DEF_LIST_VALUE_COUNT;
-	$arProperty['WITH_DESCRIPTION'] = ('Y' == $arProperty['WITH_DESCRIPTION'] ? 'Y' : 'N');
+	$arProperty['MULTIPLE_CNT'] = (int)$arProperty['MULTIPLE_CNT'];
+	if ($arProperty['MULTIPLE_CNT'] <= 0)
+		$arProperty['MULTIPLE_CNT'] = Iblock\PropertyTable::DEFAULT_MULTIPLE_CNT;
+	$arProperty['WITH_DESCRIPTION'] = ($arProperty['WITH_DESCRIPTION'] == 'Y' ? 'Y' : 'N');
 
 	$arProperty['USER_TYPE'] = '';
 	if (false !== strpos($arProperty['PROPERTY_TYPE'],':'))
@@ -925,14 +932,7 @@ else
 	if ('L' == $arProperty['PROPERTY_TYPE'])
 		$arDefPropInfo['MULTIPLE'] = $arProperty['MULTIPLE'];
 
-	$arTypesList = array(
-		"S" => GetMessage("BT_ADM_IEP_PROP_TYPE_S"),
-		"N" => GetMessage("BT_ADM_IEP_PROP_TYPE_N"),
-		"L" => GetMessage("BT_ADM_IEP_PROP_TYPE_L"),
-		"F" => GetMessage("BT_ADM_IEP_PROP_TYPE_F"),
-		"G" => GetMessage("BT_ADM_IEP_PROP_TYPE_G"),
-		"E" => GetMessage("BT_ADM_IEP_PROP_TYPE_E"),
-	);
+	$arTypesList = Iblock\Helpers\Admin\Property::getBaseTypeList(true);
 
 	$aMenu = array(
 		array(
@@ -1052,19 +1052,17 @@ else
 				{
 					?><optgroup label="<? echo GetMessage('BT_ADM_IEP_PROPERTY_BASE_TYPE_GROUP'); ?>"><?
 				}
-				?>
-				<option value="S" <?if($PROPERTY_TYPE=="S")echo " selected"?>><?echo GetMessage("IBLOCK_PROP_S")?></option>
-				<option value="N" <?if($PROPERTY_TYPE=="N")echo " selected"?>><?echo GetMessage("IBLOCK_PROP_N")?></option>
-				<option value="L" <?if($PROPERTY_TYPE=="L")echo " selected"?>><?echo GetMessage("IBLOCK_PROP_L")?></option>
-				<option value="F" <?if($PROPERTY_TYPE=="F")echo " selected"?>><?echo GetMessage("IBLOCK_PROP_F")?></option>
-				<option value="G" <?if($PROPERTY_TYPE=="G")echo " selected"?>><?echo GetMessage("IBLOCK_PROP_G")?></option>
-				<option value="E" <?if($PROPERTY_TYPE=="E")echo " selected"?>><?echo GetMessage("IBLOCK_PROP_E")?></option>
-				<?
+				foreach ($arTypesList as $typeId => $typeTitle)
+				{
+					?><option value="<?=$typeId; ?>" <?=($PROPERTY_TYPE==$typeId ? ' selected' : '');?>><?=htmlspecialcharsbx($typeTitle); ?></option><?
+				}
+				unset($typeTitle);
+				unset($typeId);
 				if ($boolUserPropExist)
 				{
 				?></optgroup><optgroup label="<? echo GetMessage('BT_ADM_IEP_PROPERTY_USER_TYPE_GROUP'); ?>"><?
 				}
-				foreach($arUserTypeList as  $ar)
+				foreach($arUserTypeList as $ar)
 				{
 					?><option value="<?=htmlspecialcharsbx($ar["PROPERTY_TYPE"].":".$ar["USER_TYPE"])?>" <?if($PROPERTY_TYPE==$ar["PROPERTY_TYPE"].":".$ar["USER_TYPE"])echo " selected"?>><?=htmlspecialcharsbx($ar["DESCRIPTION"])?></option>
 					<?
@@ -1348,7 +1346,7 @@ else
 			<td width="40%"><?echo GetMessage("BT_ADM_IEP_PROP_FILTER_HINT")?></td>
 			<td>
 			<?
-				CModule::IncludeModule("fileman");
+				Loader::includeModule("fileman");
 				$LHE = new CLightHTMLEditor;
 				$LHE->Show(array(
 					'inputName' => 'PROPERTY_FILTER_HINT',
@@ -1666,7 +1664,7 @@ else
 	}
 	?></div></form>
 <script type="text/javascript"><?
-	if('L' == $arProperty['PROPERTY_TYPE'])
+	if ($arProperty['PROPERTY_TYPE'] == Iblock\PropertyTable::TYPE_LIST)
 	{
 ?>
 window.oPropSet = {
@@ -1686,26 +1684,26 @@ function add_list_row()
 	newRow = window.oPropSet.pTypeTbl.insertRow(window.oPropSet.pTypeTbl.rows.length);
 
 	oCell = newRow.insertCell(-1);
-	strContent = '<? echo CUtil::JSEscape(__AddListValueIDCell('ntmp_xxx',$arDefPropInfo)); ?>';
+	strContent = '<? echo CUtil::JSEscape(__AddListValueIDCell($defaultListValueSettings['ID'])); ?>';
 	strContent = strContent.replace(/tmp_xxx/ig, id);
 	oCell.innerHTML = strContent;
 
 	oCell = newRow.insertCell(-1);
-	strContent = '<? echo CUtil::JSEscape(__AddListValueXmlIDCell('ntmp_xxx',$arDefPropInfo)); ?>';
+	strContent = '<? echo CUtil::JSEscape(__AddListValueXmlIDCell($defaultListValueSettings['ID'], $defaultListValueSettings)); ?>';
 	strContent = strContent.replace(/tmp_xxx/ig, id);
 	oCell.innerHTML = strContent;
 	oCell = newRow.insertCell(-1);
-	strContent = '<? echo CUtil::JSEscape(__AddListValueValueCell('ntmp_xxx',$arDefPropInfo)); ?>';
-	strContent = strContent.replace(/tmp_xxx/ig, id);
-	oCell.innerHTML = strContent;
-
-	oCell = newRow.insertCell(-1);
-	strContent = '<? echo CUtil::JSEscape(__AddListValueSortCell('ntmp_xxx',$arDefPropInfo)); ?>';
+	strContent = '<? echo CUtil::JSEscape(__AddListValueValueCell($defaultListValueSettings['ID'], $defaultListValueSettings)); ?>';
 	strContent = strContent.replace(/tmp_xxx/ig, id);
 	oCell.innerHTML = strContent;
 
 	oCell = newRow.insertCell(-1);
-	strContent = '<? echo CUtil::JSEscape(__AddListValueDefCell('ntmp_xxx',$arDefPropInfo)); ?>';
+	strContent = '<? echo CUtil::JSEscape(__AddListValueSortCell($defaultListValueSettings['ID'], $defaultListValueSettings)); ?>';
+	strContent = strContent.replace(/tmp_xxx/ig, id);
+	oCell.innerHTML = strContent;
+
+	oCell = newRow.insertCell(-1);
+	strContent = '<? echo CUtil::JSEscape(__AddListValueDefCell($defaultListValueSettings['ID'], $defaultListValueSettings)); ?>';
 	strContent = strContent.replace(/tmp_xxx/ig, id);
 	oCell.innerHTML = strContent;
 	oCell.setAttribute('align','center');
@@ -1778,4 +1776,3 @@ BX.ready(function(){
 });
 </script><?
 require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/epilog_admin.php");
-?>

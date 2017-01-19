@@ -72,7 +72,7 @@ class MeasureRatioTable extends Main\Entity\DataManager
 
 		$result = array_fill_keys($product, 1);
 		$ratioRows = array_chunk($product, 500);
-		foreach ($ratioRows as &$row)
+		foreach ($ratioRows as $row)
 		{
 			$ratioIterator = self::getList(array(
 				'select' => array('PRODUCT_ID', 'RATIO'),
@@ -84,7 +84,7 @@ class MeasureRatioTable extends Main\Entity\DataManager
 				$ratioInt = (int)$ratio['RATIO'];
 				$ratioFloat = (float)$ratio['RATIO'];
 				$ratioResult  = ($ratioFloat > $ratioInt ? $ratioFloat : $ratioInt);
-				if (abs($ratioResult) < CATALOG_VALUE_EPSILON || $ratioResult < 0)
+				if ($ratioResult < CATALOG_VALUE_EPSILON)
 					continue;
 				$result[$ratio['PRODUCT_ID']] = $ratioResult;
 			}

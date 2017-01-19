@@ -31,7 +31,8 @@ $arBasketJSParams = array(
 	'TEMPLATE_FOLDER' => $templateFolder,
 	'DELETE_URL' => $arUrls["delete"],
 	'DELAY_URL' => $arUrls["delay"],
-	'ADD_URL' => $arUrls["add"]
+	'ADD_URL' => $arUrls["add"],
+	'EVENT_ONCHANGE_ON_START' => (!empty($arResult['EVENT_ONCHANGE_ON_START']) && $arResult['EVENT_ONCHANGE_ON_START'] === 'Y') ? 'Y' : 'N'
 );
 ?>
 <script type="text/javascript">

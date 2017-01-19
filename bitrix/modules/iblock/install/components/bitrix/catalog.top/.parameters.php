@@ -381,7 +381,7 @@ if ($catalogIncluded)
 {
 	$arComponentParameters["PARAMETERS"]['HIDE_NOT_AVAILABLE'] = array(
 		'PARENT' => 'DATA_SOURCE',
-		'NAME' => GetMessage('CP_BCT_HIDE_NOT_AVAILABLE_EXT'),
+		'NAME' => GetMessage('CP_BCT_HIDE_NOT_AVAILABLE_EXT2'),
 		'TYPE' => 'LIST',
 		'DEFAULT' => 'N',
 		'VALUES' => array(

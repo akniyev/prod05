@@ -1,8 +1,8 @@
 <?
-use Bitrix\Main;
-use Bitrix\Main\ModuleManager;
-use Bitrix\Main\Localization\Loc;
-use Bitrix\Currency;
+use Bitrix\Main,
+	Bitrix\Main\ModuleManager,
+	Bitrix\Main\Localization\Loc,
+	Bitrix\Currency;
 
 Loc::loadMessages(__FILE__);
 
@@ -360,6 +360,12 @@ class CAllCurrency
 		return self::$currencyCache[$currency];
 	}
 
+	/**
+	 * @deprecated deprecated since currency 16.0.0
+	 * @see \Bitrix\Currency\CurrencyManager::getBaseCurrency
+	 *
+	 * @return string
+	 */
 	public static function GetBaseCurrency()
 	{
 		return Currency\CurrencyManager::getBaseCurrency();
@@ -402,14 +408,23 @@ class CAllCurrency
 			foreach ($currencyList as $currency => $title)
 			{
 				$found = ($currency == $sValue);
-				$s1 .= '<option value="'.$currency.'"'.($found ? ' selected' : '').'>'.($bFullName ? htmlspecialcharsex($title) : $currency).'</option>';
+				$s1 .= '<option value="'.$currency.'"'.($found ? ' selected' : '').'>'.($bFullName ? htmlspecialcharsbx($title) : $currency).'</option>';
 			}
 		}
 		if ('' != $sDefaultValue)
-			$s .= '<option value=""'.($found ? '' : ' selected').'>'.htmlspecialcharsex($sDefaultValue).'</option>';
+			$s .= '<option value=""'.($found ? '' : ' selected').'>'.htmlspecialcharsbx($sDefaultValue).'</option>';
 		return $s.$s1.'</select>';
 	}
 
+	/**
+	 * @deprecated deprecated since currency 16.5.0
+	 * @see \Bitrix\Currency\CurrencyTable::getList
+	 *
+	 * @param string &$by
+	 * @param string &$order
+	 * @param string $lang
+	 * @return CDBResult
+	 */
 	public static function GetList(&$by, &$order, $lang = LANGUAGE_ID)
 	{
 		global $CACHE_MANAGER;
@@ -419,7 +434,8 @@ class CAllCurrency
 			|| strtolower($by) == "currency"
 			|| strtolower($order) == "desc")
 		{
-			$dbCurrencyList = CCurrency::__GetList($by, $order, $lang);
+			/** @noinspection PhpDeprecationInspection */
+			$dbCurrencyList = static::__GetList($by, $order, $lang);
 		}
 		else
 		{
@@ -436,7 +452,8 @@ class CAllCurrency
 			else
 			{
 				$arCurrencyList = array();
-				$dbCurrencyList = CCurrency::__GetList($by, $order, $lang);
+				/** @noinspection PhpDeprecationInspection */
+				$dbCurrencyList = static::__GetList($by, $order, $lang);
 				while ($arCurrency = $dbCurrencyList->Fetch())
 					$arCurrencyList[] = $arCurrency;
 
@@ -450,6 +467,15 @@ class CAllCurrency
 		return $dbCurrencyList;
 	}
 
+	/**
+	 * @deprecated deprecated since currency 16.5.0
+	 * @see \Bitrix\Currency\CurrencyTable::getList
+	 *
+	 * @param string &$by
+	 * @param string &$order
+	 * @param string $lang
+	 * @return CDBResult
+	 */
 	public static function __GetList(&$by, &$order, $lang = LANGUAGE_ID)
 	{
 		$lang = substr((string)$lang, 0, 2);
@@ -480,7 +506,8 @@ class CAllCurrency
 		}
 		unset($normalOrder, $normalBy);
 
-		$datetimeField = Currency\CurrencyManager::getDatetimeExpressionTemplate();
+		/** @noinspection PhpInternalEntityUsedInspection */
+		$datetimeField = Currency\Compatible\Tools::getDatetimeExpressionTemplate();
 		$currencyIterator = Currency\CurrencyTable::getList(array(
 			'select' => array(
 				'CURRENCY', 'AMOUNT_CNT', 'AMOUNT', 'SORT', 'BASE', 'NUMCODE', 'CREATED_BY', 'MODIFIED_BY',
@@ -521,16 +548,35 @@ class CAllCurrency
 		return (isset($USER) && $USER instanceof CUser);
 	}
 
+	/**
+	 * @deprecated deprecated since currency 16.5.0
+	 * @see \Bitrix\Currency\CurrencyManager::getInstalledCurrencies
+	 *
+	 * @return array
+	 */
 	public static function getInstalledCurrencies()
 	{
 		return Currency\CurrencyManager::getInstalledCurrencies();
 	}
 
+	/**
+	 * @deprecated deprecated since currency 16.5.0
+	 * @see \Bitrix\Currency\CurrencyManager::clearCurrencyCache
+	 *
+	 * @return void
+	 */
 	public static function clearCurrencyCache()
 	{
 		Currency\CurrencyManager::clearCurrencyCache();
 	}
 
+	/**
+	 * @deprecated deprecated since currency 16.5.0
+	 * @see \Bitrix\Currency\CurrencyManager::clearTagCache
+	 *
+	 * @param string $currency
+	 * @return void
+	 */
 	public static function clearTagCache($currency)
 	{
 		Currency\CurrencyManager::clearTagCache($currency);

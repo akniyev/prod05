@@ -194,7 +194,7 @@ class CCatalogActionCtrlBasketProductFields extends CGlobalCondCtrlComplex
 	public static function GetControls($strControlID = false)
 	{
 		$vatList = array();
-		$vatIterator = Catalog\VatTable::getList(array('select' => array('ID', 'NAME'), 'order' => array('SORT' => 'ASC')));
+		$vatIterator = Catalog\VatTable::getList(array('select' => array('ID', 'NAME', 'SORT'), 'order' => array('SORT' => 'ASC')));
 		while ($vat = $vatIterator->fetch())
 		{
 			$vat['ID'] = (int)$vat['ID'];
@@ -211,7 +211,7 @@ class CCatalogActionCtrlBasketProductFields extends CGlobalCondCtrlComplex
 				'PREFIX' => Loc::getMessage('BT_MOD_CATALOG_COND_CMP_IBLOCK_ELEMENT_ID_PREFIX'),
 				'LOGIC' => static::GetLogic(array(BT_COND_LOGIC_EQ, BT_COND_LOGIC_NOT_EQ)),
 				'JS_VALUE' => array(
-					'type' => 'dialog',
+					'type' => 'multiDialog',
 					'popup_url' =>  '/bitrix/admin/cat_product_search_dialog.php',
 					'popup_params' => array(
 						'lang' => LANGUAGE_ID,
@@ -1182,11 +1182,11 @@ class CCatalogGifterProduct extends CGlobalCondCtrlAtoms
 
 	public static function ExtendProductIds(array $giftedProductIds)
 	{
-		$products = CCatalogSKU::getProductList($giftedProductIds);
+		$products = CCatalogSku::getProductList($giftedProductIds);
 		if (empty($products))
 			return $giftedProductIds;
 
-		foreach($products as &$product)
+		foreach($products as $product)
 			$giftedProductIds[] = $product['ID'];
 		unset($product);
 

@@ -1,11 +1,22 @@
 <?
 //<title>CSV (new)</title>
+use Bitrix\Main;
 IncludeModuleLangFile($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/catalog/import_setup_templ.php');
+/** @global string $ACTION */
+/** @global string $URL_DATA_FILE */
+/** @global string $DATA_FILE_NAME */
+/** @global int $IBLOCK_ID */
+/** @global string $fields_type */
+/** @global string $first_names_r */
+/** @global string $delimiter_r */
+/** @global string $delimiter_other_r */
+/** @global string $first_names_f */
+/** @global string $metki_f */
 
 global $APPLICATION, $USER;
 
-$NUM_CATALOG_LEVELS = intval(COption::GetOptionString("catalog", "num_catalog_levels", 3));
-if (0 >= $NUM_CATALOG_LEVELS)
+$NUM_CATALOG_LEVELS = (int)Main\Config\Option::get('catalog', 'num_catalog_levels');
+if ($NUM_CATALOG_LEVELS <= 0)
 	$NUM_CATALOG_LEVELS = 3;
 
 $arSetupErrors = array();
@@ -44,7 +55,7 @@ if ($STEP > 1)
 
 	if (empty($arSetupErrors))
 	{
-		$IBLOCK_ID = intval($IBLOCK_ID);
+		$IBLOCK_ID = (int)$IBLOCK_ID;
 		$arIBlock = array();
 		if ($IBLOCK_ID <= 0)
 		{
@@ -113,7 +124,7 @@ if ($STEP > 2)
 
 		if ($fields_type == "R")
 		{
-			$first_names_r = (($first_names_r=="Y") ? "Y" : "N" );
+			$first_names_r = ($first_names_r == "Y" ? "Y" : "N");
 			$csvFile->SetFirstHeader(($first_names_r == "Y") ? true : false);
 
 			$delimiter_r_char = "";
@@ -146,7 +157,7 @@ if ($STEP > 2)
 		}
 		else
 		{
-			$first_names_f = (($first_names_f == "Y") ? "Y" : "N" );
+			$first_names_f = ($first_names_f == "Y" ? "Y" : "N");
 			$csvFile->SetFirstHeader(($first_names_f == "Y") ? true : false);
 
 			if (strlen($metki_f) <= 0)
@@ -203,7 +214,7 @@ if ($STEP > 2)
 
 if (($ACTION == 'IMPORT_EDIT' || $ACTION == 'IMPORT_COPY') && $STEP == 3)
 {
-	if ($IBLOCK_ID == $arOldSetupVars['IBLOCK_ID'])
+	if (isset($arOldSetupVars['IBLOCK_ID']) && $IBLOCK_ID == $arOldSetupVars['IBLOCK_ID'])
 	{
 		for ($i = 0, $intCountDataFileFields = count($arDataFileFields); $i < $intCountDataFileFields; $i++)
 		{
@@ -277,6 +288,7 @@ $context->Show();
 if (!empty($arSetupErrors))
 	ShowError(implode('<br>', $arSetupErrors));
 ?>
+<!--suppress JSUnresolvedVariable -->
 <form method="POST" action="<? echo $APPLICATION->GetCurPage(); ?>" ENCTYPE="multipart/form-data" name="dataload">
 <?
 $aTabs = array(
@@ -427,7 +439,7 @@ if ($STEP == 2)
 					$sContent = substr($sContent, 0, $key);
 				unset($key);
 			}
-			?><textarea name="data" wrap="OFF" rows="7" cols="90"><? echo htmlspecialcharsbx($sContent); ?></textarea>
+			?><textarea name="data" rows="7" cols="90"><? echo htmlspecialcharsbx($sContent); ?></textarea>
 		</td>
 	</tr>
 	<?
@@ -506,7 +518,7 @@ if ($STEP == 3)
 	for ($k_old = -1, $k = 0; $k < $NUM_CATALOG_LEVELS; $k++)
 	{
 		$strLevel = ' - '.str_replace('#LEVEL#', ($k+1), GetMessage('CAT_ADM_CSV_IMP_SECT_LEVEL'));
-		foreach ($arCatalogAvailGroupFields as &$arOnerCatalogAvailGroupFields)
+		foreach ($arCatalogAvailGroupFields as $arOnerCatalogAvailGroupFields)
 		{
 			$mxKey = array_search($arOnerCatalogAvailGroupFields['value'],$arVal);
 			if (false !== $mxKey)
@@ -566,7 +578,7 @@ if ($STEP == 3)
 		$boolSep = true;
 		$strVal = COption::GetOptionString("catalog", "allowed_product_fields", $defCatalogAvailPriceFields);
 		$arVal = explode(",", $strVal);
-		foreach ($arCatalogAvailPriceFields as &$arOneCatalogAvailProdFields_tmp)
+		foreach ($arCatalogAvailPriceFields as $arOneCatalogAvailProdFields_tmp)
 		{
 			$mxKey = array_search($arOneCatalogAvailProdFields_tmp['value'],$arVal);
 			if (false !== $mxKey)
@@ -593,7 +605,7 @@ if ($STEP == 3)
 		$boolSep = true;
 		$strVal = $defCatalogAvailQuantityFields;
 		$arVal = explode(",", $strVal);
-		foreach ($arCatalogAvailQuantityFields as &$arOneCatalogAvailQuantityFields)
+		foreach ($arCatalogAvailQuantityFields as $arOneCatalogAvailQuantityFields)
 		{
 			$mxKey = array_search($arOneCatalogAvailQuantityFields['value'],$arVal);
 			if (false !== $mxKey)
@@ -618,7 +630,7 @@ if ($STEP == 3)
 		$db_prgr = CCatalogGroup::GetList(array("SORT" => "ASC"), array());
 		while ($prgr = $db_prgr->Fetch())
 		{
-			foreach ($arCatalogAvailValueFields as &$arOneCatalogAvailValueFields)
+			foreach ($arCatalogAvailValueFields as $arOneCatalogAvailValueFields)
 			{
 				$mxKey = array_search($arOneCatalogAvailValueFields['value'],$arVal);
 				if (false !== $mxKey)
@@ -652,27 +664,20 @@ if ($STEP == 3)
 				<select name="field_<? echo $i; ?>">
 				<option value="" style="font-weight: bold; text-align: center;"> --- </option>
 				<?
-				foreach ($arAvailFields as &$arOneAvailField)
+				foreach ($arAvailFields as $arOneAvailField)
 				{
 					if (!empty($arOneAvailField['SEP']))
-					{
-						?><option value="" style="font-weight: bold; text-align: center;">--- <? echo htmlspecialcharsex($arOneAvailField['SEP']); ?> ---</option><?
-					}
+						?><option value="" style="font-weight: bold; text-align: center;">--- <? echo htmlspecialcharsbx($arOneAvailField['SEP']); ?> ---</option><?
 					if (!empty($arOneAvailField['SUB_SEP']))
-					{
-						?><option value="" style="font-style: italic; text-align: center;">--- <? echo htmlspecialcharsex($arOneAvailField['SUB_SEP']); ?> ---</option><?
-					}
+						?><option value="" style="font-style: italic; text-align: center;">--- <? echo htmlspecialcharsbx($arOneAvailField['SUB_SEP']); ?> ---</option><?
 					$strStyle = '';
 					if (array_key_exists('DISABLE', $arOneAvailField))
-					{
 						$strStyle .= 'text-decoration: line-through; color: #aaaaaa;';
-					}
 					if (!empty($arOneAvailField['STYLE']))
-					{
 						$strStyle .= $arOneAvailField['STYLE'];
-					}
 					?><option value="<? echo htmlspecialcharsbx($arOneAvailField['value']); ?>" <? echo (!empty($strStyle) ? 'style="'.$strStyle.'"' : ''); ?> <? if (${"field_".$i}==$arOneAvailField["value"] || !isset(${"field_".$i}) && $arOneAvailField["value"]==$arDataFileFields[$i]) echo "selected"; ?>><?echo htmlspecialcharsex($arOneAvailField["name"]); ?></option><?
 				}
+				unset($arOneAvailField);
 				?>
 				</select>
 			</td>
@@ -829,7 +834,7 @@ if ($STEP == 3)
 					$sContent = substr($sContent, 0, $key);
 				unset($key);
 			}
-			?><textarea name="data" wrap="OFF" rows="7" cols="90"><? echo htmlspecialcharsbx($sContent); ?></textarea>
+			?><textarea name="data" rows="7" cols="90"><? echo htmlspecialcharsbx($sContent); ?></textarea>
 		</td>
 	</tr><?
 }

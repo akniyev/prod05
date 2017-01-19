@@ -1882,7 +1882,7 @@ BX.CClockSelector = function(params)
 		this.params.popup_id || 'clock_selector_popup',
 		this.params.node,
 		this.params.popup_config || {
-			titleBar: {content: BX.create('SPAN', {text: BX.message('CAL_TIME')})},
+			titleBar: BX.message('CAL_TIME'),
 			offsetLeft: -45,
 			offsetTop: -135,
 			autoHide: true,

@@ -73,6 +73,6 @@ $MESS["SALE_ORDER_BASKET_SETTINGS_COL_CUR_AMOUNT"] = "Shipment";
 $MESS["SALE_ORDER_BASKET_SETTINGS_COL_REMAINING_QUANTITY"] = "Qty available";
 $MESS["SALE_ORDER_BASKET_PROMO"] = "Coupon";
 $MESS["SALE_ORDER_BASKET_ACTUALIZE_DATA"] = "Recalculate";
-$MESS["SALE_ORDER_BASKET_ADD_COUPON_CONFIRM"] = "Once the coupon has been added, the order will be recalculated and saved. Are you sure you want to continue?";
 $MESS["SALE_ORDER_BASKET_ADD_COUPON_ERROR"] = "Error adding coupon";
+$MESS["SALE_ORDER_BASKET_COUPONS_NOTE"] = "To use a price type specific coupon, enter the coupon code and recalculate the order.";
 ?>

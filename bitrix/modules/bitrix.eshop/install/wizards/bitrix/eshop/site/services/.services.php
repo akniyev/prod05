@@ -26,6 +26,13 @@ $arServices = Array(
 			"catalog4.php",
 		),
 	),
+	"catalog" => Array(
+			"NAME" => GetMessage("SERVICE_CATALOG_SETTINGS"),
+			"STAGES" => Array(
+					"index.php",
+					"eshopapp.php",
+			),
+	),
 	"sale" => Array(
 		"NAME" => GetMessage("SERVICE_SALE_DEMO_DATA"),
 		"STAGES" => Array(
@@ -33,13 +40,6 @@ $arServices = Array(
 			"step1.php",
 			"step2.php",
 			"step3.php"
-		),
-	),
-	"catalog" => Array(
-		"NAME" => GetMessage("SERVICE_CATALOG_SETTINGS"),
-		"STAGES" => Array(
-			"index.php",
-			"eshopapp.php",
 		),
 	),
 	"forum" => Array(

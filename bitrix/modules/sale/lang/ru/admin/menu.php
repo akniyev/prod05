@@ -169,4 +169,5 @@ $MESS["SALE_MENU_EBAY_EXCHANGE"] = "Обмен данными";
 $MESS["SALE_MENU_EBAY_EXCHANGE_DESCR"] = "Раздел обмена данными";
 $MESS["SALE_MENU_EBAY_WIZARD"] = "Мастер настройки";
 $MESS["SALE_MENU_EBAY_EXCHANGE_DESCR"] = "Мастер настройки интеграции с торговой площадкой eBay";
+$MESS["SALE_MENU_SUBSCRIPTION_PRODUCT"] = "Подписка на товары";
 ?>

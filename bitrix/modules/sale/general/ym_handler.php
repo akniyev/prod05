@@ -368,9 +368,9 @@ class CSaleYMHandler
 
 		if($from <= $to)
 		{
-			$today = new DateTime();
+			$today = new DateTime('now', new DateTimeZone('Europe/Moscow'));
 
-			$dateFrom = new DateTime();
+			$dateFrom = new DateTime('now', new DateTimeZone('Europe/Moscow'));
 			$dateFrom->add($this->getTimeInterval($from, $type));
 
 			if($this->checkTimeInterval($today, $dateFrom))
@@ -476,7 +476,7 @@ class CSaleYMHandler
 
 	/*
 	 * POST /cart
-	 * max timeout 2s.
+	 * max timeout 5,5s.
 	 */
 	protected function processCartRequest($arPostData)
 	{
@@ -1229,6 +1229,9 @@ class CSaleYMHandler
 
 	public function getOrderInfo($orderId)
 	{
+		if(intval($orderId) <= 0)
+			return array();
+
 		$res = \Bitrix\Sale\Internals\OrderTable::getList(array(
 			'filter' => array(
 				'=ID' => $orderId,
@@ -1252,10 +1255,115 @@ class CSaleYMHandler
 		return array();
 	}
 
+	/**
+	 * @param int $orderId
+	 * @return bool
+	 */
 	public static function isOrderFromYandex($orderId)
 	{
 		$arOrder = self::getOrderInfo($orderId);
 		return !empty($arOrder["YANDEX_ID"]);
+	}
+
+	/**
+	 * @param \Bitrix\Main\Event $params
+	 */
+	public static function onSaleStatusOrderChange(Bitrix\Main\Event $params)
+	{
+		/** @var \Bitrix\Sale\Order $order */
+		$order = $params->getParameter("ENTITY");
+		$value = $params->getParameter("VALUE");
+		$oldValue = $params->getParameter("OLD_VALUE");
+
+		if($value == $oldValue)
+			return;
+
+		if($order->getId() <= 0)
+			return;
+
+		self::onSaleStatusOrder($order->getId(), $value);
+	}
+
+	/**
+	 * @param \Bitrix\Main\Event $params
+	 */
+	public static function onSaleOrderCanceled(Bitrix\Main\Event $params)
+	{
+		global $USER;
+
+		/** @var \Bitrix\Sale\Order $order */
+		$order = $params->getParameter("ENTITY");
+
+		if($order->getId() <= 0)
+			return;
+
+		if(!$order->isCanceled())
+			return;
+
+		$arSubstatuses = self::getOrderSubstatuses();
+		$description = $order->getField('REASON_CANCELED');
+
+		if(strlen($description) <= 0 || !$USER->IsAdmin() || empty($arSubstatuses[$description]))
+			$description = "USER_CHANGED_MIND";
+
+		self::onSaleStatusOrder($order->getId(), "CANCELED", $description);
+	}
+
+	/**
+	 * @param \Bitrix\Main\Event $params
+	 */
+	public static function onSaleShipmentDelivery(Bitrix\Main\Event $params)
+	{
+		/** @var \Bitrix\Sale\Shipment $shipment */
+		$shipment = $params->getParameter("ENTITY");
+
+		if($shipment->getId() <= 0)
+			return;
+
+		/** @var \Bitrix\Sale\ShipmentCollection $collection */
+		$collection = $shipment->getCollection();
+
+		if(!$collection->isAllowDelivery())
+			return;
+
+		self::onSaleStatusOrder($shipment->getField('ORDER_ID'), "ALLOW_DELIVERY");
+	}
+
+	/**
+	 * @param \Bitrix\Main\Event $params
+	 */
+	public static function onSaleOrderPaid(Bitrix\Main\Event $params)
+	{
+		/** @var \Bitrix\Sale\Order $order */
+		$order = $params->getParameter("ENTITY");
+
+		if($order->getId() <= 0)
+			return;
+
+		if(!$order->isPaid())
+			return;
+
+		self::onSaleStatusOrder($order->getId(), "PAYED");
+	}
+
+	/**
+	 * @param \Bitrix\Main\Event $params
+	 */
+	public static function onShipmentDeducted(Bitrix\Main\Event $params)
+	{
+		/** @var \Bitrix\Sale\Shipment $shipment */
+		$shipment = $params->getParameter("ENTITY");
+
+		if($shipment->getId() <= 0)
+			return;
+
+		/** @var \Bitrix\Sale\ShipmentCollection $collection */
+		$collection = $shipment->getCollection();
+
+		if(!$collection->isShipped())
+			return;
+
+		self::onSaleStatusOrder($shipment->getField('ORDER_ID'), "DEDUCTED");
 	}
 
 	/**
@@ -1268,6 +1376,12 @@ class CSaleYMHandler
 	 */
 	public function onSaleStatusOrder($orderId, $status, $substatus = false)
 	{
+		if(self::$isYandexRequest)
+			return false;
+
+		if(intval($orderId) <= 0)
+			return false;
+
 		$result = false;
 		$arOrder = self::getOrderInfo($orderId);
 
@@ -1288,47 +1402,6 @@ class CSaleYMHandler
 		}
 
 		return $result;
-	}
-
-	public static function onSaleCancelOrder($orderId, $value, $description)
-	{
-		if($value != "Y" || self::$isYandexRequest)
-			return false;
-
-		global $USER;
-
-		$arSubstatuses = self::getOrderSubstatuses();
-
-		if(strlen($description) <= 0 || !$USER->IsAdmin() || !in_array(trim($description), $arSubstatuses))
-			$description = "USER_CHANGED_MIND";
-		else
-			$description = array_search(trim($description), $arSubstatuses);
-
-		return self::onSaleStatusOrder($orderId, "CANCELED", $description);
-	}
-
-	public static function onSaleDeliveryOrder($orderId, $value)
-	{
-		if($value != "Y" || self::$isYandexRequest)
-			return false;
-
-		return self::onSaleStatusOrder($orderId, "ALLOW_DELIVERY");
-	}
-
-	public static function onSalePayOrder($orderId, $value)
-	{
-		if($value != "Y" || self::$isYandexRequest)
-			return false;
-
-		return self::onSaleStatusOrder($orderId, "PAYED");
-	}
-
-	public static function onSaleDeductOrder($orderId, $value)
-	{
-		if($value != "Y" || self::$isYandexRequest)
-			return false;
-
-		return self::onSaleStatusOrder($orderId, "DEDUCTED");
 	}
 
 	public static function getOrderSubstatuses()
@@ -1519,11 +1592,12 @@ class CSaleYMHandler
 	 */
 	public static function eventsStart()
 	{
-		RegisterModuleDependences("sale", "OnSaleStatusOrder", "sale", "CSaleYMHandler", "onSaleStatusOrder", 100);
-		RegisterModuleDependences("sale", "OnSaleCancelOrder", "sale", "CSaleYMHandler", "onSaleCancelOrder", 100);
-		RegisterModuleDependences("sale", "OnSalePayOrder", "sale", "CSaleYMHandler", "onSalePayOrder", 100);
-		RegisterModuleDependences("sale", "OnSaleDeliveryOrder", "sale", "CSaleYMHandler", "onSaleDeliveryOrder", 100);
-		RegisterModuleDependences("sale", "OnSaleDeductOrder", "sale", "CSaleYMHandler", "onSaleDeductOrder", 100);
+		$eventManager = \Bitrix\Main\EventManager::getInstance();
+		$eventManager->registerEventHandler('sale', 'OnSaleStatusOrderChange', 'sale', 'CSaleYMHandler', 'onSaleStatusOrderChange');
+		$eventManager->registerEventHandler('sale', 'OnSaleOrderCanceled', 'sale', 'CSaleYMHandler', 'onSaleOrderCanceled');
+		$eventManager->registerEventHandler('sale', 'OnSaleShipmentDelivery', 'sale', 'CSaleYMHandler', 'onSaleShipmentDelivery');
+		$eventManager->registerEventHandler('sale', 'OnSaleOrderPaid', 'sale', 'CSaleYMHandler', 'onSaleOrderPaid');
+		$eventManager->registerEventHandler('sale', 'OnShipmentDeducted', 'sale', 'CSaleYMHandler', 'onShipmentDeducted');
 
 		return true;
 	}
@@ -1534,11 +1608,12 @@ class CSaleYMHandler
 	 */
 	public static function eventsStop()
 	{
-		UnRegisterModuleDependences("sale", "OnSaleStatusOrder", "sale", "CSaleYMHandler", "onSaleStatusOrder");
-		UnRegisterModuleDependences("sale", "OnSaleCancelOrder", "sale", "CSaleYMHandler", "onSaleCancelOrder");
-		UnRegisterModuleDependences("sale", "OnSalePayOrder", "sale", "CSaleYMHandler", "onSalePayOrder");
-		UnRegisterModuleDependences("sale", "OnSaleDeliveryOrder", "sale", "CSaleYMHandler", "onSaleDeliveryOrder");
-		UnRegisterModuleDependences("sale", "OnSaleDeductOrder", "sale", "CSaleYMHandler", "onSaleDeductOrder");
+		$eventManager = \Bitrix\Main\EventManager::getInstance();
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleStatusOrderChange', 'sale', 'CSaleYMHandler', 'onSaleStatusOrderChange');
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleOrderCanceled', 'sale', 'CSaleYMHandler', 'onSaleOrderCanceled');
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleShipmentDelivery', 'sale', 'CSaleYMHandler', 'onSaleShipmentDelivery');
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleOrderPaid', 'sale', 'CSaleYMHandler', 'onSaleOrderPaid');
+		$eventManager->unRegisterEventHandler('sale', 'OnShipmentDeducted', 'sale', 'CSaleYMHandler', 'onShipmentDeducted');
 
 		return true;
 	}
@@ -1799,9 +1874,14 @@ class CSaleYMHandler
 		else
 			$lenOpName = "LENGTH";
 
+		if($conn->getType() == "oracle")
+			$right = 'SUBSTR(XML_ID, -('.$lenOpName.'(XML_ID)-'.strlen(self::XML_ID_PREFIX).'))';
+		else
+			$right = 'RIGHT(XML_ID, '.$lenOpName.'(XML_ID)-'.strlen(self::XML_ID_PREFIX).')';
+
 		//take out correspondence to
 		$sql = 'INSERT INTO '.\Bitrix\Sale\TradingPlatform\OrderTable::getTableName().' (ORDER_ID, EXTERNAL_ORDER_ID, TRADING_PLATFORM_ID)
-				SELECT ID, RIGHT(XML_ID, '.$lenOpName.'(XML_ID)-'.strlen(self::XML_ID_PREFIX).'), '.$platformId.'
+				SELECT ID, '.$right.', '.$platformId.'
 					FROM '.\Bitrix\Sale\Internals\OrderTable::getTableName().'
 					WHERE XML_ID LIKE '."'".self::XML_ID_PREFIX."%'";
 
@@ -1821,5 +1901,48 @@ class CSaleYMHandler
 		}
 
 		return "";
+	}
+
+	/** @deprecated */
+	public static function onSaleCancelOrder($orderId, $value, $description)
+	{
+		if($value != "Y" || self::$isYandexRequest)
+			return false;
+
+		global $USER;
+
+		$arSubstatuses = self::getOrderSubstatuses();
+
+		if(strlen($description) <= 0 || !$USER->IsAdmin() || empty($arSubstatuses[$description]))
+			$description = "USER_CHANGED_MIND";
+
+		return self::onSaleStatusOrder($orderId, "CANCELED", $description);
+	}
+
+	/** @deprecated */
+	public static function onSaleDeliveryOrder($orderId, $value)
+	{
+		if($value != "Y" || self::$isYandexRequest)
+			return false;
+
+		return self::onSaleStatusOrder($orderId, "ALLOW_DELIVERY");
+	}
+
+	/** @deprecated */
+	public static function onSalePayOrder($orderId, $value)
+	{
+		if($value != "Y" || self::$isYandexRequest)
+			return false;
+
+		return self::onSaleStatusOrder($orderId, "PAYED");
+	}
+
+	/** @deprecated */
+	public static function onSaleDeductOrder($orderId, $value)
+	{
+		if($value != "Y" || self::$isYandexRequest)
+			return false;
+
+		return self::onSaleStatusOrder($orderId, "DEDUCTED");
 	}
 }

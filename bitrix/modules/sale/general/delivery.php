@@ -995,7 +995,7 @@ class CAllSaleDelivery
 			$arSelectFields = array('*');
 
 		$params = array(
-			'order' => $arOrder,
+			'order' => self::convertFilterOldToNew($arOrder),
 			'filter' => self::convertFilterOldToNew($arFilter),
 			'group' => self::convertGroupOldToNew($arGroupBy),
 			'select' => self::convertSelectOldToNew($arSelectFields)
@@ -1081,6 +1081,19 @@ class CAllSaleDelivery
 
 			unset($service["CODE"], $service["CLASS_NAME"], $service["CONFIG"], $service["PARENT_ID"]);
 			$services[] = $service;
+		}
+
+		if(!empty($arOrder))
+		{
+			foreach($arOrder as $k => $v)
+			{
+				if($v == 'ASC')
+					$arOrder[$k] = SORT_ASC;
+				elseif($v == 'DESC')
+					$arOrder[$k] = SORT_DESC;
+			}
+
+			sortByColumn($services, $arOrder);
 		}
 
 		$result = new \CDBResult;
@@ -1185,6 +1198,66 @@ class CAllSaleDelivery
 		return $newId;
 	}
 
+	protected static function createD2LTable()
+	{
+		$con = \Bitrix\Main\Application::getConnection();
+		$result = new \Bitrix\Sale\Result();
+		$type = $con->getType();
+		$query = array();
+
+		if(!in_array($type, array('mssql', 'mysql', 'oracle')))
+		{
+			$result->addError(new \Bitrix\Main\Error('Wrong connection type!'));
+			return $result;
+		}
+
+		switch($type)
+		{
+			case 'mssql':
+				$query = array(
+					"CREATE TABLE B_SALE_DELIVERY2LOCATION_TMP
+					(
+						DELIVERY_ID int NOT NULL,
+						LOCATION_CODE varchar(100) NOT NULL,
+						LOCATION_TYPE char(1) NOT NULL
+					)",
+					"ALTER TABLE B_SALE_DELIVERY2LOCATION_TMP ADD CONSTRAINT PK_B_SALE_DELIVERY2LOCATION_TMP PRIMARY KEY (DELIVERY_ID, LOCATION_CODE, LOCATION_TYPE)",
+					"ALTER TABLE B_SALE_DELIVERY2LOCATION_TMP ADD CONSTRAINT DF_B_SALE_DELIVERY2LOCATION_TMP_LOCATION_TYPE DEFAULT 'L' FOR LOCATION_TYPE"
+				);
+
+				break;
+
+			case 'mysql':
+				$query = array(
+					"create table if not exists b_sale_delivery2location_tmp
+					(
+						DELIVERY_ID int not null,
+						LOCATION_CODE varchar(100) not null,
+						LOCATION_TYPE char(1) not null default 'L',
+						primary key (DELIVERY_ID, LOCATION_CODE, LOCATION_TYPE)
+					)");
+
+				break;
+
+			case 'oracle':
+				$query = array(
+					"CREATE TABLE B_SALE_DELIVERY2LOCATION_TMP
+					(
+						DELIVERY_ID NUMBER(18) NOT NULL,
+						LOCATION_CODE VARCHAR2(100 CHAR) NOT NULL,
+						LOCATION_TYPE CHAR(1 CHAR) DEFAULT 'L' NOT NULL,
+						PRIMARY KEY (DELIVERY_ID, LOCATION_CODE, LOCATION_TYPE)
+					)");
+
+				break;
+		}
+
+		foreach($query as $q)
+			$con->queryExecute($q);
+
+		return $result;
+	}
+
 	/**
 	 * @param bool|false $renameTable
 	 * @return \Bitrix\Sale\Result
@@ -1202,8 +1275,14 @@ class CAllSaleDelivery
 
 		if(!$con->isTableExists("b_sale_delivery2location_tmp"))
 		{
-			$fields = $con->getTableFields('b_sale_delivery2location');
-			$con->createTable('b_sale_delivery2location_tmp', $fields, array('DELIVERY_ID', 'LOCATION_CODE', 'LOCATION_TYPE'));
+			$res = self::createD2LTable();
+
+			if(!$res->isSuccess())
+			{
+				$result->addErrors($res->getErrors());
+				return $result;
+			}
+
 			$con->queryExecute('
 				INSERT INTO
 					b_sale_delivery2location_tmp(DELIVERY_ID, LOCATION_CODE, LOCATION_TYPE)
@@ -1241,9 +1320,9 @@ class CAllSaleDelivery
 				$result->addErrors($res->getErrors());
 
 			$con->queryExecute('UPDATE b_sale_delivery SET CONVERTED=\'Y\' WHERE ID='.$sqlHelper->forSql($delivery["CODE"]));
-			$con->queryExecute("UPDATE b_sale_order SET DELIVERY_ID=".$sqlHelper->forSql($newId)." WHERE DELIVERY_ID = ".$sqlHelper->forSql($delivery["CODE"]));
-			$con->queryExecute("UPDATE b_sale_order_history SET DELIVERY_ID=".$sqlHelper->forSql($newId)." WHERE DELIVERY_ID = ".$sqlHelper->forSql($delivery["CODE"]));
-			$con->queryExecute("UPDATE b_sale_delivery2paysystem SET DELIVERY_ID=".$sqlHelper->forSql($newId).", LINK_DIRECTION='".DeliveryPaySystemTable::LINK_DIRECTION_DELIVERY_PAYSYSTEM."' WHERE DELIVERY_ID = ".$sqlHelper->forSql($delivery["CODE"]));
+			$con->queryExecute("UPDATE b_sale_order SET DELIVERY_ID='".$sqlHelper->forSql($newId)."' WHERE DELIVERY_ID = '".$sqlHelper->forSql($delivery["CODE"])."'");
+			$con->queryExecute("UPDATE b_sale_order_history SET DELIVERY_ID='".$sqlHelper->forSql($newId)."' WHERE DELIVERY_ID = '".$sqlHelper->forSql($delivery["CODE"])."'");
+			$con->queryExecute("UPDATE b_sale_delivery2paysystem SET DELIVERY_ID='".$sqlHelper->forSql($newId)."', DELIVERY_PROFILE_ID='##CONVERTED##' WHERE DELIVERY_ID = '".$sqlHelper->forSql($delivery["CODE"])."'");
 
 			$con->queryExecute('
 				INSERT INTO
@@ -1391,7 +1470,7 @@ class CAllSaleDelivery
 			$basketItem = $shipmentItem->getBasketItem();
 
 			if(!$basketItem)
-				throw new \Bitrix\Main\SystemException("Can't get basketItem from shipmentItem in CAllSaleDelivery::convertOrderNewToOld()");
+				continue;
 
 			$itemFieldValues = $basketItem->getFieldValues();
 			$itemFieldValues["QUANTITY"] = $shipmentItem->getField("QUANTITY");

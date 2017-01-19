@@ -134,4 +134,5 @@ $MESS["CAT_ADM_CSV_EXP_CML2_LINK_IS_XML"] = "Export external ID (XML_ID) to SKU-
 $MESS["CAT_YANDEX_XML_CURRENCY"] = "Convert product price to currency:";
 $MESS["CAT_YANDEX_USE_HTTPS"] = "Use HTTPS when exporting:";
 $MESS["CAT_YANDEX_FILTER_AVAILABLE"] = "Export only products in stock:";
+$MESS["CAT_YANDEX_DISABLE_REFERERS"] = "Don't add referrer to product links:";
 ?>

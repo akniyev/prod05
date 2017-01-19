@@ -515,7 +515,6 @@ if($USER->CanDoOperation('install_updates'))
 						$objXML = new CDataXML();
 						$objXML->LoadString($res);
 						$arResult = $objXML->GetArray();
-
 						if(!empty($arResult) && is_array($arResult))
 						{
 							if(!empty($arResult["categories"]["#"]["category"]))
@@ -528,11 +527,28 @@ if($USER->CanDoOperation('install_updates'))
 									{
 										foreach($category["#"]["items"][0]["#"]["item"] as $catIn)
 										{
+											$arCategory2 = array();
+											if (!empty($catIn["#"]["items"][0]["#"]["item"]))
+											{
+												foreach($catIn["#"]["items"][0]["#"]["item"] as $catIn2)
+												{
+													$url = "update_system_market.php?category=".$catIn2["#"]["id"][0]["#"];
+													$arCategory2[] = Array(
+														"text" => $catIn2["#"]["name"][0]["#"]." (".$catIn2["#"]["count"][0]["#"].")",
+														"title" => GetMessage("MAIN_MENU_MP_CATEGORY")." ".$catIn2["#"]["name"][0]["#"],
+														"url" => $url."&lang=".LANGUAGE_ID,
+													);
+													$arUrls[] = $url;
+												}
+											}
+
 											$url = "update_system_market.php?category=".$catIn["#"]["id"][0]["#"];
 											$arCategory[] = Array(
 													"text" => $catIn["#"]["name"][0]["#"]." (".$catIn["#"]["count"][0]["#"].")",
 													"title" => GetMessage("MAIN_MENU_MP_CATEGORY")." ".$catIn["#"]["name"][0]["#"],
 													"url" => $url."&lang=".LANGUAGE_ID,
+													"items" => $arCategory2,
+													"items_id" => "menu_update_section_sub_".count($arCategory),
 												);
 											$arUrls[] = $url;
 										}

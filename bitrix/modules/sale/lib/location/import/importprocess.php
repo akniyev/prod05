@@ -932,7 +932,8 @@ final class ImportProcess extends Location\Util\Process
 			return;
 		}
 
-		$this->rebalanceInserter->flush();
+		if($this->rebalanceInserter)
+			$this->rebalanceInserter->flush();
 
 		$this->nextStep();
 	}
@@ -2266,7 +2267,14 @@ final class ImportProcess extends Location\Util\Process
 					}
 					unset($item['EXT']);
 
-					$res = Location\LocationTable::add($item, array('REBALANCE' => false, 'RESET_LEGACY' => false));
+					$res = Location\LocationTable::addExtended(
+						$item,
+						array(
+							'RESET_LEGACY' => false,
+							'REBALANCE' => false
+						)
+					);
+
 					if(!$res->isSuccess())
 						throw new Main\SystemException('Cannot create location');
 

@@ -22,6 +22,7 @@ $MESS["SBB_VAT_INCLUDE"] = "Include tax in price";
 $MESS["SBB_COUNT_DISCOUNT_4_ALL_QUANTITY"] = "Calculate discount for each order item (whole quantity)";
 $MESS["SBB_USE_PREPAYMENT"] = "Use PayPal Express Checkout";
 $MESS["SBB_QUANTITY_FLOAT"] = "Use fractional quantities";
+$MESS["SBB_CORRECT_RATIO"] = "Automatically recalculate amount using fold coefficient";
 $MESS["SBB_ACTION_VARIABLE"] = "Name of action variable";
 $MESS["SBB_OFFERS_PROPS"] = "SKU Parameters";
 $MESS["SBB_GIFTS"] = "\"Gifts\" Preferences";

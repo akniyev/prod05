@@ -133,6 +133,12 @@ $arNewUrlRewrite = array(
 		"PATH"	=>	 WIZARD_SITE_DIR."personal/order/index.php",
 	),
 	array(
+		"CONDITION"	=>	"#^".WIZARD_SITE_DIR."personal/#",
+		"RULE"	=>	"",
+		"ID"	=>	"bitrix:sale.personal.section",
+		"PATH"	=>	 WIZARD_SITE_DIR."personal/index.php",
+	),
+	array(
 		"CONDITION"	=>	"#^".WIZARD_SITE_DIR."store/#",
 		"RULE"	=>	"",
 		"ID"	=>	"bitrix:catalog.store",

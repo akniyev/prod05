@@ -2,6 +2,7 @@
 namespace Bitrix\Sale\Delivery\Restrictions;
 
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Sale\Internals\CollectableEntity;
 use Bitrix\Sale\Internals\DeliveryPaySystemTable;
 use Bitrix\Sale\Internals\PaySystemInner;
 use Bitrix\Sale\PaySystem;
@@ -45,13 +46,23 @@ class ByPaySystem extends Base
 		return empty($diff);
 	}
 
-	protected static function extractParams(\Bitrix\Sale\Shipment $shipment)
+	protected static function extractParams(CollectableEntity $shipment)
 	{
 		$result = array();
 
+		/** @var \Bitrix\Sale\ShipmentCollection $collection */
+		$collection = $shipment->getCollection();
+
+		/** @var \Bitrix\Sale\Order $order */
+		$order = $collection->getOrder();
+
 		/** @var \Bitrix\Sale\Payment $payment */
-		foreach($shipment->getCollection()->getOrder()->getPaymentCollection() as $payment)
-			$result[] = $payment->getPaymentSystemId();
+		foreach($order->getPaymentCollection() as $payment)
+		{
+			$paySystemId = $payment->getPaymentSystemId();
+			if ($paySystemId)
+				$result[] = $paySystemId;
+		}
 
 		return $result;
 	}
@@ -82,7 +93,7 @@ class ByPaySystem extends Base
 		return $result;
 	}
 
-	public static function getParamsStructure()
+	public static function getParamsStructure($entityId = 0)
 	{
 		$result =  array(
 			"PAY_SYSTEMS" => array(
@@ -141,7 +152,7 @@ class ByPaySystem extends Base
 		return array("PAY_SYSTEMS" =>  self::getPaySystemsByDeliveryId($deliveryId));
 	}
 
-	public static function delete($restrictionId, $deliveryId)
+	public static function delete($restrictionId, $deliveryId = 0)
 	{
 		DeliveryPaySystemTable::setLinks(
 			$deliveryId,

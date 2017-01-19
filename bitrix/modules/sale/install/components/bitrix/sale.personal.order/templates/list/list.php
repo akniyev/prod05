@@ -6,6 +6,7 @@ $arChildParams = array(
 	"PATH_TO_CANCEL" => $arResult["PATH_TO_CANCEL"],
 	"PATH_TO_COPY" => $arResult["PATH_TO_LIST"].'?ID=#ID#',
 	"PATH_TO_BASKET" => $arParams["PATH_TO_BASKET"],
+	"PATH_TO_PAYMENT" => $arParams["PATH_TO_PAYMENT"],
 	"SAVE_IN_SESSION" => $arParams["SAVE_IN_SESSION"],
 	"ORDERS_PER_PAGE" => $arParams["ORDERS_PER_PAGE"],
 	"SET_TITLE" =>$arParams["SET_TITLE"],

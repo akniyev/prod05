@@ -462,28 +462,44 @@ class OrderBuyer
 
 		foreach ($propertyCollection->getGroups() as $group)
 		{
-			$result .= '<div class="adm-bus-table-container caption border sale-order-props-group">
-				<div class="adm-bus-table-caption-title">'.htmlspecialcharsbx($group['NAME']).'</div>
-				<table border="0" cellspacing="0" cellpadding="0" width="100%" class="adm-detail-content-table edit-table ">
-					<tbody>';
+			$resultBody = "";
 			/** @var \Bitrix\Sale\PropertyValue $property */
 			foreach ($propertyCollection->getGroupProperties($group['ID']) as $property)
 			{
 				$propertyValue = $property->getValue();
+
 				if ($readonly && empty($propertyValue))
 					continue;
 
-				$result .= '
+				$showHtml = (($readonly) ? $property->getViewHtml() : $property->getEditHtml());
+				$p = $property->getProperty();
+
+				if($p['IS_PHONE'] == 'Y' && $readonly)
+				{
+					$showHtml = str_replace("'", "", $showHtml);
+					$showHtml = '<a href="javascript:void(0)" onclick="BX.Sale.Admin.OrderEditPage.desktopMakeCall(\''.$showHtml.'\');">'.
+						$showHtml.
+					'</a>';
+				}
+
+				$resultBody .= '
 					<tr>
 						<td class="adm-detail-content-cell-l" width="40%" valign="top">'.htmlspecialcharsbx($property->getName()).':</td>
-						<td class="adm-detail-content-cell-r"><div>'.(($readonly) ? $property->getViewHtml() : $property->getEditHtml()).'</div></td>
+						<td class="adm-detail-content-cell-r"><div>'.$showHtml.'</div></td>
 					</tr>';
 			}
 
-		$result .= '
-					</tbody>
-				</table>
-			</div>';
+			if (!empty($resultBody))
+			{
+				$result .= '<div class="adm-bus-table-container caption border sale-order-props-group">
+					<div class="adm-bus-table-caption-title">'.htmlspecialcharsbx($group['NAME']).'</div>
+					<table border="0" cellspacing="0" cellpadding="0" width="100%" class="adm-detail-content-table edit-table ">
+						<tbody>'.$resultBody.'
+						</tbody>
+					</table>
+				</div>';
+			}
+
 		}
 
 		return $result;
@@ -563,7 +579,7 @@ class OrderBuyer
 
 		foreach ($result['groups'] as $i => $group)
 		{
-			if (!isset($groups[$group['ID']]))
+			if (!isset($groups[$group['ID']]) && $group['ID'] != 0)
 				unset($result['groups'][$i]);
 		}
 
@@ -576,6 +592,30 @@ class OrderBuyer
 			$result = $order->getPropertyCollection()->getArray();
 		else
 			$result = self::getNotRelPropData($order);
+
+		if (!empty($result['groups']) && !empty($result['properties']))
+		{
+			$groupIndexList = array();
+			foreach ($result['groups'] as $groupdData)
+			{
+				$groupIndexList[] = intval($groupdData['ID']);
+			}
+
+			if (!empty($groupIndexList))
+			{
+				foreach ($result['properties'] as $index => $propertyData)
+				{
+					if (array_key_exists('PROPS_GROUP_ID', $propertyData))
+					{
+						if (!in_array($propertyData['PROPS_GROUP_ID'], $groupIndexList))
+						{
+							$result['properties'][$index]['PROPS_GROUP_ID'] = 0;
+						}
+					}
+				}
+			}
+
+		}
 
 		return '
 			<script type="text/javascript">

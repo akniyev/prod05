@@ -141,6 +141,7 @@ class BasketPropertiesCollection
 				}
 			}
 
+			unset($value['ID']);
 			$fields = array();
 			foreach ($value as $k => $v)
 			{
@@ -254,15 +255,10 @@ class BasketPropertiesCollection
 			$requestValues[$propertyValue['CODE']] = $propertyValue["VALUE"];
 		}
 
-		if (count($propertyValues) != count($values))
-		{
-			return false;
-		}
-		
 		$found = true;
 		foreach($requestValues as $key => $val)
 		{
-			if (array_key_exists($key, $propertyValues) && $propertyValues[$key]['VALUE'] != $val)
+			if (!array_key_exists($key, $propertyValues) || (array_key_exists($key, $propertyValues) && $propertyValues[$key]['VALUE'] != $val))
 			{
 				$found = false;
 				break;
@@ -355,6 +351,84 @@ class BasketPropertiesCollection
 	}
 
 
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return Basket
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
 
+		$basketPropertiesCollectionClone = clone $this;
+		$basketPropertiesCollectionClone->isClone = true;
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $basketPropertiesCollectionClone;
+		}
+
+		/** @var BasketItem $basketItem */
+		if ($basketItem = $this->basketItem)
+		{
+			if (!$cloneEntity->contains($basketItem))
+			{
+				$cloneEntity[$basketItem] = $basketItem->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($basketItem))
+			{
+				$basketPropertiesCollectionClone->basketItem = $cloneEntity[$basketItem];
+			}
+		}
+
+		/**
+		 * @var int key
+		 * @var BasketPropertyItem $basketPropertyItem
+		 */
+		foreach ($basketPropertiesCollectionClone->collection as $key => $basketPropertyItem)
+		{
+			if (!$cloneEntity->contains($basketPropertyItem))
+			{
+				$cloneEntity[$basketPropertyItem] = $basketPropertyItem->createClone($cloneEntity);
+			}
+
+			$basketPropertiesCollectionClone->collection[$key] = $cloneEntity[$basketPropertyItem];
+		}
+
+
+		return $basketPropertiesCollectionClone;
+	}
+
+
+	/**
+	 * @return Result
+	 */
+	public function verify()
+	{
+		$result = new Result();
+
+		/** @var BasketPropertyItem $basketPropertyItem */
+		foreach ($this->collection as $basketPropertyItem)
+		{
+			$r = $basketPropertyItem->verify();
+			if (!$r->isSuccess())
+			{
+				if ($r instanceof ResultWarning)
+				{
+					$result->addWarnings($r->getErrors());
+				}
+				else
+				{
+					$result->addErrors($r->getErrors());
+				}
+			}
+		}
+		return $result;
+	}
 
 }

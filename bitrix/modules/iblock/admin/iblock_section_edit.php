@@ -1608,7 +1608,7 @@ if($arIBlock["SECTION_PROPERTY"] === "Y")
 					adjustEmptyTR(table_id);
 				}
 			}
-			function createSectionProperty(id, name, type, sortnum, property_type, user_type)
+			function createSectionProperty(id, name, type, sortnum, property_type, user_type, code)
 			{
 				var tbl = BX(target_id);
 				if(tbl)
@@ -1621,25 +1621,37 @@ if($arIBlock["SECTION_PROPERTY"] === "Y")
 					row.setAttribute('prop_sort', sortnum);
 					row.setAttribute('prop_id', id);
 					row.setAttribute('left_margin', <?echo intval($str_LEFT_MARGIN)?>);
+
+					var cell, c = 0;
+
 					row.insertCell(-1);
+					cell = row.cells[c];
+					cell.align = 'left';
+					cell.innerHTML = '<input type="hidden" name="SECTION_PROPERTY['+id+'][SHOW]" id="hidden_SECTION_PROPERTY_'+id+'" value="Y">'+name;
+					cell.className = 'internal-left';
+
 					row.insertCell(-1);
+					cell = row.cells[++c];
+					cell.align = 'left';
+					cell.innerHTML = code;
+
 					row.insertCell(-1);
+					cell = row.cells[++c];
+					cell.align = 'left';
+					cell.innerHTML = type;
+
 					row.insertCell(-1);
+					cell = row.cells[++c];
+					cell.align = 'center';
+					cell.style.textAlign = 'center';
+					cell.innerHTML = '<input type="checkbox" value="Y" name="SECTION_PROPERTY['+id+'][SMART_FILTER]">';
+
 					row.insertCell(-1);
-					row.insertCell(-1);
-					row.insertCell(-1);
-					row.cells[0].align = 'left';
-					row.cells[0].innerHTML = '<input type="hidden" name="SECTION_PROPERTY['+id+'][SHOW]" id="hidden_SECTION_PROPERTY_'+id+'" value="Y">'+name;
-					row.cells[0].className = 'internal-left';
-					row.cells[1].align = 'left';
-					row.cells[1].innerHTML = type;
-					row.cells[2].align = 'center';
-					row.cells[2].style.textAlign = 'center';
-					row.cells[2].innerHTML = '<input type="checkbox" value="Y" name="SECTION_PROPERTY['+id+'][SMART_FILTER]">';
+					cell = row.cells[++c];
 					var displayTypes = getDisplayTypes(property_type, user_type);
 					if (!displayTypes)
 					{
-						row.cells[3].innerHTML = '&nbsp;';
+						cell.innerHTML = '&nbsp;';
 					}
 					else
 					{
@@ -1655,15 +1667,25 @@ if($arIBlock["SECTION_PROPERTY"] === "Y")
 								jsSelectUtils.addNewOption(select, x, displayTypes[x], false, false);
 							}
 						}
-						row.cells[3].appendChild(select);
+						cell.appendChild(select);
 					}
-					row.cells[4].align = 'center';
-					row.cells[4].style.textAlign = 'center';
-					row.cells[4].innerHTML = '<input type="checkbox" value="Y" name="SECTION_PROPERTY['+id+'][DISPLAY_EXPANDED]">';
-					row.cells[5].innerHTML = '<?echo CUtil::JSEscape($editor->getControlHtml('SECTION_PROPERTY[#ID#][FILTER_HINT]', '', 255))?>'.replace('#ID#', id);
-					row.cells[6].align = 'left';
-					row.cells[6].className = 'internal-right';
-					row.cells[6].innerHTML = '<a class="bx-action-href" href="javascript:deleteSectionProperty('+id+', \''+target_select_id+'\', \''+target_shadow_id+'\', \''+target_id+'\')"><?echo GetMessageJS("IBSEC_E_PROP_TABLE_ACTION_HIDE")?></a>';
+
+					row.insertCell(-1);
+					cell = row.cells[++c];
+					cell.align = 'center';
+					cell.style.textAlign = 'center';
+					cell.innerHTML = '<input type="checkbox" value="Y" name="SECTION_PROPERTY['+id+'][DISPLAY_EXPANDED]">';
+
+					row.insertCell(-1);
+					cell = row.cells[++c];
+					cell.innerHTML = '<?echo CUtil::JSEscape($editor->getControlHtml('SECTION_PROPERTY[#ID#][FILTER_HINT]', '', 255))?>'.replace('#ID#', id) || '&nbsp;';
+
+					row.insertCell(-1);
+					cell = row.cells[++c];
+					cell.align = 'left';
+					cell.className = 'internal-right';
+					cell.innerHTML = '<a class="bx-action-href" href="javascript:deleteSectionProperty('+id+', \''+target_select_id+'\', \''+target_shadow_id+'\', \''+target_id+'\')"><?echo GetMessageJS("IBSEC_E_PROP_TABLE_ACTION_HIDE")?></a>';
+
 					setMode(tbl, last_mode);
 					animateTR(row);
 					var shadow = BX(target_shadow_id);

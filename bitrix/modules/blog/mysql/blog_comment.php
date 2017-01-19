@@ -4,7 +4,7 @@ require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/blog/general/blog_commen
 class CBlogComment extends CAllBlogComment
 {
 	/*************** ADD, UPDATE, DELETE *****************/
-	function Add($arFields)
+	function Add($arFields, $bSearchIndex = true)
 	{
 		global $DB;
 
@@ -74,7 +74,10 @@ class CBlogComment extends CAllBlogComment
 			ExecuteModuleEventEx($arEvent, Array($ID, &$arFields));
 		}
 
-		if (CModule::IncludeModule("search"))
+		if (
+			$bSearchIndex
+			&& CModule::IncludeModule("search")
+		)
 		{
 			if (CBlogUserGroup::GetGroupPerms(1, $arComment["BLOG_ID"], $arComment["POST_ID"], BLOG_PERMS_POST) >= BLOG_PERMS_READ)
 			{
@@ -131,8 +134,8 @@ class CBlogComment extends CAllBlogComment
 						"PARAM1" => "COMMENT",
 						"PARAM2" => $arComment["BLOG_ID"]."|".$arComment["POST_ID"],
 						"PERMISSIONS" => array(2),
-						"TITLE" => $arComment["TITLE"],
-						"BODY" => $searchContent,
+						"TITLE" => CSearch::KillTags($arComment["TITLE"]),
+						"BODY" => CSearch::KillTags($searchContent),
 						"INDEX_TITLE" => false,
 						"USER_ID" => (IntVal($arComment["AUTHOR_ID"]) > 0) ? $arComment["AUTHOR_ID"] : false,
 						"ENTITY_TYPE_ID" => "BLOG_COMMENT",
@@ -189,7 +192,7 @@ class CBlogComment extends CAllBlogComment
 
 					if(strlen($arComment["TITLE"]) <= 0)
 					{
-						$arSearchIndex["TITLE"] = substr($arSearchIndex["BODY"], 0, 100);
+						$arSearchIndex["TITLE"] = substr(CSearch::KillTags($searchContent), 0, 100);
 					}
 
 					CSearch::Index("blog", "C".$ID, $arSearchIndex);
@@ -317,8 +320,8 @@ class CBlogComment extends CAllBlogComment
 						"PARAM1" => "COMMENT",
 						"PARAM2" => $arComment["BLOG_ID"]."|".$arComment["POST_ID"],
 						"PERMISSIONS" => array(2),
-						"TITLE" => $arComment["TITLE"],
-						"BODY" => $searchContent,
+						"TITLE" => CSearch::KillTags($arComment["TITLE"]),
+						"BODY" => CSearch::KillTags($searchContent),
 						"USER_ID" => (IntVal($arComment["AUTHOR_ID"]) > 0) ? $arComment["AUTHOR_ID"] : false,
 						"ENTITY_TYPE_ID" => "BLOG_COMMENT",
 						"ENTITY_ID" => $arComment["ID"],
@@ -372,7 +375,7 @@ class CBlogComment extends CAllBlogComment
 					if(strlen($arComment["TITLE"]) <= 0)
 					{
 						//$arPost = CBlogPost::GetByID($arComment["POST_ID"]);
-						$arSearchIndex["TITLE"] = substr($arSearchIndex["BODY"], 0, 100);
+						$arSearchIndex["TITLE"] = substr(CSearch::KillTags($searchContent), 0, 100);
 					}
 
 					CSearch::Index("blog", "C".$ID, $arSearchIndex, True);

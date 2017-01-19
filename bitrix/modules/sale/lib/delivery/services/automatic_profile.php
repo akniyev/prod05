@@ -152,10 +152,20 @@ class AutomaticProfile extends Base
 		$result = $this->parentAutomatic->calculateProfile($this->profileId, $this->getOldConfig(), $shipment);
 
 		$result->setDeliveryPrice(
-			$result->getPrice() + $this->getMarginPrice($shipment)
+			$result->getPrice() + $this->getMarginPrice($result->getPrice())
 		);
 
 		return $result;
+	}
+
+	protected function getMarginPrice($price)
+	{
+		if($this->config["MAIN"]["MARGIN_TYPE"] == "%")
+			$marginPrice = $price * floatval($this->config["MAIN"]["MARGIN_VALUE"]) / 100;
+		else
+			$marginPrice = floatval($this->config["MAIN"]["MARGIN_VALUE"]);
+
+		return $marginPrice;
 	}
 
 	protected function getConfigStructure()
@@ -307,26 +317,6 @@ class AutomaticProfile extends Base
 	public function getParentService()
 	{
 		return $this->parentAutomatic;
-	}
-
-	protected function getMarginPrice($shipment)
-	{
-		$marginPrice = 0;
-
-		if(floatval($this->config["MAIN"]["MARGIN_VALUE"]) > 0)
-		{
-			if($this->config["MAIN"]["MARGIN_TYPE"] == "%")
-			{
-				$shipmentPrice = (($shipment !== null) ? self::calculateShipmentPrice($shipment) : 0);
-				$marginPrice = $shipmentPrice * floatval($this->config["MAIN"]["MARGIN_VALUE"]) / 100;
-			}
-			else
-			{
-				$marginPrice = floatval($this->config["MAIN"]["MARGIN_VALUE"]);
-			}
-		}
-
-		return $marginPrice;
 	}
 
 	public function isCompatible(Shipment $shipment)

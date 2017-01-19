@@ -35,18 +35,53 @@ class EventActions
 	const EVENT_ON_ORDER_STATUS_CHANGE = "OnSaleStatusOrderChange";
 	const EVENT_ON_ORDER_STATUS_CHANGE_SEND_MAIL = "OnSaleOrderStatusChangeSendEmail";
 
+	const EVENT_ON_BEFORE_SHIPMENT_STATUS_CHANGE = "OnSaleBeforeStatusShipmentChange";
+	const EVENT_ON_SHIPMENT_STATUS_CHANGE = "OnSaleStatusShipmentChange";
+	const EVENT_ON_SHIPMENT_STATUS_CHANGE_SEND_MAIL = "OnSaleShipmentStatusChangeSendEmail";
+	
+	const EVENT_ON_ADMIN_ORDER_LIST = "OnSaleAdminOrderList";
+
+	const EVENT_ON_BASKET_ITEM_REFRESH_DATA = "OnSaleBasketItemRefreshData";
+
+	const ENTITY_ORDER = '\Bitrix\Sale\Order';
+	const ENTITY_SHIPMENT = '\Bitrix\Sale\Shipment';
+
 	/**
 	 * @return array
 	 */
 	public static function getEventNotifyMap()
 	{
 		return array(
-			static::EVENT_ON_ORDER_SAVED => array('\Bitrix\Sale\Notify', "sendOrderNew"),
-			static::EVENT_ON_ORDER_CANCELED => array('\Bitrix\Sale\Notify', "sendOrderCancel"),
-			static::EVENT_ON_ORDER_PAID => array('\Bitrix\Sale\Notify', "sendOrderPaid"),
-			static::EVENT_ON_ORDER_STATUS_CHANGE => array('\Bitrix\Sale\Notify', "sendOrderStatusChange"),
-			static::EVENT_ON_SHIPMENT_TRACKING_NUMBER_CHANGE => array('\Bitrix\Sale\Notify', "sendShipmentTrackingNumberChange"),
-			static::EVENT_ON_SHIPMENT_ALLOW_DELIVERY => array('\Bitrix\Sale\Notify', "sendShipmentAllowDelivery"),
+			static::EVENT_ON_ORDER_SAVED => array(
+				"ENTITY" => static::ENTITY_ORDER,
+				"METHOD" => array('\Bitrix\Sale\Notify', "sendOrderNew"),
+			),
+			static::EVENT_ON_ORDER_CANCELED => array(
+				"ENTITY" => static::ENTITY_ORDER,
+				"METHOD" => array('\Bitrix\Sale\Notify', "sendOrderCancel"),
+			),
+			static::EVENT_ON_ORDER_PAID => array(
+				"ENTITY" => static::ENTITY_ORDER,
+				"METHOD" => array('\Bitrix\Sale\Notify', "sendOrderPaid"),
+			),
+
+			static::EVENT_ON_ORDER_STATUS_CHANGE => array(
+				"ENTITY" => static::ENTITY_ORDER,
+				"METHOD" => array('\Bitrix\Sale\Notify', "sendOrderStatusChange"),
+			),
+			static::EVENT_ON_SHIPMENT_TRACKING_NUMBER_CHANGE => array(
+				"ENTITY" => static::ENTITY_SHIPMENT,
+				"METHOD" => array('\Bitrix\Sale\Notify', "sendShipmentTrackingNumberChange"),
+			),
+			static::EVENT_ON_SHIPMENT_ALLOW_DELIVERY => array(
+				"ENTITY" => static::ENTITY_SHIPMENT,
+				"METHOD" => array('\Bitrix\Sale\Notify', "sendShipmentAllowDelivery"),
+			),
+			static::EVENT_ON_SHIPMENT_STATUS_CHANGE => array(
+				"ENTITY" => static::ENTITY_SHIPMENT,
+				"METHOD" => array('\Bitrix\Sale\Notify', "sendShipmentStatusChange"),
+			),
+
 		);
 	}
 

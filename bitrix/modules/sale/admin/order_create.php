@@ -50,6 +50,9 @@ $siteName = OrderEdit::getSiteName($siteId);
 $order = null;
 $result = new \Bitrix\Sale\Result();
 
+$customTabber = new CAdminTabEngine("OnAdminSaleOrderCreate");
+$customDraggableBlocks = new CAdminDraggableBlockEngine('OnAdminSaleOrderCreateDraggable');
+
 DiscountCouponsManager::init(
 	DiscountCouponsManager::MODE_MANAGER,
 	array(
@@ -63,6 +66,28 @@ if($isSavingOperation || $needFieldsRestore)
 
 	if($order)
 	{
+		$errorMessage = '';
+
+		if (!$customTabber->Check())
+		{
+			if ($ex = $APPLICATION->GetException())
+				$errorMessage .= $ex->GetString();
+			else
+				$errorMessage .= "Custom tabber check unknown error!";
+
+			$result->addError(new \Bitrix\Main\Entity\EntityError($errorMessage));
+		}
+
+		if (!$customDraggableBlocks->check())
+		{
+			if ($ex = $APPLICATION->GetException())
+				$errorMessage .= $ex->GetString();
+			else
+				$errorMessage .= "Custom draggable block check unknown error!";
+
+			$result->addError(new \Bitrix\Main\Entity\EntityError($errorMessage));
+		}
+
 		if(isset($_POST["SHIPMENT"]) && $_POST["SHIPMENT"])
 		{
 			$dlvRes = Blocks\OrderShipment::updateData($order, $_POST['SHIPMENT']);
@@ -108,6 +133,26 @@ if($isSavingOperation || $needFieldsRestore)
 				$profResult = OrderEdit::saveProfileData($profileId, $order, $_POST);
 				\CSaleMobileOrderPush::send("ORDER_CREATED", array("ORDER_ID" => $order->getId()));
 
+				$customTabber->SetArgs(array("ID" => $order->getId()));
+				if (!$customTabber->Action())
+				{
+					if ($ex = $APPLICATION->GetException())
+						$errorMessage .= $ex->GetString();
+					else
+						$errorMessage .= "Custom tabber action unknown error!";
+				}
+
+				if (!$customDraggableBlocks->action())
+				{
+					if ($ex = $APPLICATION->GetException())
+						$errorMessage .= $ex->GetString();
+					else
+						$errorMessage .= "Custom draggable block action unknown error!";
+				}
+
+				if(!empty($errorMessage))
+					$_SESSION['SALE_ORDER_EDIT_ERROR'] = $errorMessage;
+
 				if(isset($_POST["save"]))
 					LocalRedirect("/bitrix/admin/sale_order.php?lang=".LANGUAGE_ID.GetFilterParams("filter_", false));
 				else
@@ -139,24 +184,23 @@ elseif($createWithProducts)
 
 	if(isset($_GET["product"]) && is_array($_GET["product"]))
 	{
+		$productParams = Blocks\OrderBasket::getProductsData(array_keys($_GET["product"]), $formData["SITE_ID"]);
+
 		foreach($_GET["product"] as $productId => $quantity)
 		{
-			$productParams = Blocks\OrderBasket::getProductDetails(
-				$productId, $quantity, $formData["USER_ID"], $formData["SITE_ID"]
-			);
-
 			if(
-				!is_array($productParams)
-				|| empty($productParams)
-				|| intval($productParams["PRODUCT_ID"]) <= 0
-				|| strlen($productParams["MODULE"]) <= 0
+				!is_array($productParams[$productId])
+				|| empty($productParams[$productId])
+				|| intval($productParams[$productId]["PRODUCT_ID"]) <= 0
+				|| strlen($productParams[$productId]["MODULE"]) <= 0
 			)
 			{
 				continue;
 			}
 
-			$formData["PRODUCT"][$basketCode] = $productParams;
+			$formData["PRODUCT"][$basketCode] = $productParams[$productId];
 			$formData["PRODUCT"][$basketCode]["BASKET_CODE"] = $basketCode;
+			$formData["PRODUCT"][$basketCode]["QUANTITY"] = $quantity;
 			$basketCode++;
 		}
 	}
@@ -176,28 +220,41 @@ elseif($createWithProducts)
 					'CAN_BUY' => "Y",
 					'DELAY' => "N",
 					'ORDER_ID' => null,
-					'!MODULE' => false
+					'!MODULE' => false,
+					'SET_PARENT_ID' => false,
 				),
-				'select' => array('PRODUCT_ID', 'QUANTITY'),
+				'select' => array('PRODUCT_ID', 'QUANTITY', 'NAME'),
 				'order' => array('ID' => 'ASC'),
 			);
 
 			$res = \Bitrix\Sale\Basket::getList($basketFilter);
+
 			while($basketItem = $res->fetch())
 			{
-				$productParams = Blocks\OrderBasket::getProductDetails(
-					$basketItem['PRODUCT_ID'], $basketItem['QUANTITY'], $formData["USER_ID"], $formData["SITE_ID"]
-				);
+				$productId = $basketItem['PRODUCT_ID'];
+				$productParams = Blocks\OrderBasket::getProductsData(array($productId), $formData["SITE_ID"]);
 
-				if(!is_array($productParams) || empty($productParams))
+				if(!is_array($productParams[$productId]) || empty($productParams[$productId]))
 					continue;
 
-				$formData["PRODUCT"][$basketCode] = $productParams;
+				if(strlen($productParams[$productId]['PRODUCT_ID']) <= 0)
+				{
+					$result->addError(
+						new \Bitrix\Main\Error(
+							Loc::getMessage(
+								'SALE_OK_ORDER_CREATE_ERROR_NO_PRODUCT',
+								array('##NAME##' => $basketItem['NAME'])
+							)
+						)
+					);
+					continue;
+				}
+
+				$formData["PRODUCT"][$basketCode] = $productParams[$productId];
 				$formData["PRODUCT"][$basketCode]["BASKET_CODE"] = $basketCode;
+				$formData["PRODUCT"][$basketCode]["QUANTITY"] = $basketItem['QUANTITY'];
 				$basketCode++;
 			}
-
-			$userProfiles = \Bitrix\Sale\Helpers\Admin\Blocks\OrderBuyer::getUserProfiles($_GET['USER_ID']);
 		}
 	}
 
@@ -206,7 +263,9 @@ elseif($createWithProducts)
 
 	$res = new \Bitrix\Sale\Result();
 	$order = OrderEdit::createOrderFromForm($formData, $USER->GetID(), false, array(), $res);
+	$userProfiles = \Bitrix\Sale\Helpers\Admin\Blocks\OrderBuyer::getUserProfiles($_GET['USER_ID']);
 
+	//Just get first available profile
 	if($order && !empty($userProfiles))
 	{
 		$propCollection = $order->getPropertyCollection();
@@ -214,26 +273,30 @@ elseif($createWithProducts)
 		$ptIndex = 0;
 
 		foreach($userProfiles as $userPersonTypeId => $profiles)
-			if(in_array($userPersonTypeId, $ptList))
-				break;
-
-		reset($userProfiles[$userPersonTypeId]);
-		$userProfile = current($userProfiles[$userPersonTypeId]);
-		$profileId = key($userProfiles[$userPersonTypeId]);
-		$order->setPersonTypeId($userPersonTypeId);
-
-		foreach($userProfile as $propId => $propValue)
 		{
-			$property = $propCollection->getItemByOrderPropertyId($propId);
-
-			if($property)
+			if(!empty($ptList[$userPersonTypeId]))
 			{
-				try
+				reset($userProfiles[$userPersonTypeId]);
+				$userProfile = current($userProfiles[$userPersonTypeId]);
+				$profileId = key($userProfiles[$userPersonTypeId]);
+				$order->setPersonTypeId($userPersonTypeId);
+
+				foreach($userProfile as $propId => $propValue)
 				{
-					$property->setValue($propValue);
+					$property = $propCollection->getItemByOrderPropertyId($propId);
+
+					if($property)
+					{
+						try
+						{
+							$property->setValue($propValue);
+						}
+						catch(\Exception $e)
+						{}
+					}
 				}
-				catch(\Exception $e)
-				{}
+
+				break;
 			}
 		}
 	}
@@ -242,8 +305,12 @@ elseif($createWithProducts)
 	{
 		if(!$res->isSuccess())
 			$result->addErrors($res->getErrors());
-
-		$result->addError(new \Bitrix\Main\Entity\EntityError("Can't create order!"));
+		else
+			$result->addError(
+				new \Bitrix\Main\Entity\EntityError(
+					Loc::getMessage('SALE_OK_ORDER_CREATE_ERROR')
+				)
+			);
 	}
 }
 elseif($isCopyingOrderOperation) // copy order
@@ -299,6 +366,10 @@ elseif($isCopyingOrderOperation) // copy order
 					)
 				)
 			);
+
+			$item->getPropertyCollection()->setProperty(
+				$originalBasketItem->getPropertyCollection()->getPropertyValues()
+			);
 		}
 
 		$res = $order->setBasket($basket);
@@ -340,7 +411,8 @@ elseif($isCopyingOrderOperation) // copy order
 		$order->getDiscount()->calculate();
 	}
 }
-else
+
+if(!$order)
 {
 	$order = \Bitrix\Sale\Order::create($siteId);
 	$order->setPersonTypeId(
@@ -374,14 +446,23 @@ $aMenu[] = array(
 $context = new CAdminContextMenu($aMenu);
 $context->Show();
 
-if(!$result->isSuccess() && !$needFieldsRestore)
-{
-	$errorMessage = "";
+//errors
+$errorMessage = "";
 
+if(!empty($_SESSION['SALE_ORDER_EDIT_ERROR']))
+{
+	$errorMessage = $_SESSION['SALE_ORDER_EDIT_ERROR']."<br>\n";
+	unset($_SESSION['SALE_ORDER_EDIT_ERROR']);
+}
+
+if(!$result->isSuccess() && !$needFieldsRestore)
 	foreach($result->getErrors() as $error)
 		$errorMessage .= $error->getMessage()."<br>\n";
 
-	CAdminMessage::ShowMessage($errorMessage);
+if(!empty($errorMessage))
+{
+	$admMessage = new CAdminMessage($errorMessage);
+	echo $admMessage->Show();
 }
 
 //prepare blocks order
@@ -396,6 +477,17 @@ $defaultBlocksOrder = array(
 	"statusorder",
 );
 
+$fastNavItems = array();
+
+foreach($defaultBlocksOrder as $item)
+	$fastNavItems[$item] = Loc::getMessage("SALE_OK_BLOCK_TITLE_".toUpper($item));
+
+foreach($customDraggableBlocks->getBlocksBrief() as $blockId => $blockParams)
+{
+	$defaultBlocksOrder[] = $blockId;
+	$fastNavItems[$blockId] = $blockParams['TITLE'];
+}
+
 $formId = "sale_order_create";
 $basketPrefix = "sale_order_basket";
 
@@ -408,11 +500,7 @@ echo Blocks\OrderPayment::getScripts();
 echo Blocks\OrderShipment::getScripts();
 echo Blocks\OrderFinanceInfo::getScripts();
 echo $orderBasket->getScripts(false);
-
-$fastNavItems = array();
-
-foreach($defaultBlocksOrder as $item)
-	$fastNavItems[$item] = Loc::getMessage("SALE_OK_BLOCK_TITLE_".toUpper($item));
+echo $customDraggableBlocks->getScripts();
 
 echo OrderEdit::getFastNavigationHtml($fastNavItems);
 
@@ -422,6 +510,7 @@ $aTabs = array(
 
 ?><form method="POST" action="<?=$APPLICATION->GetCurPage()."?lang=".LANGUAGE_ID."&SITE_ID=".$siteId.GetFilterParams("filter_", false)?>" name="<?=$formId?>_form" id="<?=$formId?>_form" enctype="multipart/form-data"><?
 $tabControl = new CAdminTabControlDrag($formId, $aTabs, $moduleId, false, true);
+$tabControl->AddTabs($customTabber);
 $tabControl->Begin();
 //TAB order --
 $tabControl->BeginNextTab();
@@ -438,9 +527,8 @@ $blocksOrder = $tabControl->getCurrentTabBlocksOrder($defaultBlocksOrder);
 		<?
 		foreach ($blocksOrder as $blockCode)
 		{
-			$tabControl->DraggableBlockBegin(Loc::getMessage("SALE_OK_BLOCK_TITLE_".toUpper($blockCode)), $blockCode);
 			echo '<a id="'.$blockCode.'"></a>';
-
+			$tabControl->DraggableBlockBegin($fastNavItems[$blockCode], $blockCode);
 			switch ($blockCode)
 			{
 				case "basket":
@@ -485,6 +573,9 @@ $blocksOrder = $tabControl->getCurrentTabBlocksOrder($defaultBlocksOrder);
 					break;
 				case "statusorder":
 					echo Blocks\OrderStatus::getEditSimple($USER->GetID(), 'STATUS_ID', \Bitrix\Sale\OrderStatus::getInitialStatus());
+					break;
+				default:
+					echo $customDraggableBlocks->getBlockContent($blockCode, $tabControl->selectedTab);
 					break;
 			}
 			$tabControl->DraggableBlockEnd();

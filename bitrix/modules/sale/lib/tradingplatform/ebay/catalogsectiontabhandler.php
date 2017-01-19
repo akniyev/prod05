@@ -279,7 +279,10 @@ class CatalogSectionTabHandler extends TabHandler
 				<td>'.Loc::getMessage("SALE_EBAY_CSTH_POLICY_RETURN").':</span></td>
 				<td>';
 
-		$names = $policy->getPoliciesNames(\Bitrix\Sale\TradingPlatform\Ebay\Policy::TYPE_RETURN);
+		if($policy)
+			$names = $policy->getPoliciesNames(\Bitrix\Sale\TradingPlatform\Ebay\Policy::TYPE_RETURN);
+		else
+			$names = array();
 
 		if($policy && !empty($names))
 		{
@@ -302,7 +305,11 @@ class CatalogSectionTabHandler extends TabHandler
 				<td>'.Loc::getMessage("SALE_EBAY_CSTH_POLICY_SHIPMENT").':</td>
 				<td>';
 
-		$names = $policy->getPoliciesNames(\Bitrix\Sale\TradingPlatform\Ebay\Policy::TYPE_SHIPPING);
+		if($policy)
+			$names = $policy->getPoliciesNames(\Bitrix\Sale\TradingPlatform\Ebay\Policy::TYPE_SHIPPING);
+		else
+			$names = array();
+
 
 		if($policy && !empty($names))
 		{
@@ -325,7 +332,10 @@ class CatalogSectionTabHandler extends TabHandler
 				<td>'.Loc::getMessage("SALE_EBAY_CSTH_POLICY_PAYMENT").':</td>
 				<td>';
 
-		$names = $policy->getPoliciesNames(\Bitrix\Sale\TradingPlatform\Ebay\Policy::TYPE_PAYMENT);
+		if($policy)
+			$names = $policy->getPoliciesNames(\Bitrix\Sale\TradingPlatform\Ebay\Policy::TYPE_PAYMENT);
+		else
+			$names = array();
 
 		if($policy && !empty($names))
 		{

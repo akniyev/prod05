@@ -17,9 +17,9 @@
 .crm-admin-wrap {font-family:Arial, sans-serif; font-size:12px; padding: 15px; background: #fff; border: solid 1px #C5CECF; border-radius: 4px; }
 .crm-admin-paragraph {padding:0 0 11px; margin:0; font-size: 12px;}
 .crm-admin-banner {margin-top:11px; height:375px;}
-.crm-admin-banner-ru {background:url("/bitrix/images/sale/banner_ru.png") no-repeat left top;}
-.crm-admin-banner-en {background:url("/bitrix/images/sale/banner_en.png") no-repeat left top;}
-.crm-admin-banner-de {background:url("/bitrix/images/sale/banner_de.png") no-repeat left top;}
+.crm-admin-banner-ru {background:url(/bitrix/images/sale/banner_ru.png) no-repeat left top;}
+.crm-admin-banner-en {background:url(/bitrix/images/sale/banner_en.png) no-repeat left top;}
+.crm-admin-banner-de {background:url(/bitrix/images/sale/banner_de.png) no-repeat left top;}
 .crm-admin-buttons {padding-top:16px;}
 .crm-admin-button-wrap {display:inline-block; vertical-align:top;}
 .crm-admin-button-or {display:inline-block; font-size:13px; padding-top:7px; margin-right:10px; vertical-align:top;}
@@ -183,7 +183,7 @@ span.pencil {
 #tabs div.tabs.active {border-left:1px solid #dcdcdc;border-top:1px solid #dcdcdc; border-right:1px solid #dcdcdc;border-bottom:1px solid #F8F9FC; color: #000;background-color: #F5F9F9;}
 #tabs div.tabs.active a:hover {text-decoration: none;}
 
-#tabs div.tabstext {display:none;margin-left: 0px;padding: 5px;text-align: left;}
+#tabs div.tabstext {display:none;margin-left: 0;padding: 5px;text-align: left;}
 #tabs div.tabstext.active {clear:both;display:block;border-top:1px solid #dcdcdc;}
 
 /* basket tabs */
@@ -195,7 +195,7 @@ span.pencil {
 #basket_tabs div.tabs.active {border-left:1px solid #dcdcdc;border-top:1px solid #dcdcdc; border-right:1px solid #dcdcdc;border-bottom:1px solid #F8F9FC; color: #000;background-color: #F5F9F9;}
 #basket_tabs div.tabs.active a:hover {text-decoration: none;}
 
-#basket_tabs div.tabstext {display:none;margin-left: 0px;padding: 5px;text-align: left;}
+#basket_tabs div.tabstext {display:none;margin-left: 0;padding: 5px;text-align: left;}
 #basket_tabs div.tabstext.active {clear:both;display:block;border-top:1px solid #dcdcdc;}
 
 .order_summary td {
@@ -528,7 +528,7 @@ td.barcode_table_name a {
 	display: none;
 }
 #BASKET_TABLE .edit_price span.pencil {
-	margin: 0px 0 0 5px !important;
+	margin: 0 0 0 5px !important;
 }
 #BASKET_TABLE .edit_price.edit_enable .edit_price_product {
 	display: inline-block;
@@ -726,7 +726,6 @@ div.dont_can_buy {
 
 /*comment*/
 #manager-comment-text {
-	width:295px;
 	display: none;
 	width:260px;
 	height:80px;
@@ -904,15 +903,15 @@ span.warning_balance {
 
 table#total_count_table {
 	width: 100%;
-	margin: 0px;
+	margin: 0;
 }
 
 #total_number {
 	text-align: right;
 	background: none !important;
-	padding: 3px 3px 0px 3px;
+	padding: 3px 3px 0 3px;
 	height: 15px;
-	margin: 0px;
+	margin: 0;
 }
 
 .scrollable {
@@ -966,7 +965,7 @@ table#total_count_table {
 	height: 25px;
 	width: 30px;
 	margin: 0;
-	padding: 8px 3px 0px 3px;
+	padding: 8px 3px 0 3px;
 }
 
 /* delivery info */
@@ -1013,12 +1012,12 @@ a.dashed-link:hover {
 }
 
 .quantity_control a.plus {
-    background-position: 0px 0px;
+    background-position: 0 0;
     border-radius: 5px 5px 0 0;
 }
 
 .quantity_control a.minus {
-    background-position: 0px -20px;
+    background-position: 0 -20px;
     border-radius: 0 0 5px 5px;
     margin-top: -1px;
 }
@@ -1174,13 +1173,14 @@ a.dashed-link:hover {
 .adm-bus-table-caption-title{
 	font-size:13px;
 	line-height:16px;
-	position:absolute;
-	top:-8px;
-	left:15px;
+	position:relative;
+	top:-13px;
+	/*left:15px;*/
 	height:16px;
 	padding:0 5px;
 	color:#66878f;
 	background:#f7fafa;
+	display:inline-block;
 }
 
 /*table*/
@@ -2574,6 +2574,9 @@ a.add_store {
 	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 }
+.adm-s-select-popup-modal-content textarea{
+	max-width:100%;
+}
 .adm-s-select-popup-modal-title{
 	color: #576e75;
 	font-weight: bold;
@@ -2590,7 +2593,6 @@ a.add_store {
 	bottom: 10px;
 	right: 10px;
 	padding-right: 20px;
-	color: #000;
 	color: #576e75;
 	cursor: pointer;
 	opacity: .9;
@@ -2613,14 +2615,14 @@ a.add_store {
 	display: block;
 	width:24px;
 	height: 24px;
-	background: url('/bitrix/panel/main/images/icons-sprite-7.png') no-repeat center -2176px
+	background: url(/bitrix/panel/main/images/icons-sprite-7.png) no-repeat center -2176px
 }
 
 .bx-adm-bigdata-icon-medium-inner{
 	display: block;
 	width:24px;
 	height: 24px;
-	background: url('/bitrix/panel/main/images/icons-sprite-7.png') no-repeat center -2176px;
+	background: url(/bitrix/panel/main/images/icons-sprite-7.png) no-repeat center -2176px;
 	float: right;
 	margin-left: 10px;
 }
@@ -2993,9 +2995,7 @@ td.bdb-line{
 .bx-bg-red   .bx-adm-pc-sale-item-block:hover .bx-adm-pc-sale-overname{background: rgba(255,161,161,.5);}
 .bx-bg-gray  .bx-adm-pc-sale-item-block:hover .bx-adm-pc-sale-overname{background: rgba(220,226,227,.5);}
 .bx-adm-pc-sale-item-remover{
-	background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAJCAYAAAAPU20uAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OTdENTExOUVFOTBBMTFFNDkxM0RDRjEzQTZFNkU2MTkiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OTdENTExOUZFOTBBMTFFNDkxM0RDRjEzQTZFNkU2MTkiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo5N0Q1MTE5Q0U5MEExMUU0OTEzRENGMTNBNkU2RTYxOSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo5N0Q1MTE5REU5MEExMUU0OTEzRENGMTNBNkU2RTYxOSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pl19vk4AAAEMSURBVHjaYvj//z+Dsq2TiZKVnSiIDcJKVvaiIDEQm1HF3sWEV0R0H5Dz9PPLF/YMDAz/+cQlDzEyMkp/evPKkXHN1u2WC3fs3fHp73++r29e3wDKM3CJiGrwMzN+inF3dmcE6hR4/Pz5pIL+qYHfmNl4GBkYGbj+/vwysSh3nbSEeD4T0MgP81evbfr7+89vFg4OBmYg/vX7169Zy1c2geQYVawdRQWkZQ7xSUlriHCwfwEKMrz58Yvn07OnN94/fWTHoq2lof3+L6OSACvzl568jPVMTIz/83snB/3h4VGS1tLUBnlL7ejZ8/uePH+xEOQeIOYHsUFiIDkGqN/VQBKwcICyQWIMAAEGALMOktL6X60vAAAAAElFTkSuQmCC");
-	background-repeat: no-repeat;
-	background-position: center;
+	background: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAJCAYAAAAPU20uAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyJpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNiAoV2luZG93cykiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6OTdENTExOUVFOTBBMTFFNDkxM0RDRjEzQTZFNkU2MTkiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6OTdENTExOUZFOTBBMTFFNDkxM0RDRjEzQTZFNkU2MTkiPiA8eG1wTU06RGVyaXZlZEZyb20gc3RSZWY6aW5zdGFuY2VJRD0ieG1wLmlpZDo5N0Q1MTE5Q0U5MEExMUU0OTEzRENGMTNBNkU2RTYxOSIgc3RSZWY6ZG9jdW1lbnRJRD0ieG1wLmRpZDo5N0Q1MTE5REU5MEExMUU0OTEzRENGMTNBNkU2RTYxOSIvPiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Pl19vk4AAAEMSURBVHjaYvj//z+Dsq2TiZKVnSiIDcJKVvaiIDEQm1HF3sWEV0R0H5Dz9PPLF/YMDAz/+cQlDzEyMkp/evPKkXHN1u2WC3fs3fHp73++r29e3wDKM3CJiGrwMzN+inF3dmcE6hR4/Pz5pIL+qYHfmNl4GBkYGbj+/vwysSh3nbSEeD4T0MgP81evbfr7+89vFg4OBmYg/vX7169Zy1c2geQYVawdRQWkZQ7xSUlriHCwfwEKMrz58Yvn07OnN94/fWTHoq2lof3+L6OSACvzl568jPVMTIz/83snB/3h4VGS1tLUBnlL7ejZ8/uePH+xEOQeIOYHsUFiIDkGqN/VQBKwcICyQWIMAAEGALMOktL6X60vAAAAAElFTkSuQmCC") no-repeat center;
 	width: 30px;
 	height: 30px;
 	position: absolute;
@@ -3008,8 +3008,8 @@ td.bdb-line{
 	opacity: 1;
 }
 
-.bx-adm-r0{ right: 0px; }
-.bx-amd-l0{ left: 0px; }
+.bx-adm-r0{ right: 0; }
+.bx-amd-l0{ left: 0; }
 
 .adm-bus-order-find-by-barcode{
 	border-bottom: 1px dashed #2675d7;
@@ -3022,7 +3022,7 @@ td.bdb-line{
 .bx-adm-edit-pencil {
 	width: 15px;
 	height: 15px;
-	background: url("/bitrix/images/sale/order_new.png") left 0 no-repeat;
+	background: url(/bitrix/images/sale/order_new.png) left 0 no-repeat;
 	display: inline-block;
 	cursor: pointer;
 	margin-left: 3px;
@@ -3198,3 +3198,72 @@ tr.adm-s-delivery-restriction-delcat:hover a.adm-s-bus-morelinkqhsw{
 	text-align:left;
 }
 
+/* Sale paysystem */
+
+.sale-paysystem-wrapper {
+	position: relative;
+	padding: 24px 38px 24px 38px;
+	margin: 0 -15px 0 0;
+	border: 1px solid #3bc8f5;
+	font: 14px "Helvetica Neue", Arial, Helvetica, sans-serif;
+	color: #424956;
+}
+
+.sale-paysystem-close {
+	position: absolute;
+	top: 7px;
+	right: 7px;
+}
+
+.sale-paysystem-close-item {
+	display: inline-block;
+	width: 18px;
+	height: 18px;
+	background: url(../../components/bitrix/sale.personal.order.detail/templates/.default/images/sale-personal-order-sprite.svg) 1px 1px no-repeat;
+	-webkit-transition: opacity .3s ease;
+	-moz-transition: opacity .3s ease;
+	transition: opacity .3s ease;
+	opacity: 1;
+	cursor: pointer;
+}
+
+.sale-paysystem-close-item:hover {
+	opacity: .5;
+}
+
+.sale-paysystem-description {
+	margin: 0 0 11px 0;
+	font: 11px "Helvetica Neue", Arial, Helvetica, sans-serif;
+	color: #bcbdc0;
+}
+
+.sale-paysystem-yandex-button {
+	display: inline-block;
+	margin: 26px 10px 26px 0;
+}
+
+.sale-paysystem-yandex-button-item {
+	padding: 0 22px;
+	height: 38px;
+	border: 0;
+	-webkit-border-radius: 2px;
+	-moz-border-radius: 2px;
+	border-radius: 2px;
+	background: #f59023;
+	font: bold 13px/35px "Helvetica Neue", Arial, Helvetica, sans-serif;
+	color: #fff;
+	-webkit-transition: background .3s ease;
+	-moz-transition: background .3s ease;
+	transition: background .3s ease;
+}
+
+.sale-paysystem-yandex-button-item:hover {
+	background: #ff911a;
+}
+
+.sale-paysystem-yandex-button-descrition {
+	display: inline-block;
+	margin: 0 0 15px 0;
+	font: 12px "Helvetica Neue", Arial, Helvetica, sans-serif;
+	color: #80868e;
+}

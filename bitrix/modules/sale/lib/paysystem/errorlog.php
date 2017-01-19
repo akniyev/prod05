@@ -2,12 +2,13 @@
 
 namespace Bitrix\Sale\PaySystem;
 
+use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Type\DateTime;
 use Bitrix\Sale\Internals\PaySystemErrLogTable;
 
 class ErrorLog
 {
-	const DEBUG_MODE = true;
+	const DEBUG_MODE = false;
 
 	/**
 	 * @param array $fields
@@ -18,14 +19,9 @@ class ErrorLog
 		self::prepareParams($fields);
 
 		if (self::DEBUG_MODE)
-		{
 			self::addToFile($fields);
-		}
 		else
-		{
 			self::addToDb($fields);
-			self::addToEventLog($fields);
-		}
 	}
 
 	/**
@@ -47,20 +43,6 @@ class ErrorLog
 
 		if (!$result->isSuccess())
 			throw new \Exception();
-	}
-
-	/**
-	 * @param $fields
-	 */
-	public static function addToEventLog($fields)
-	{
-		\CEventLog::Add(array(
-			"SEVERITY" => "ERROR",
-			"AUDIT_TYPE_ID" => "SALE_PAY_SYSTEM_ERROR",
-			"MODULE_ID" => "sale",
-			"ITEM_ID" => "-",
-			"DESCRIPTION" => $fields['MESSAGE'],
-		));
 	}
 
 	/**

@@ -148,8 +148,8 @@ Loader::registerAutoLoadClasses(
 		'CCatalogMeasureAdminResult' => 'general/measure_result.php',
 		'CCatalogMeasureRatio' => $strDBType.'/measure_ratio.php',
 		'CCatalogProductSet' => $strDBType.'/product_set.php',
-		'CCatalogAdminTools' => $strDBType.'/admin_tools.php',
-		'CCatalogAdminProductSetEdit' => $strDBType.'/admin_tools.php',
+		'CCatalogAdminTools' => 'general/admin_tools.php',
+		'CCatalogAdminProductSetEdit' => 'general/admin_tools.php',
 		'CCatalogMenu' => 'general/catalog_menu.php',
 		'CCatalogCSVSettings' => 'general/csv_settings.php',
 		'CCatalogStepOperations' => 'general/step_operations.php',
@@ -158,22 +158,40 @@ Loader::registerAutoLoadClasses(
 		'CCatalogProductSettings' => 'general/step_operations.php',
 		'CCatalogTools' => 'general/tools.php',
 		'\Bitrix\Catalog\Discount\DiscountManager' => 'lib/discount/discountmanager.php',
+		'\Bitrix\Catalog\Ebay\EbayXMLer' => 'lib/ebay/ebayxmler.php',
+		'\Bitrix\Catalog\Ebay\ExportOffer' => 'lib/ebay/exportoffer.php',
+		'\Bitrix\Catalog\Ebay\ExportOfferCreator' => 'lib/ebay/exportoffercreator.php',
+		'\Bitrix\Catalog\Ebay\ExportOfferSKU' => 'lib/ebay/exportoffersku.php',
 		'\Bitrix\Catalog\Helpers\Admin\CatalogEdit' => 'lib/helpers/admin/catalogedit.php',
+		'\Bitrix\Catalog\Helpers\Admin\IblockPriceChanger' => 'lib/helpers/admin/iblockpricechanger.php',
 		'\Bitrix\Catalog\Helpers\Tools' => 'lib/helpers/tools.php',
 		'\Bitrix\Catalog\Product\Price' => 'lib/product/price.php',
+		'\Bitrix\Catalog\Product\Search' => 'lib/product/search.php',
 		'\Bitrix\Catalog\Product\Sku' => 'lib/product/sku.php',
+		'\Bitrix\Catalog\Product\SubscribeManager' => 'lib/product/subscribemanager.php',
+		'\Bitrix\Catalog\Product\Viewed' => 'lib/product/viewed.php',
 		'\Bitrix\Catalog\CatalogIblockTable' => 'lib/catalogiblock.php',
+		'\Bitrix\Catalog\CatalogViewedProductTable' => 'lib/catalogviewedproduct.php',
 		'\Bitrix\Catalog\DiscountTable' => 'lib/discount.php',
 		'\Bitrix\Catalog\DiscountCouponTable' => 'lib/discountcoupon.php',
 		'\Bitrix\Catalog\DiscountRestrictionTable' => 'lib/discountrestriction.php',
+		'\Bitrix\Catalog\ExtraTable' => 'lib/extra.php',
 		'\Bitrix\Catalog\GroupTable' => 'lib/group.php',
+		'\Bitrix\Catalog\GroupAccessTable' => 'lib/groupaccess.php',
 		'\Bitrix\Catalog\GroupLangTable' => 'lib/grouplang.php',
 		'\Bitrix\Catalog\MeasureRatioTable' => 'lib/measureratio.php',
 		'\Bitrix\Catalog\PriceTable' => 'lib/price.php',
 		'\Bitrix\Catalog\ProductTable' => 'lib/product.php',
+		'\Bitrix\Catalog\RoundingTable' => 'lib/rounding.php',
 		'\Bitrix\Catalog\StoreTable' => 'lib/store.php',
-		'\Bitrix\Catalog\CatalogViewedProductTable' => 'lib/catalogviewedproduct.php',
+		'\Bitrix\Catalog\StoreProductTable' => 'lib/storeproduct.php',
 		'\Bitrix\Catalog\VatTable' => 'lib/vat.php',
+		//deprecated
+		'\Bitrix\Catalog\EbayXMLer' => 'lib/ebay/old.php',
+		'\Bitrix\Catalog\ExportOffer' => 'lib/ebay/old.php',
+		'\Bitrix\Catalog\ExportOfferCreator' => 'lib/ebay/old.php',
+		'\Bitrix\Catalog\ExportOfferSKU' => 'lib/ebay/old.php',
+		'\Bitrix\Catalog\SearchHandlers' => 'lib/product/old.php'
 	)
 );
 unset($strDBType);
@@ -941,7 +959,7 @@ function CatalogRecurringCallback($productID, $userID)
 
 	//SIGURD: logic change. see mantiss 5036.
 	// discount applied to a final price with VAT already included.
-	if (doubleval($arPrice['PRICE']['VAT_RATE']) > 0)
+	if (doubleval($arPrice['PRICE']['VAT_RATE']) > 0 && $arPrice['PRICE']['VAT_INCLUDED'] != 'Y')
 		$currentPrice *= (1 + $arPrice['PRICE']['VAT_RATE']);
 
 	$arDiscountList = array();
@@ -1164,7 +1182,10 @@ function Add2Basket($PRICE_ID, $QUANTITY = 1, $arRewriteFields = array(), $arPro
 		$APPLICATION->ThrowException(Loc::getMessage('CATALOG_ERR_NO_PRODUCT'), "NO_PRODUCT");
 		return false;
 	}
-	if ($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+	if (
+		($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+		&& (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') != 'Y'
+	)
 	{
 		$APPLICATION->ThrowException(Loc::getMessage('CATALOG_ERR_CANNOT_ADD_SKU'), "NO_PRODUCT");
 		return false;
@@ -1395,7 +1416,10 @@ function Add2BasketByProductID($PRODUCT_ID, $QUANTITY = 1, $arRewriteFields = ar
 		$APPLICATION->ThrowException(Loc::getMessage('CATALOG_ERR_NO_PRODUCT'), "NO_PRODUCT");
 		return false;
 	}
-	if ($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+	if (
+		($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+		&& (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') != 'Y'
+	)
 	{
 		$APPLICATION->ThrowException(Loc::getMessage('CATALOG_ERR_CANNOT_ADD_SKU'), "NO_PRODUCT");
 		return false;
@@ -1671,11 +1695,7 @@ function SubscribeProduct($intProductID, $arRewriteFields = array(), $arProductP
 		$APPLICATION->ThrowException(Loc::getMessage('CATALOG_ERR_NO_PRODUCT'), "NO_PRODUCT");
 		return false;
 	}
-	if ($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
-	{
-		$APPLICATION->ThrowException(Loc::getMessage('CATALOG_ERR_CANNOT_SUBSCRIBE_SKU'), "NO_PRODUCT");
-		return false;
-	}
+
 	if ($arCatalogProduct['SUBSCRIBE'] == 'N')
 	{
 		$APPLICATION->ThrowException(Loc::getMessage('CATALOG_ERR_NO_SUBSCRIBE'), 'SUBSCRIBE');
@@ -2028,25 +2048,44 @@ function CatalogGetPriceTableEx($ID, $filterQauntity = 0, $arFilterType = array(
 
 		if ($boolConvert && $strCurrencyID != $arPrice["CURRENCY"])
 		{
+			$price = CCurrencyRates::ConvertCurrency($arPrice["PRICE"], $arPrice["CURRENCY"], $strCurrencyID);
+			$unroundDiscountPrice = CCurrencyRates::ConvertCurrency($arPrice["DISCOUNT_PRICE"], $arPrice["CURRENCY"], $strCurrencyID);
+			$discountPrice = Catalog\Product\Price::roundPrice(
+				$arPrice["CATALOG_GROUP_ID"],
+				$unroundDiscountPrice,
+				$strCurrencyID
+			);
+			if ($discountPrice > $price)
+				$price = $discountPrice;
 			$arResult["MATRIX"][$arPrice["CATALOG_GROUP_ID"]][$rowsCnt] = array(
 				"ID" => $arPrice["ID"],
 				"ORIG_PRICE" => $arPrice["PRICE"],
 				"ORIG_DISCOUNT_PRICE" => $arPrice["DISCOUNT_PRICE"],
 				"ORIG_CURRENCY" => $arPrice["CURRENCY"],
 				"ORIG_VAT_RATE" => $arPrice["VAT_RATE"],
-				'PRICE' => CCurrencyRates::ConvertCurrency($arPrice["PRICE"], $arPrice["CURRENCY"], $strCurrencyID),
-				'DISCOUNT_PRICE' => CCurrencyRates::ConvertCurrency($arPrice["DISCOUNT_PRICE"], $arPrice["CURRENCY"], $strCurrencyID),
+				'PRICE' => $price,
+				'DISCOUNT_PRICE' => $discountPrice,
+				'UNROUND_DISCOUNT_PRICE' => $unroundDiscountPrice,
 				'CURRENCY' => $strCurrencyID,
-				'VAT_RATE' => CCurrencyRates::ConvertCurrency($arPrice["VAT_RATE"], $arPrice["CURRENCY"], $strCurrencyID),
+				'VAT_RATE' => $arPrice["VAT_RATE"],
 			);
 			$arCurrencyList[$arPrice['CURRENCY']] = $arPrice['CURRENCY'];
 		}
 		else
 		{
+			$arPrice['UNROUND_DISCOUNT_PRICE'] = $arPrice['DISCOUNT_PRICE'];
+			$arPrice['DISCOUNT_PRICE'] = Catalog\Product\Price::roundPrice(
+				$arPrice["CATALOG_GROUP_ID"],
+				$arPrice['DISCOUNT_PRICE'],
+				$arPrice["CURRENCY"]
+			);
+			if ($arPrice["DISCOUNT_PRICE"] > $arPrice["PRICE"])
+				$arPrice["PRICE"] = $arPrice["DISCOUNT_PRICE"];
 			$arResult["MATRIX"][$arPrice["CATALOG_GROUP_ID"]][$rowsCnt] = array(
 				"ID" => $arPrice["ID"],
 				"PRICE" => $arPrice["PRICE"],
 				"DISCOUNT_PRICE" => $arPrice["DISCOUNT_PRICE"],
+				"UNROUND_DISCOUNT_PRICE" => $arPrice['UNROUND_DISCOUNT_PRICE'],
 				"CURRENCY" => $arPrice["CURRENCY"],
 				"VAT_RATE" => $arPrice["VAT_RATE"]
 			);

@@ -5,7 +5,6 @@ class CSaleOrder extends CAllSaleOrder
 {
 	function Add($arFields)
 	{
-		Trace("sale add");
 		global $DB, $USER_FIELD_MANAGER, $CACHE_MANAGER, $APPLICATION;
 
 		$isOrderConverted = \Bitrix\Main\Config\Option::get("main", "~sale_converted_15", 'N');
@@ -136,7 +135,6 @@ class CSaleOrder extends CAllSaleOrder
 
 	function Update($ID, $arFields, $bDateUpdate = true)
 	{
-		Trace("sale update");
 		global $DB, $USER_FIELD_MANAGER, $CACHE_MANAGER, $APPLICATION;
 
 		$isOrderConverted = \Bitrix\Main\Config\Option::get("main", "~sale_converted_15", 'N');
@@ -323,7 +321,16 @@ class CSaleOrder extends CAllSaleOrder
 		}
 	}
 
-	function GetList($arOrder = array("ID"=>"DESC"), $arFilter = array(), $arGroupBy = false, $arNavStartParams = false, $arSelectFields = array(), $arOptions = array())
+	/**
+	 * @param array $arOrder
+	 * @param array $arFilter
+	 * @param bool|array $arGroupBy
+	 * @param bool|array $arNavStartParams
+	 * @param array $arSelectFields
+	 * @param array $arOptions
+	 * @return bool|CDBResult
+	 */
+	public static function GetList($arOrder = array("ID"=>"DESC"), $arFilter = array(), $arGroupBy = false, $arNavStartParams = false, $arSelectFields = array(), $arOptions = array())
 	{
 		global $DB, $USER_FIELD_MANAGER;
 
@@ -487,7 +494,6 @@ class CSaleOrder extends CAllSaleOrder
 				$result->addFetchAdapter(new \Bitrix\Sale\Compatible\OrderFetchAdapter());
 			return $result;
 		}
-
 
 		if (empty($arSelectFields))
 		{
@@ -1016,4 +1022,3 @@ class CSaleOrder extends CAllSaleOrder
 		return true;
 	}
 }
-?>

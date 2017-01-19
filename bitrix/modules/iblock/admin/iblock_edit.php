@@ -7,7 +7,6 @@ use Bitrix\Main,
 	Bitrix\Main\Loader,
 	Bitrix\Iblock;
 
-define("NOT_CHECK_PERMISSIONS", true);
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_admin_before.php");
 Loader::includeModule('iblock');
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/iblock/prolog.php");
@@ -361,7 +360,11 @@ function __AddPropCellName($intOFPropID,$strPrefix,$arPropInfo)
 
 function __AddPropCellType($intOFPropID,$strPrefix,$arPropInfo)
 {
+	static $baseTypeList = null;
 	static $arUserTypeList = null;
+	
+	if ($baseTypeList === null)
+		$baseTypeList = Iblock\Helpers\Admin\Property::getBaseTypeList(true);
 	if ($arUserTypeList === null)
 	{
 		$arUserTypeList = CIBlockProperty::GetUserType();
@@ -374,14 +377,13 @@ function __AddPropCellType($intOFPropID,$strPrefix,$arPropInfo)
 	{
 		?><optgroup label="<? echo GetMessage('IB_E_PROP_BASE_TYPE_GROUP'); ?>"><?
 	}
-	?>
-	<option value="S" <?if($arPropInfo['PROPERTY_TYPE']=="S" && !$arPropInfo['USER_TYPE'])echo " selected"?>><?echo GetMessage("IB_E_PROP_TYPE_S")?></option>
-	<option value="N" <?if($arPropInfo['PROPERTY_TYPE']=="N" && !$arPropInfo['USER_TYPE'])echo " selected"?>><?echo GetMessage("IB_E_PROP_TYPE_N")?></option>
-	<option value="L" <?if($arPropInfo['PROPERTY_TYPE']=="L" && !$arPropInfo['USER_TYPE'])echo " selected"?>><?echo GetMessage("IB_E_PROP_TYPE_L")?></option>
-	<option value="F" <?if($arPropInfo['PROPERTY_TYPE']=="F" && !$arPropInfo['USER_TYPE'])echo " selected"?>><?echo GetMessage("IB_E_PROP_TYPE_F")?></option>
-	<option value="G" <?if($arPropInfo['PROPERTY_TYPE']=="G" && !$arPropInfo['USER_TYPE'])echo " selected"?>><?echo GetMessage("IB_E_PROP_TYPE_G")?></option>
-	<option value="E" <?if($arPropInfo['PROPERTY_TYPE']=="E" && !$arPropInfo['USER_TYPE'])echo " selected"?>><?echo GetMessage("IB_E_PROP_TYPE_E")?></option>
-	<?
+	foreach ($baseTypeList as $typeId => $typeTitle)
+	{
+		?><option value="<?=$typeId; ?>" <?=($arPropInfo['PROPERTY_TYPE'] == $typeId && !$arPropInfo['USER_TYPE'] ? ' selected' : '');?>><?=htmlspecialcharsbx($typeTitle); ?></option><?
+	}
+	unset($typeTitle);
+	unset($typeId);
+
 	if ($boolUserPropExist)
 	{
 		?></optgroup><optgroup label="<? echo GetMessage('IB_E_PROP_USER_TYPE_GROUP'); ?>"><?
@@ -406,8 +408,8 @@ function __AddPropCellActive($intOFPropID,$strPrefix,$arPropInfo)
 {
 	ob_start();
 	?><input type="hidden" name="<?echo $strPrefix.$intOFPropID?>_ACTIVE" id="<?echo $strPrefix.$intOFPropID?>_ACTIVE_N" value="N">
-	<input type="checkbox" name="<?echo $strPrefix.$intOFPropID?>_ACTIVE" id="<?echo $strPrefix.$intOFPropID?>_ACTIVE_Y" value="Y"<?if ($arPropInfo['ACTIVE']=="Y") echo " checked"; ?>>
-	<?
+	<input type="checkbox" name="<?echo $strPrefix.$intOFPropID?>_ACTIVE" id="<?echo $strPrefix.$intOFPropID?>_ACTIVE_Y" value="Y"<?
+	if ($arPropInfo['ACTIVE']=="Y") echo " checked"; ?> title="<?=htmlspecialcharsbx(GetMessage("IB_E_PROP_ACTIVE_SHORT")); ?>"><?
 	$strResult = ob_get_contents();
 	ob_end_clean();
 	return $strResult;
@@ -417,7 +419,8 @@ function __AddPropCellMulti($intOFPropID,$strPrefix,$arPropInfo)
 {
 	ob_start();
 	?><input type="hidden" name="<?echo $strPrefix.$intOFPropID?>_MULTIPLE" id="<?echo $strPrefix.$intOFPropID?>_MULTIPLE_N" value="N">
-	<input type="checkbox" name="<?echo $strPrefix.$intOFPropID?>_MULTIPLE" id="<?echo $strPrefix.$intOFPropID?>_MULTIPLE_Y" value="Y"<?if($arPropInfo['MULTIPLE']=="Y")echo " checked"?>>
+	<input type="checkbox" name="<?echo $strPrefix.$intOFPropID?>_MULTIPLE" id="<?echo $strPrefix.$intOFPropID?>_MULTIPLE_Y" value="Y"<?
+	if($arPropInfo['MULTIPLE']=="Y")echo " checked"?> title="<?=htmlspecialcharsbx(GetMessage("IB_E_PROP_MULT_SHORT")); ?>">
 	<?
 	$strResult = ob_get_contents();
 	ob_end_clean();
@@ -428,7 +431,8 @@ function __AddPropCellReq($intOFPropID,$strPrefix,$arPropInfo)
 {
 	ob_start();
 	?><input type="hidden" name="<?echo $strPrefix.$intOFPropID?>_IS_REQUIRED" id="<?echo $strPrefix.$intOFPropID?>_IS_REQUIRED_N" value="N">
-	<input type="checkbox" name="<?echo $strPrefix.$intOFPropID?>_IS_REQUIRED" id="<?echo $strPrefix.$intOFPropID?>_IS_REQUIRED_Y" value="Y"<?if($arPropInfo['IS_REQUIRED']=="Y")echo " checked"?>><?
+	<input type="checkbox" name="<?echo $strPrefix.$intOFPropID?>_IS_REQUIRED" id="<?echo $strPrefix.$intOFPropID?>_IS_REQUIRED_Y" value="Y"<?
+	if($arPropInfo['IS_REQUIRED']=="Y")echo " checked"?> title="<?=htmlspecialcharsbx(GetMessage("IB_E_PROP_REQIRED_SHORT")); ?>"><?
 	$strResult = ob_get_contents();
 	ob_end_clean();
 	return $strResult;

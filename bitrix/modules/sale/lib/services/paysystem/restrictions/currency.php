@@ -16,15 +16,15 @@ Loc::loadMessages(__FILE__);
 class Currency extends Base\Restriction
 {
 	/**
-	 * @param $currency
+	 * @param $params
 	 * @param array $restrictionParams
 	 * @param int $serviceId
 	 * @return bool
 	 */
-	protected static function check($currency, $restrictionParams, $serviceId)
+	protected static function check($params, array $restrictionParams, $serviceId = 0)
 	{
 		if (isset($restrictionParams) && is_array($restrictionParams['CURRENCY']))
-			return in_array($currency, $restrictionParams['CURRENCY']);
+			return in_array($params, $restrictionParams['CURRENCY']);
 
 		return true;
 	}
@@ -66,9 +66,9 @@ class Currency extends Base\Restriction
 		return Loc::getMessage('SALE_PS_RESTRICTIONS_BY_CURRENCY_DESC');
 	}
 
-	public static function getParamsStructure($paySystemId = 0)
+	public static function getParamsStructure($entityId = 0)
 	{
-		$data = PaySystem\Manager::getById($paySystemId);
+		$data = PaySystem\Manager::getById($entityId);
 
 		$currencyList = CurrencyManager::getCurrencyList();
 
@@ -87,7 +87,6 @@ class Currency extends Base\Restriction
 				return array(
 					"CURRENCY" => array(
 						"TYPE" => "ENUM",
-						"DISABLED" => true,
 						'MULTIPLE' => 'Y',
 						"LABEL" => Loc::getMessage("SALE_PS_RESTRICTIONS_BY_CURRENCY_NAME"),
 						"OPTIONS" => $options

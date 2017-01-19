@@ -1,5 +1,4 @@
 <?
-// delete from updates
 
 CModule::AddAutoloadClasses(
 	"mobileapp",
@@ -16,9 +15,12 @@ CModule::AddAutoloadClasses(
 	)
 );
 
+$GLOBALS["APPLICATION"]->AddJSKernelInfo('mobileapp', array('/bitrix/js/mobileapp/fastclick.js'));
+
 CJSCore::RegisterExt('mobile_webrtc', array(
 		'js'   => '/bitrix/js/mobileapp/mobile_webrtc.js',
 		'lang' => '/bitrix/modules/mobileapp/lang/'.LANGUAGE_ID.'/mobile_webrtc.php',
+		'rel'=>array("ajax","ls")
 	));
 
 CJSCore::RegisterExt('mdesigner', array(

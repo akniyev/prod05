@@ -3,6 +3,7 @@ namespace Bitrix\Sale\Services\PaySystem\Restrictions;
 
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Sale\Delivery\Services;
+use Bitrix\Sale\Internals\CollectableEntity;
 use Bitrix\Sale\Internals\DeliveryPaySystemTable;
 use Bitrix\Sale\Order;
 use Bitrix\Sale\Payment;
@@ -39,53 +40,57 @@ class Delivery extends Restriction
 	}
 
 	/**
-	 * @param $deliveryIds
+	 * @param $params
 	 * @param array $restrictionParams
-	 * @param int $paySystemId
+	 * @param int $serviceId
 	 * @return bool
 	 */
-	public static function check($deliveryIds, array $restrictionParams, $paySystemId = 0)
+	public static function check($params, array $restrictionParams, $serviceId = 0)
 	{
-		if(intval($paySystemId) <= 0)
+		if(intval($serviceId) <= 0)
 			return true;
 
-		if(empty($deliveryIds))
+		if(empty($params))
 			return true;
 
-		$deliveries = self::getDeliveryByPaySystemsId($paySystemId);
+		$deliveries = self::getDeliveryByPaySystemsId($serviceId);
 
 		if(empty($deliveries))
 			return true;
 
-		$diff = array_diff($deliveryIds, $deliveries);
+		$diff = array_diff($params, $deliveries);
 
 		return empty($diff);
 	}
 
 	/**
-	 * @param Payment $payment
+	 * @param CollectableEntity $entity
 	 * @return array
 	 */
-	protected static function extractParams(Payment $payment)
+	protected static function extractParams(CollectableEntity $entity)
 	{
 		$result = array();
-		/** @var PaymentCollection $paymentCollection */
-		$paymentCollection = $payment->getCollection();
 
-		/** @var Order $order */
-		$order = $paymentCollection->getOrder();
-
-		/** @var ShipmentCollection $shipmentCollection */
-		$shipmentCollection = $order->getShipmentCollection();
-
-		/** @var \Bitrix\Sale\Shipment $shipment */
-		foreach ($shipmentCollection as $shipment)
+		if ($entity instanceof Payment)
 		{
-			if (!$shipment->isSystem())
+			/** @var PaymentCollection $paymentCollection */
+			$paymentCollection = $entity->getCollection();
+
+			/** @var Order $order */
+			$order = $paymentCollection->getOrder();
+
+			/** @var ShipmentCollection $shipmentCollection */
+			$shipmentCollection = $order->getShipmentCollection();
+
+			/** @var \Bitrix\Sale\Shipment $shipment */
+			foreach ($shipmentCollection as $shipment)
 			{
-				$deliveryId = $shipment->getDeliveryId();
-				if ($deliveryId)
-					$result[] = $deliveryId;
+				if (!$shipment->isSystem())
+				{
+					$deliveryId = $shipment->getDeliveryId();
+					if ($deliveryId)
+						$result[] = $deliveryId;
+				}
 			}
 		}
 
@@ -103,16 +108,28 @@ class Delivery extends Restriction
 			return $result;
 
 		$serviceList = array();
-		$dbRes = Services\Table::getList(array('select' => array('ID', 'NAME', 'PARENT_ID')));
+		$dbRes = Services\Table::getList(array('select' => array('ID', 'NAME', 'PARENT_ID', 'CLASS_NAME')));
 		while ($service = $dbRes->fetch())
 			$serviceList[$service['ID']] = $service;
 
 		foreach ($serviceList as $service)
 		{
-			if ((int)$service['PARENT_ID'] > 0)
-				$name = $serviceList[$service['PARENT_ID']]['NAME'].': '.$service['NAME'].' ['.$service['ID'].']';
+			if (is_callable($service['CLASS_NAME'].'::canHasChildren') && $service['CLASS_NAME']::canHasChildren())
+				continue;
+
+			if ((int)$service['PARENT_ID'] > 0 && array_key_exists($service['PARENT_ID'], $serviceList))
+			{
+				$parentService = $serviceList[$service['PARENT_ID']];
+
+				if (is_callable($parentService['CLASS_NAME'].'::canHasChildren') && $parentService['CLASS_NAME']::canHasChildren())
+					$name = $service['NAME'].' ['.$service['ID'].']';
+				else
+					$name = $parentService['NAME'].': '.$service['NAME'].' ['.$service['ID'].']';
+			}
 			else
+			{
 				$name = $service['NAME'].' ['.$service['ID'].']';
+			}
 
 			$result[$service['ID']] = $name;
 		}
@@ -121,9 +138,10 @@ class Delivery extends Restriction
 	}
 
 	/**
+	 * @param int $entityId
 	 * @return array
 	 */
-	public static function getParamsStructure()
+	public static function getParamsStructure($entityId = 0)
 	{
 		$result =  array(
 			"DELIVERY" => array(
@@ -196,25 +214,25 @@ class Delivery extends Restriction
 
 	/**
 	 * @param array $paramsValues
-	 * @param int $paySystemId
+	 * @param int $entityId
 	 * @return array
 	 */
-	public static function prepareParamsValues(array $paramsValues, $paySystemId = 0)
+	public static function prepareParamsValues(array $paramsValues, $entityId = 0)
 	{
-		return array("DELIVERY" => self::getDeliveryByPaySystemsId($paySystemId));
+		return array("DELIVERY" => self::getDeliveryByPaySystemsId($entityId));
 	}
 
 	/**
 	 * @param $restrictionId
-	 * @param int $paySystemId
+	 * @param int $entityId
 	 * @return \Bitrix\Main\Entity\DeleteResult
 	 * @throws \Bitrix\Main\ArgumentNullException
 	 * @throws \Bitrix\Main\ArgumentOutOfRangeException
 	 */
-	public static function delete($restrictionId, $paySystemId)
+	public static function delete($restrictionId, $entityId = 0)
 	{
 		DeliveryPaySystemTable::setLinks(
-			$paySystemId,
+			$entityId,
 			DeliveryPaySystemTable::ENTITY_TYPE_PAYSYSTEM,
 			array(),
 			true
@@ -224,14 +242,14 @@ class Delivery extends Restriction
 	}
 
 	/**
-	 * @param array $paySystemIds
+	 * @param array $servicesIds
 	 * @return string
 	 */
-	public static function prepareData(array $paySystemIds)
+	public static function prepareData(array $servicesIds)
 	{
-		if(empty($paySystemIds))
+		if(empty($servicesIds))
 			return;
 
-		self::$preparedData = DeliveryPaySystemTable::prepareData($paySystemIds, DeliveryPaySystemTable::ENTITY_TYPE_PAYSYSTEM);
+		self::$preparedData = DeliveryPaySystemTable::prepareData($servicesIds, DeliveryPaySystemTable::ENTITY_TYPE_PAYSYSTEM);
 	}
 } 

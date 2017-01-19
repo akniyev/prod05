@@ -35,6 +35,11 @@ foreach($arParams["BUTTONS"] as $val)
 		case "Quote":
 			$arButtonsHTML[] = '<span class="feed-add-post-form-but-cnt" id="bx-b-quote-'.$arParams["FORM_ID"].'"></span>';
 			break;
+		case "Important":
+			$arButtonsHTML[] = '<span class="feed-add-post-form-but feed-add-important" id="bx-b-important-'.$arParams["FORM_ID"].'" '.
+				'title="'.GetMessage("MPF_IMPORTANT_TITLE").'"></span>'.
+				'<span id="bx-b-important-'.$arParams["FORM_ID"].'-active" class="feed-add-important-active-block" style="display: none;"><span class="feed-add-post-form-but feed-add-important-active"></span><span class="feed-add-important-text">'.GetMessage('MPF_IMPORTANT_TITLE').'</span></span>';
+			break;
 		default:
 			if (isset($arParams["~BUTTONS_HTML"]) && is_array($arParams["~BUTTONS_HTML"]) && is_array($arParams["~BUTTONS_HTML"]) && array_key_exists($val, $arParams["~BUTTONS_HTML"]))
 				$arButtonsHTML[] = $arParams["~BUTTONS_HTML"][$val];
@@ -142,22 +147,23 @@ include($_SERVER["DOCUMENT_ROOT"].$templateFolder."/lhe.php");
 <?=$arParams["~HTML_AFTER_TEXTAREA"]?><?
 if($arParams["DESTINATION_SHOW"] == "Y" || !empty($arParams["TAGS"]))
 {
-?><ol class="feed-add-post-strings-blocks"><?
+	?><ol class="feed-add-post-strings-blocks"><?
 }
 if($arParams["DESTINATION_SHOW"] == "Y")
 {
-?>
-<li class="feed-add-post-destination-block">
-	<div class="feed-add-post-destination-title"><?=GetMessage("MPF_DESTINATION")?></div>
-	<div class="feed-add-post-destination-wrap" id="feed-add-post-destination-container">
-		<span id="feed-add-post-destination-item"></span>
-		<span class="feed-add-destination-input-box" id="feed-add-post-destination-input-box">
-			<input type="text" value="" class="feed-add-destination-inp" id="feed-add-post-destination-input">
-		</span>
-		<a href="#" class="feed-add-destination-link" id="bx-destination-tag"></a>
-	</div>
-</li>
-<?
+	?>
+	<li class="feed-add-post-destination-block">
+		<div class="feed-add-post-destination-title"><?=GetMessage("MPF_DESTINATION")?></div>
+		<div class="feed-add-post-destination-wrap" id="feed-add-post-destination-container">
+			<span id="feed-add-post-destination-item"></span>
+			<span class="feed-add-destination-input-box" id="feed-add-post-destination-input-box">
+				<input type="text" value="" class="feed-add-destination-inp" id="feed-add-post-destination-input" autocomplete="off">
+			</span>
+			<a href="#" class="feed-add-destination-link" id="bx-destination-tag"></a>
+		</div>
+	</li>
+	<?
+	echo $APPLICATION->GetViewContent("mpl_input_additional");
 }
 if (!empty($arParams["TAGS"]))
 {
@@ -178,47 +184,48 @@ if (!empty($arParams["TAGS"]))
 			$tagsInput .= htmlspecialcharsbx($val);
 		}
 	}
-?>
-<li id="post-tags-block-<?=$arParams["FORM_ID"]?>" class="feed-add-post-tags-block"<?if ($tags !== ""):?> style="display:block"<?endif?>>
-	<div class="feed-add-post-tags-title"><?=GetMessage("MPF_TAGS")?></div>
-	<div class="feed-add-post-tags-wrap" id="post-tags-container-<?=$arParams["FORM_ID"]?>">
-		<?=$tags?>
-		<span class="feed-add-post-tags-add" id="post-tags-add-new-<?=$arParams["FORM_ID"]?>"><?=GetMessage("MPF_ADD_TAG")?></span>
-		<input type="hidden" name="<?=$arParams["TAGS"]["NAME"]?>" id="post-tags-hidden-<?=$arParams["FORM_ID"]?>" value="<?=$tagsInput?>,">
+	?>
+	<li id="post-tags-block-<?=$arParams["FORM_ID"]?>" class="feed-add-post-tags-block"<?if ($tags !== ""):?> style="display:block"<?endif?>>
+		<div class="feed-add-post-tags-title"><?=GetMessage("MPF_TAGS")?></div>
+		<div class="feed-add-post-tags-wrap" id="post-tags-container-<?=$arParams["FORM_ID"]?>">
+			<?=$tags?>
+			<span class="feed-add-post-tags-add" id="post-tags-add-new-<?=$arParams["FORM_ID"]?>"><?=GetMessage("MPF_ADD_TAG")?></span>
+			<input type="hidden" name="<?=$arParams["TAGS"]["NAME"]?>" id="post-tags-hidden-<?=$arParams["FORM_ID"]?>" value="<?=$tagsInput?>,">
+		</div>
+	<div id="post-tags-popup-content-<?=$arParams["FORM_ID"]?>" style="display:none;">
+	<?if($arParams["TAGS"]["USE_SEARCH"] == "Y" && IsModuleInstalled("search"))
+	{
+		$APPLICATION->IncludeComponent(
+			"bitrix:search.tags.input",
+			".default",
+			Array(
+				"NAME"	=>	$arParams["TAGS"]["NAME"]."_".$arParams["FORM_ID"],
+				"VALUE"	=>	"",
+				"arrFILTER"	=>	$arParams["TAGS"]["FILTER"],
+				"PAGE_ELEMENTS"	=>	"10",
+				"SORT_BY_CNT"	=>	"Y",
+				"TEXT" => 'size="30" tabindex="'.($arParams["TEXT"]["TABINDEX"]++).'"',
+				"ID" => "post-tags-popup-input-".$arParams["FORM_ID"]
+			),
+			false,
+			array("HIDE_ICONS" => "Y")
+		);
+	}
+	else
+	{
+		?><input type="text" id="post-tags-popup-input-<?=$arParams["FORM_ID"]?>" tabindex="<?=($arParams["TEXT"]["TABINDEX"]++)?>" name="<?=$arParams["TAGS"]["NAME"]?>" size="30" value=""><?
+	}?>
 	</div>
-<div id="post-tags-popup-content-<?=$arParams["FORM_ID"]?>" style="display:none;">
-<?if($arParams["TAGS"]["USE_SEARCH"] == "Y" && IsModuleInstalled("search"))
-{
-	$APPLICATION->IncludeComponent(
-		"bitrix:search.tags.input",
-		".default",
-		Array(
-			"NAME"	=>	$arParams["TAGS"]["NAME"]."_".$arParams["FORM_ID"],
-			"VALUE"	=>	"",
-			"arrFILTER"	=>	$arParams["TAGS"]["FILTER"],
-			"PAGE_ELEMENTS"	=>	"10",
-			"SORT_BY_CNT"	=>	"Y",
-			"TEXT" => 'size="30" tabindex="'.($arParams["TEXT"]["TABINDEX"]++).'"',
-			"ID" => "post-tags-popup-input-".$arParams["FORM_ID"]
-		),
-		false,
-		array("HIDE_ICONS" => "Y")
-	);
-}
-else
-{
-	?><input type="text" id="post-tags-popup-input-<?=$arParams["FORM_ID"]?>" tabindex="<?=($arParams["TEXT"]["TABINDEX"]++)?>" name="<?=$arParams["TAGS"]["NAME"]?>" size="30" value=""><?
-}?>
-</div>
-<script type="text/javascript">
-var BXPostFormTags_<?=$arParams["FORM_ID"]?> = new BXPostFormTags("<?=$arParams["FORM_ID"]?>", "bx-b-tag-input-<?=$arParams["FORM_ID"]?>");
-</script>
-</li>
-<?
+	<script type="text/javascript">
+		var BXPostFormTags_<?=$arParams["FORM_ID"]?> = new BXPostFormTags("<?=$arParams["FORM_ID"]?>", "bx-b-tag-input-<?=$arParams["FORM_ID"]?>");
+		var BXPostFormImportant_<?=$arParams["FORM_ID"]?> = new BXPostFormImportant("<?=$arParams["FORM_ID"]?>", "bx-b-important-<?=$arParams["FORM_ID"]?>", <?=(isset($arParams["IMPORTANT"]) && isset($arParams["IMPORTANT"]["INPUT_NAME"]) ? '"'.$arParams["IMPORTANT"]["INPUT_NAME"].'"' : 'false')?>);
+	</script>
+	</li>
+	<?
 }
 if($arParams["DESTINATION_SHOW"] == "Y" || !empty($arParams["TAGS"]))
 {
-?></ol><?
+	?></ol><?
 }
 
 if (defined("BITRIX24_INDEX_COMPOSITE"))
@@ -241,6 +248,8 @@ if (in_array('socnetlogdest', $array))
 			initDestination : <?=($arParams["DESTINATION_SHOW"] == "Y" ? "true" : "false")?>,
 			items : {
 				users : <?=(empty($arParams["DESTINATION"]['USERS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['USERS']))?>,
+				emails: <?=(empty($arParams["DESTINATION"]['EMAILS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['EMAILS']))?>,
+				crmemails: <?=(empty($arParams["DESTINATION"]['CRMEMAILS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['CRMEMAILS']))?>,
 				mentionUsers : <?=(empty($arParams["DESTINATION"]['MENTION_USERS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['MENTION_USERS']))?>,
 				groups : <?=($arParams["DESTINATION"]["EXTRANET_USER"] == 'Y' || (array_key_exists("DENY_TOALL", $arParams["DESTINATION"]) && $arParams["DESTINATION"]["DENY_TOALL"]) ?
 				'{}' : "{'UA' : {'id':'UA','name': '".(!empty($arParams["DESTINATION"]['DEPARTMENT']) ? GetMessageJS("MPF_DESTINATION_3"): GetMessageJS("MPF_DESTINATION_4"))."'}}")?>,
@@ -255,6 +264,8 @@ if (in_array('socnetlogdest', $array))
 			},
 			itemsLast : {
 				users : <?=(empty($arParams["DESTINATION"]['LAST']['USERS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['LAST']['USERS']))?>,
+				emails : <?=(empty($arParams["DESTINATION"]['LAST']['EMAILS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['LAST']['EMAILS']))?>,
+				crmemails: <?=(empty($arParams["DESTINATION"]['LAST']['CRMEMAILS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['LAST']['CRMEMAILS']))?>,
 				mentionUsers : <?=(!isset($arParams["DESTINATION"]['LAST']['MENTION_USERS']) || empty($arParams["DESTINATION"]['LAST']['MENTION_USERS']) ? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['LAST']['MENTION_USERS']))?>,
 				sonetgroups : <?=(empty($arParams["DESTINATION"]['LAST']['SONETGROUPS'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['LAST']['SONETGROUPS']))?>,
 				department : <?=(empty($arParams["DESTINATION"]['LAST']['DEPARTMENT'])? '{}': CUtil::PhpToJSObject($arParams["DESTINATION"]['LAST']['DEPARTMENT']))?>,
@@ -271,7 +282,9 @@ if (in_array('socnetlogdest', $array))
 			useClientDatabase : <?=($arParams["DESTINATION_USE_CLIENT_DATABASE"] != "N" ? 'true' : 'false'); ?>,
 			destSort : <?=CUtil::PhpToJSObject(isset($arParams["DESTINATION"]['DEST_SORT']) ? $arParams["DESTINATION"]['DEST_SORT'] : $arResult["DEST_SORT"])?>,
 			mentionDestSort : <?=CUtil::PhpToJSObject(isset($arResult["MENTION_DEST_SORT"]) ? $arResult["MENTION_DEST_SORT"] : false)?>,
-			allowAddUser: <?=(isset($arParams["ALLOW_EMAIL_INVITATION"]) && $arParams["ALLOW_EMAIL_INVITATION"] == 'Y' ? 'true' : 'false'); ?>,
+			allowAddUser: <?=($arResult["ALLOW_EMAIL_INVITATION"] ? 'true' : 'false'); ?>,
+			allowAddCrmContact: <?=($arResult["ALLOW_ADD_CRM_CONTACT"] ? 'true' : 'false'); ?>,
+			allowSearchCrmEmailUsers: <?=($arResult["ALLOW_CRM_EMAILS"] ? 'true' : 'false'); ?>,
 			userNameTemplate: '<?=CUtil::JSEscape($arParams['NAME_TEMPLATE'])?>'
 		});
 	});

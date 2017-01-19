@@ -1,5 +1,6 @@
 <?
 error_reporting(E_COMPILE_ERROR|E_ERROR|E_CORE_ERROR|E_PARSE);
+require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/bx_root.php");
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/lib/loader.php");
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/tools.php");
 
@@ -30,7 +31,6 @@ foreach($aProtocols as $prot)
 if (!defined("AUTH_404"))
 	define("AUTH_404", "Y");
 
-require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/bx_root.php");
 require_once($_SERVER["DOCUMENT_ROOT"].BX_PERSONAL_ROOT."/php_interface/dbconn.php");
 
 if (defined("BX_URLREWRITE"))

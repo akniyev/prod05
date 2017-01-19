@@ -1197,26 +1197,34 @@ if(isset($arResult["ID"]))
 	if ($arParams['SET_CANONICAL_URL'] === 'Y' && $arResult["CANONICAL_PAGE_URL"])
 		$APPLICATION->SetPageProperty('canonical', $arResult["CANONICAL_PAGE_URL"]);
 
-	if (!isset($_SESSION["VIEWED_ENABLE"]) && isset($_SESSION["VIEWED_PRODUCT"]) && $_SESSION["VIEWED_PRODUCT"] != $arResult["ID"] && Loader::includeModule("sale"))
-	{
-		$_SESSION["VIEWED_ENABLE"] = "Y";
-		$arFields = array(
-			"PRODUCT_ID" => (int)$_SESSION["VIEWED_PRODUCT"],
-			"MODULE" => "catalog",
-			"LID" => SITE_ID
-		);
-		CSaleViewedProduct::Add($arFields);
-	}
 
-	if (isset($_SESSION["VIEWED_ENABLE"]) && $_SESSION["VIEWED_ENABLE"] == "Y" && $_SESSION["VIEWED_PRODUCT"] != $arResult["ID"] && Loader::includeModule("sale"))
+
+	$productViewedSave = Main\Config\Option::get('sale', 'product_viewed_save', 'Y');
+
+	if ($productViewedSave === 'Y')
 	{
-		$arFields = array(
-			"PRODUCT_ID" => $arResult["ID"],
-			"MODULE" => "catalog",
-			"LID" => SITE_ID,
-			"IBLOCK_ID" => $arResult["IBLOCK_ID"]
-		);
-		CSaleViewedProduct::Add($arFields);
+		//viewed_save
+		if (!isset($_SESSION["VIEWED_ENABLE"]) && isset($_SESSION["VIEWED_PRODUCT"]) && $_SESSION["VIEWED_PRODUCT"] != $arResult["ID"] && Loader::includeModule("sale"))
+		{
+			$_SESSION["VIEWED_ENABLE"] = "Y";
+			$arFields = array(
+				"PRODUCT_ID" => (int)$_SESSION["VIEWED_PRODUCT"],
+				"MODULE" => "catalog",
+				"LID" => SITE_ID
+			);
+			CSaleViewedProduct::Add($arFields);
+		}
+
+		if (isset($_SESSION["VIEWED_ENABLE"]) && $_SESSION["VIEWED_ENABLE"] == "Y" && $_SESSION["VIEWED_PRODUCT"] != $arResult["ID"] && Loader::includeModule("sale"))
+		{
+			$arFields = array(
+				"PRODUCT_ID" => $arResult["ID"],
+				"MODULE" => "catalog",
+				"LID" => SITE_ID,
+				"IBLOCK_ID" => $arResult["IBLOCK_ID"]
+			);
+			CSaleViewedProduct::Add($arFields);
+		}
 	}
 
 	$_SESSION["VIEWED_PRODUCT"] = $arResult["ID"];

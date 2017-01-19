@@ -277,7 +277,7 @@ class ConnectionPool
 	/**
 	 * In the ignore DML mode a data modification command will not stop next queries going to a slave.
 	 *
-	 * @param bool $mode Whenever to ignore subsequent DML or not.
+	 * @param bool $mode Ignore subsequent DML or not.
 	 * @return void
 	 */
 	public function ignoreDml($mode)

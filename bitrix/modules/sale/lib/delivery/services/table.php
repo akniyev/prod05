@@ -2,6 +2,7 @@
 
 namespace Bitrix\Sale\Delivery\Services;
 
+use Bitrix\Main\Application;
 use Bitrix\Main\Entity;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Sale\Delivery\Services;
@@ -161,5 +162,21 @@ class Table extends Entity\DataManager
 	public static function getCodeById($id)
 	{
 		return Services\Manager::getCodeById($id);
+	}
+
+	/**
+	 * @param mixed $primary
+	 * @return Entity\DeleteResult
+	 * @throws \Exception
+	 */
+	public static function delete($primary)
+	{
+		if ($primary == EmptyDeliveryService::getEmptyDeliveryServiceId())
+		{
+			$cacheManager = Application::getInstance()->getManagedCache();
+			$cacheManager->clean(EmptyDeliveryService::CACHE_ID);
+		}
+
+		return parent::delete($primary);
 	}
 }

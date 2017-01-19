@@ -34,6 +34,9 @@ class Tax
 	/** @var bool  */
 	protected $deliveryTax = null;
 
+	/** @var bool  */
+	protected $isClone = false;
+
 
 	protected function __construct()
 	{
@@ -98,16 +101,7 @@ class Tax
 		$taxResult = array();
 
 		$taxList = $this->getTaxList();
-
-//		if ($order->getId() > 0)
-//		{
-//			$taxList = $this->getTaxList();
-//		}
-//		else
-//		{
-//			$taxList = $this->getAvailableList();
-//		}
-
+		
 		$taxExempt = static::loadExemptList($order->getUserId());
 
 		$fields = array(
@@ -120,12 +114,12 @@ class Tax
 			"VAT_SUM" => $order->getVatSum(),
 		);
 
-		if (!empty($taxExempt))
+		if (is_array($taxExempt))
 		{
 			$fields['TAX_EXEMPT'] = $taxExempt;
 		}
 
-		if (!empty($taxList))
+		if (is_array($taxList) && !empty($taxList))
 		{
 			$fields['TAX_LIST'] = $taxList;
 		}
@@ -144,7 +138,7 @@ class Tax
 			$fields['BASKET_ITEMS'][] = $basketItem->getFieldValues();
 		}
 
-		\CSaleTax::DoProcessOrderBasket($fields, array(), $errors = array());
+		\CSaleTax::calculateTax($fields, array(), $errors = array());
 
 		if (!$order->isUsedVat() && is_array($fields['TAX_LIST']))
 		{
@@ -154,6 +148,11 @@ class Tax
 		if (array_key_exists('TAX_PRICE', $fields) && floatval($fields['TAX_PRICE']) >= 0)
 		{
 			$taxResult['TAX_PRICE'] = $fields['TAX_PRICE'];
+		}
+
+		if (array_key_exists('VAT_SUM', $fields) && floatval($fields['VAT_SUM']) > 0)
+		{
+			$taxResult['VAT_SUM'] = $fields['VAT_SUM'];
 		}
 
 		if (array_key_exists('TAX_LIST', $fields))
@@ -241,7 +240,7 @@ class Tax
 		}
 
 
-		\CSaleTax::DoProcessOrderDelivery($fields, $options, $errors = array());
+		\CSaleTax::calculateDeliveryTax($fields, $options, $errors = array());
 
 		if (array_key_exists('TAX_PRICE', $fields) && floatval($fields['TAX_PRICE']) > 0)
 		{
@@ -572,7 +571,7 @@ class Tax
 					"LID" => $order->getSiteId(),
 					"PERSON_TYPE_ID" => $order->getPersonTypeId(),
 					"ACTIVE" => "Y",
-					"LOCATION" => $order->getTaxLocation(),
+					"LOCATION_CODE" => $order->getTaxLocation(),
 				)
 			);
 			while ($taxRate = $taxRateRes->GetNext())
@@ -581,7 +580,7 @@ class Tax
 				{
 					if ($taxRate["IS_PERCENT"] != "Y")
 					{
-						$taxRate["VALUE"] = RoundEx(\CCurrencyRates::convertCurrency($taxRate["VALUE"], $taxRate["CURRENCY"], $order->getCurrency()), SALE_VALUE_PRECISION);
+						$taxRate["VALUE"] = PriceMaths::roundPrecision(\CCurrencyRates::convertCurrency($taxRate["VALUE"], $taxRate["CURRENCY"], $order->getCurrency()));
 						$taxRate["CURRENCY"] = $order->getCurrency();
 					}
 					$availableList[] = $taxRate;
@@ -620,6 +619,46 @@ class Tax
 	public function isDeliveryCalculate()
 	{
 		return $this->deliveryTax;
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return Tax
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$taxClone = clone $this;
+		$taxClone->isClone = true;
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $taxClone;
+		}
+
+		if ($this->order)
+		{
+			if ($cloneEntity->contains($this->order))
+			{
+				$taxClone->order = $cloneEntity[$this->order];
+			}
+		}
+
+		return $taxClone;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isClone()
+	{
+		return $this->isClone;
 	}
 
 }

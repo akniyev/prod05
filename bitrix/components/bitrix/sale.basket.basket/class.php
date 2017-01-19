@@ -5,6 +5,7 @@ use Bitrix\Main\Localization\Loc;
 use Bitrix\Main\Loader;
 use Bitrix\Highloadblock as HL;
 use Bitrix\Sale\DiscountCouponsManager;
+use Bitrix\Sale\PriceMaths;
 
 class CBitrixBasketComponent extends CBitrixComponent
 {
@@ -104,7 +105,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 		if (!Loader::includeModule('sale'))
 			return false;
 		DiscountCouponsManager::init();
-		parent::setFramemode(false);
+		$this->setFramemode(false);
 		$this->weightKoef = $this->arParams["WEIGHT_KOEF"];
 		$this->weightUnit = $this->arParams["WEIGHT_UNIT"];
 		$this->columns = $this->arParams["COLUMNS_LIST"];
@@ -135,6 +136,8 @@ class CBitrixBasketComponent extends CBitrixComponent
 				$propertyCount++;
 				if ($propertyCount > PROPERTY_COUNT_LIMIT)
 					continue;
+
+				$value = ToUpper($value);
 
 				$this->arCustomSelectFields[] = $value; // array of iblock properties to select
 				$id = $value."_VALUE";
@@ -174,7 +177,23 @@ class CBitrixBasketComponent extends CBitrixComponent
 			self::$catalogIncluded = Loader::includeModule('catalog');
 		self::$iblockIncluded = self::$catalogIncluded;
 
-		CSaleBasket::UpdateBasketPrices(CSaleBasket::GetBasketUserID(), SITE_ID);
+		$fuserId = CSaleBasket::GetBasketUserID();
+		$sessionBasketQuantity = \Bitrix\Sale\BasketComponentHelper::getFUserBasketQuantity($fuserId, SITE_ID);
+		$sessionBasketPrice = \Bitrix\Sale\BasketComponentHelper::getFUserBasketPrice($fuserId, SITE_ID);
+
+
+		$options = array(
+			'CORRECT_RATIO' => array_key_exists('CORRECT_RATIO', $this->arParams) ? $this->arParams['CORRECT_RATIO'] : 'N'
+		);
+
+		$arResult["WARNING_MESSAGE"] = array();
+		$arResult["ERROR_MESSAGE"] = '';
+
+		$r = CSaleBasket::refreshFUserBasket(CSaleBasket::GetBasketUserID(), SITE_ID, $options);
+		if (!$r->isSuccess())
+		{
+			$arResult["WARNING_MESSAGE"] = $r->getErrorMessages();
+		}
 
 		$bShowReady = false;
 		$bShowDelay = false;
@@ -191,6 +210,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 		$arResult["ITEMS"]["nAnCanBuy"] = array();
 		$arResult["ITEMS"]["ProdSubscribe"] = array();
 		$DISCOUNT_PRICE_ALL = 0;
+		$arResult["EVENT_ONCHANGE_ON_START"] = "N";
 
 		// BASKET PRODUCTS (including measures, ratio, iblock properties data)
 
@@ -201,17 +221,19 @@ class CBitrixBasketComponent extends CBitrixComponent
 		$arSku2Parent = array();
 		$arSetParentWeight = array();
 		$arElementId = array();
+		
+
 		$dbItems = CSaleBasket::GetList(
 			array("ID" => "ASC"),
 			array(
-				"FUSER_ID" => CSaleBasket::GetBasketUserID(),
+				"FUSER_ID" => $fuserId,
 				"LID" => SITE_ID,
 				"ORDER_ID" => "NULL"
 			),
 			false,
 			false,
 			array(
-				"ID", "NAME", "CALLBACK_FUNC", "MODULE", "PRODUCT_ID", "QUANTITY", "DELAY", "CAN_BUY",
+				"ID", "NAME", "CALLBACK_FUNC", "MODULE", "PRODUCT_ID", "PRODUCT_PRICE_ID", "QUANTITY", "DELAY", "CAN_BUY",
 				"PRICE", "WEIGHT", "DETAIL_PAGE_URL", "NOTES", "CURRENCY", "VAT_RATE", "CATALOG_XML_ID",
 				"PRODUCT_XML_ID", "SUBSCRIBE", "DISCOUNT_PRICE", "PRODUCT_PROVIDER_CLASS", "TYPE", "SET_PARENT_ID"
 			)
@@ -257,7 +279,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 			while ($property = $propsIterator->GetNext())
 			{
 				$property['CODE'] = (string)$property['CODE'];
-				if ($property['CODE'] == 'CATALOG.XML_ID' || $property['CODE'] == 'PRODUCT.XML_ID')
+				if ($property['CODE'] == 'CATALOG.XML_ID' || $property['CODE'] == 'PRODUCT.XML_ID' || $property['CODE'] == 'SUM_OF_CHARGE')
 					continue;
 				if (!isset($basketIds[$property['BASKET_ID']]))
 					continue;
@@ -300,15 +322,30 @@ class CBitrixBasketComponent extends CBitrixComponent
 
 			if (array_key_exists($arItem["PRODUCT_ID"], $arSku2Parent)) // if sku element doesn't have value of some property - we'll show parent element value instead
 			{
+				$replaceImageFields = true;
 				$arFieldsToFill = array_merge($this->arCustomSelectFields, $arImgFields); // fields to be filled with parents' values if empty
+
+				$parentId = $arSku2Parent[$arItem["PRODUCT_ID"]];
+
+				foreach($arImgFields as $imageFieldName)
+				{
+					if (!empty($arProductData[$arItem["PRODUCT_ID"]][$imageFieldName]))
+					{
+						$replaceImageFields = false;
+						$arItem[$imageFieldName] = $arProductData[$arItem["PRODUCT_ID"]][$imageFieldName];
+					}
+				}
+
 				foreach ($arFieldsToFill as $field)
 				{
 					$fieldVal = (in_array($field, $arImgFields)) ? $field : $field."_VALUE";
-					$parentId = $arSku2Parent[$arItem["PRODUCT_ID"]];
 
 					if ((!isset($arItem[$fieldVal]) || (isset($arItem[$fieldVal]) && strlen($arItem[$fieldVal]) == 0))
 						&& (isset($arProductData[$parentId][$fieldVal]) && !empty($arProductData[$parentId][$fieldVal]))) // can be array or string
 					{
+						if (in_array($field, $arImgFields) && !$replaceImageFields)
+							continue;
+
 						$arItem[$fieldVal] = $arProductData[$parentId][$fieldVal];
 					}
 				}
@@ -318,7 +355,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 			{
 				if ((strpos($key, "PROPERTY_", 0) === 0) && (strrpos($key, "_VALUE") == strlen($key) - 6))
 				{
-					$code = str_replace(array("PROPERTY_", "_VALUE"), "", $key);
+					$code = ToUpper(str_replace(array("PROPERTY_", "_VALUE"), "", $key));
 					$propData = $this->arIblockProps[$code];
 					$arItem[$key] = CSaleHelper::getIblockPropInfo($value, $propData);
 				}
@@ -416,7 +453,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 			elseif ($arItem["CAN_BUY"] == "Y" && $arItem["DELAY"] == "Y")
 			{
 				$bShowDelay = true;
-
+				$arItem["SUM"] = CCurrencyLang::CurrencyFormat($arItem["PRICE"] * $arItem["QUANTITY"], $arItem["CURRENCY"], true);
 				$arResult["ITEMS"]["DelDelCanBuy"][] = $arItem;
 			}
 			elseif ($arItem["CAN_BUY"] == "N" && $arItem["SUBSCRIBE"] == "Y")
@@ -463,7 +500,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 			{
 				if (in_array($fieldName, $roundOrderFields))
 				{
-					$arOrder[$fieldName] = roundEx($arOrder[$fieldName], SALE_VALUE_PRECISION);
+					$arOrder[$fieldName] = PriceMaths::roundPrecision($arOrder[ $fieldName ]);
 				}
 			}
 		}
@@ -480,7 +517,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 					{
 						if (isset($basketItem[$fieldName]))
 						{
-							$basketItem[$fieldName] = roundEx($basketItem[$fieldName], SALE_VALUE_PRECISION);
+							$basketItem[$fieldName] = PriceMaths::roundPrecision($basketItem[ $fieldName ]);
 						}
 					}
 				}
@@ -488,7 +525,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 				$arOrder['ORDER_PRICE'] += $basketItem['PRICE'] * $basketItem['QUANTITY'];
 			}
 
-			$arOrder['ORDER_PRICE'] = roundEx($arOrder['ORDER_PRICE'], SALE_VALUE_PRECISION);
+			$arOrder['ORDER_PRICE'] = PriceMaths::roundPrecision($arOrder['ORDER_PRICE']);
 		}
 
 		$allSum = 0;
@@ -508,14 +545,14 @@ class CBitrixBasketComponent extends CBitrixComponent
 			$allVATSum += roundEx($arOneItem["PRICE_VAT_VALUE"] * $arOneItem["QUANTITY"], SALE_VALUE_PRECISION);
 			$arOneItem["PRICE_FORMATED"] = CCurrencyLang::CurrencyFormat($arOneItem["PRICE"], $arOneItem["CURRENCY"], true);
 
-			$arOneItem["FULL_PRICE"] = $arOneItem["PRICE"] + $arOneItem["DISCOUNT_PRICE"];
+			$arOneItem["FULL_PRICE"] = PriceMaths::roundByFormatCurrency($arOneItem["PRICE"] + $arOneItem["DISCOUNT_PRICE"], $arOneItem["CURRENCY"]);
 			$arOneItem["FULL_PRICE_FORMATED"] = CCurrencyLang::CurrencyFormat($arOneItem["FULL_PRICE"], $arOneItem["CURRENCY"], true);
 
 			$arOneItem["SUM"] = CCurrencyLang::CurrencyFormat($arOneItem["PRICE"] * $arOneItem["QUANTITY"], $arOneItem["CURRENCY"], true);
 
 			if (0 < doubleval($arOneItem["DISCOUNT_PRICE"] + $arOneItem["PRICE"]))
 			{
-				$arOneItem["DISCOUNT_PRICE_PERCENT"] = $arOneItem["DISCOUNT_PRICE"]*100 / ($arOneItem["DISCOUNT_PRICE"] + $arOneItem["PRICE"]);
+				$arOneItem["DISCOUNT_PRICE_PERCENT"] = PriceMaths::roundByFormatCurrency($arOneItem["DISCOUNT_PRICE"] * 100 / ($arOneItem["DISCOUNT_PRICE"] + $arOneItem["PRICE"]), $arOneItem["CURRENCY"]);
 			}
 			else
 			{
@@ -537,7 +574,13 @@ class CBitrixBasketComponent extends CBitrixComponent
 			}
 		}
 
-		$arResult["allSum"] = roundEx($allSum, SALE_VALUE_PRECISION);
+		if (($sessionBasketPrice != $allSum) || (count($arOrder["BASKET_ITEMS"]) != $sessionBasketQuantity))
+		{
+			\Bitrix\Sale\BasketComponentHelper::updateFUserBasket($fuserId, SITE_ID);
+			$arResult["EVENT_ONCHANGE_ON_START"] = "Y";
+		}
+
+		$arResult["allSum"] = PriceMaths::roundByFormatCurrency($allSum, $allCurrency);
 		$arResult["allWeight"] = $allWeight;
 		$arResult["allWeight_FORMATED"] = roundEx(doubleval($allWeight/$this->weightKoef), SALE_WEIGHT_PRECISION)." ".$this->weightUnit;
 		$arResult["allSum_FORMATED"] = CCurrencyLang::CurrencyFormat($allSum, $allCurrency, true);
@@ -546,7 +589,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 
 		if ($this->priceVatShowValue == 'Y')
 		{
-			$arResult["allVATSum"] = roundEx($allVATSum, SALE_VALUE_PRECISION);;
+			$arResult["allVATSum"] = PriceMaths::roundByFormatCurrency($allVATSum, $allCurrency);
 			$arResult["allVATSum_FORMATED"] = CCurrencyLang::CurrencyFormat($allVATSum, $allCurrency, true);
 			$arResult["allSum_wVAT_FORMATED"] = CCurrencyLang::CurrencyFormat(doubleval($arResult["allSum"]-$allVATSum), $allCurrency, true);
 		}
@@ -581,7 +624,9 @@ class CBitrixBasketComponent extends CBitrixComponent
 			unset($arCoupons);
 		}
 		if (empty($arBasketItems))
-			$arResult["ERROR_MESSAGE"] = Loc::getMessage("SALE_EMPTY_BASKET");
+		{
+			$arResult["ERROR_MESSAGE"] .= (strval(trim($arResult["ERROR_MESSAGE"])) != ''? "\n" : "") . Loc::getMessage("SALE_EMPTY_BASKET");
+		}
 
 		$arResult["DISCOUNT_PRICE_ALL"] = $DISCOUNT_PRICE_ALL;
 		$arResult["APPLIED_DISCOUNT_LIST"] = $arOrder['DISCOUNT_LIST'];
@@ -638,7 +683,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 								else
 									$message = $e->getMessage();
 
-								$arResult["ERROR_MESSAGE"] = $message;
+								$arResult["ERROR_MESSAGE"] .= (strval(trim($arResult["ERROR_MESSAGE"])) != ''? "\n" : "") . $message;
 							}
 
 							$psPreAction = new CSalePaySystemPrePayment;
@@ -662,6 +707,11 @@ class CBitrixBasketComponent extends CBitrixComponent
 					}
 				}
 			}
+		}
+
+		if (empty($arBasketItems) && !empty($arResult['WARNING_MESSAGE']))
+		{
+			$arResult["ERROR_MESSAGE"] .= (strval(trim($arResult["ERROR_MESSAGE"])) != ''? "\n" : "") . join('\n', $arResult['WARNING_MESSAGE']);
 		}
 
 		return $arResult;
@@ -727,7 +777,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 						if ($arProp['PROPERTY_TYPE'] == 'L')
 						{
 							$arValues = array();
-							$rsPropEnums = CIBlockProperty::GetPropertyEnum($arProp['ID']);
+							$rsPropEnums = CIBlockProperty::GetPropertyEnum($arProp['ID'], array('SORT' => 'ASC', 'VALUE' => 'ASC'));
 							while ($arEnum = $rsPropEnums->Fetch())
 							{
 								$arValues['n'.$arEnum['ID']] = array(
@@ -740,7 +790,7 @@ class CBitrixBasketComponent extends CBitrixComponent
 						elseif ($arProp['PROPERTY_TYPE'] == 'E')
 						{
 							$rsPropEnums = CIBlockElement::GetList(
-								array('SORT' => 'ASC'),
+								array('SORT' => 'ASC', 'NAME' => 'ASC'),
 								array('IBLOCK_ID' => $arProp['LINK_IBLOCK_ID'], 'ACTIVE' => 'Y'),
 								false,
 								false,
@@ -782,8 +832,15 @@ class CBitrixBasketComponent extends CBitrixComponent
 								{
 									$entity = HL\HighloadBlockTable::compileEntity($hlblock);
 									$entity_data_class = $entity->getDataClass();
-									$rsData = $entity_data_class::getList();
+									$fieldsList = $entity->getFields();
+									$dataOrder = array();
+									if (isset($fieldsList['UF_SORT']))
+										$dataOrder['UF_SORT'] = 'ASC';
+									$dataOrder['UF_NAME'] = 'ASC';
 
+									$rsData = $entity_data_class::getList(array(
+										'order' => $dataOrder
+									));
 									while ($arData = $rsData->fetch())
 									{
 										$arValues['n'.$arData['ID']] = array(

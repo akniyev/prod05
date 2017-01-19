@@ -39,10 +39,10 @@ class PaymentCollection
 	}
 
 	/**
-	 * @param Payment $payment
+	 * @param Internals\CollectableEntity $payment
 	 * @return bool|void
 	 */
-	public function addItem(Payment $payment)
+	public function addItem(Internals\CollectableEntity $payment)
 	{
 		/** @var Payment $payment */
 		$payment = parent::addItem($payment);
@@ -66,7 +66,17 @@ class PaymentCollection
 		return $order->onPaymentCollectionModify(EventActions::DELETE, $oldItem);
 	}
 
-	public function onItemModify(Payment $item, $name = null, $oldValue = null, $value = null)
+	/**
+	 * @param Internals\CollectableEntity $item
+	 * @param null $name
+	 * @param null $oldValue
+	 * @param null $value
+	 *
+	 * @return Result
+	 * @throws Main\NotImplementedException
+	 * @throws Main\ObjectNotFoundException
+	 */
+	public function onItemModify(Internals\CollectableEntity $item, $name = null, $oldValue = null, $value = null)
 	{
 		/** @var Order $order */
 		$order = $this->getOrder();
@@ -246,6 +256,9 @@ class PaymentCollection
 		return $sum;
 	}
 
+	/**
+	 * @return bool
+	 */
 	public function hasPaidPayment()
 	{
 		if (!empty($this->collection) && is_array($this->collection))
@@ -339,15 +352,16 @@ class PaymentCollection
 					if ($isChanged)
 					{
 						OrderHistory::addLog('PAYMENT', $order->getId(), $isNew ? 'PAYMENT_ADD' : 'PAYMENT_UPDATE', $payment->getId(), $payment, $logFields, OrderHistory::SALE_ORDER_HISTORY_LOG_LEVEL_1);
+						
+						OrderHistory::addAction(
+							'PAYMENT',
+							$order->getId(),
+							"PAYMENT_SAVED",
+							$payment->getId(),
+							$payment
+						);
 					}
 
-					OrderHistory::addAction(
-						'PAYMENT',
-						$order->getId(),
-						"PAYMENT_SAVED",
-						$payment->getId(),
-						$payment
-					);
 				}
 			}
 			else
@@ -469,6 +483,52 @@ class PaymentCollection
 			}
 		}
 		return $result;
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return PaymentCollection
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+		
+		$paymentCollectionClone = clone $this;
+		$paymentCollectionClone->isClone = true;
+
+		if ($this->order)
+		{
+			if ($cloneEntity->contains($this->order))
+			{
+				$paymentCollectionClone->order = $cloneEntity[$this->order];
+			}
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $paymentCollectionClone;
+		}
+
+		/**
+		 * @var int key
+		 * @var Payment $payment
+		 */
+		foreach ($paymentCollectionClone->collection as $key => $payment)
+		{
+			if (!$cloneEntity->contains($payment))
+			{
+				$cloneEntity[$payment] = $payment->createClone($cloneEntity);
+			}
+
+			$paymentCollectionClone->collection[$key] = $cloneEntity[$payment];
+		}
+
+		return $paymentCollectionClone;
 	}
 
 }

@@ -441,7 +441,10 @@
 				this.handler.comment.node = null;
 			}
 			this.stopCheckWriting();
-			BX.onCustomEvent(this, 'onFileSubmitted', [new fileObj(uri)]);
+			var __this = this;
+			window.BXMobileApp.UI.Page.TextPanel.getText(function(txt){
+				BX.onCustomEvent(__this, 'onFileSubmitted', [txt, new fileObj(uri)]);
+			});
 		},
 		handleAppCallback : function(e) {
 			if (this.writingParams.lastEvent != e && (!e || e["event"] != "removeFocus"))
@@ -782,7 +785,7 @@
 				this.currentForm.clear();
 			}
 		},
-		submitBase64 : function(base64)
+		submitBase64 : function(text, base64)
 		{
 			var result = {filesToPost : false};
 
@@ -790,9 +793,9 @@
 
 			if (result["filesToPost"] !== false)
 			{
-				BX.onCustomEvent(this.comment, "onStart", [this.comment, "", [base64]]);
+				BX.onCustomEvent(this.comment, "onStart", [this.comment, text, [base64]]);
 
-				BX.addCustomEvent(base64, "onUploadOk", BX.proxy(function(text, file) { this.submit(text, [file]);}, this));
+				BX.addCustomEvent(base64, "onUploadOk", BX.proxy(function(txt, file) { this.submit((BX.type.isNotEmptyString(text) ? text : txt), [file]);}, this));
 				BX.addCustomEvent(base64, "onUploadError", BX.proxy(this.error, this));
 
 				BX.onCustomEvent(base64, "onUploadStart", [base64]); // Start uploading

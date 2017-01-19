@@ -8,6 +8,11 @@ use Bitrix\Sale\PaySystem;
 
 class BillHandler extends PaySystem\BaseServiceHandler
 {
+	/**
+	 * @param Sale\Payment $payment
+	 * @param Request|null $request
+	 * @return PaySystem\ServiceResult
+	 */
 	public function initiatePay(Sale\Payment $payment, Request $request = null)
 	{
 		/** @var \Bitrix\Sale\PaymentCollection $paymentCollection */
@@ -22,7 +27,7 @@ class BillHandler extends PaySystem\BaseServiceHandler
 //		if ($sumPaid + $payment->getSum() < $order->getPrice())
 //			$template .= '_prepay';
 
-		if ($request && $request->get('pdf') !== null)
+		if (array_key_exists('pdf', $_REQUEST))
 			$template .= '_pdf';
 
 		$accountNumber = (IsModuleInstalled('intranet')) ? $order->getField('ACCOUNT_NUMBER') : $payment->getField('ACCOUNT_NUMBER');

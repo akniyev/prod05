@@ -4,7 +4,7 @@
 //**    MODIFICATION OF THIS FILE WILL ENTAIL SITE FAILURE            **/
 //**********************************************************************/
 if (!defined("UPDATE_SYSTEM_VERSION"))
-	define("UPDATE_SYSTEM_VERSION", "16.0.12");
+	define("UPDATE_SYSTEM_VERSION", "16.5.7");
 
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_admin_before.php");
 define("HELP_FILE", "marketplace/sysupdate.php");
@@ -181,7 +181,8 @@ if ($DB->type == "MSSQL")
 		}
 	}
 
-	if (!isset($GLOBALS["DBSQLServerType"]) || ($GLOBALS["DBSQLServerType"] != "NATIVE"))
+	if ((!defined("SM_VERSION") || (defined("SM_VERSION") && CUpdateClient::CompareVersions("16.0.0", SM_VERSION) > 0))
+		&& (!isset($GLOBALS["DBSQLServerType"]) || ($GLOBALS["DBSQLServerType"] != "NATIVE")))
 	{
 		$errorMessage .= "<br>".GetMessage("SUP_MSSQL_LNATIVE");
 	}
@@ -231,6 +232,11 @@ if ($DB->TableExists('b_sale_order') || $DB->TableExists('B_SALE_ORDER'))
 			&& (CUpdateClient::CompareVersions($arClientModules["sale"], "16.0.0") < 0))
 			$systemMessage .= GetMessage("SUP_SALE_1500_HINT", array("#ADDR#" => "/bitrix/admin/sale_converter.php?lang=".LANG));
 	}
+}
+
+if(COption::GetOptionString("main", "update_devsrv", "") == "Y")
+{
+	$systemMessage .= GetMessage("SUP_DEVSRV_MESS");
 }
 
 if (strlen($errorMessage) > 0)

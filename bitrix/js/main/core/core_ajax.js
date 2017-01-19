@@ -885,6 +885,10 @@ BX.ajax.prepareForm = function(obForm, data)
 			el = obForm.elements[i];
 			if (el.disabled)
 				continue;
+
+			if(!el.type)
+				continue;
+
 			switch(el.type.toLowerCase())
 			{
 				case 'text':
@@ -931,7 +935,7 @@ BX.ajax.prepareForm = function(obForm, data)
 		}
 
 		i = 0; length = 0;
-		var current = data;
+		var current = data, name, rest, pp;
 
 		while(i < _data.length)
 		{
@@ -943,25 +947,29 @@ BX.ajax.prepareForm = function(obForm, data)
 			}
 			else
 			{
-				var name = _data[i].name.substring(0, p);
-				var rest = _data[i].name.substring(p+1);
-				if(!current[name])
-					current[name] = [];
+				name = _data[i].name.substring(0, p);
+				rest = _data[i].name.substring(p+1);
+				pp = rest.indexOf(']');
 
-				var pp = rest.indexOf(']');
 				if(pp == -1)
 				{
+					if (!current[name])
+						current[name] = [];
 					current = data;
 					i++;
 				}
 				else if(pp == 0)
 				{
+					if (!current[name])
+						current[name] = [];
 					//No index specified - so take the next integer
 					current = current[name];
 					_data[i].name = '' + current.length;
 				}
 				else
 				{
+					if (!current[name])
+						current[name] = {};
 					//Now index name becomes and name and we go deeper into the array
 					current = current[name];
 					_data[i].name = rest.substring(0, pp) + rest.substring(pp+1);
@@ -973,7 +981,7 @@ BX.ajax.prepareForm = function(obForm, data)
 };
 BX.ajax.submitAjax = function(obForm, config)
 {
-	config = (!!config && typeof config == "object" ? config : {});
+	config = (config !== null && typeof config == "object" ? config : {});
 	config.url = (config["url"] || obForm.getAttribute("action"));
 	config.data = BX.ajax.prepareForm(obForm).data;
 

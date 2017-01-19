@@ -63,11 +63,12 @@ class Tools
 		foreach ($fileList as $item)
 		{
 			$file = new File(Application::getDocumentRoot().$item);
+			$fileModificationString .= $item."|";
 			if($file->isExists())
 			{
 				$file->getModificationTime();
 				$fileModificationString .= "|".$file->getModificationTime();
-			}
+			}	
 		}
 
 		return md5($fileModificationString);

@@ -939,10 +939,18 @@ BX.TreeMultiCondCtrlDialog.prototype.AppendInputNode = function(id, name, value)
 
 BX.TreeMultiCondCtrlDialog.prototype.Init = function()
 {
+	var i;
+
 	this.inputs = [];
 	if(this.valuesContainer[this.id] === "")
 	{
 		this.valuesContainer[this.id] = [];
+		this.label = [];
+	}
+	if (!BX.type.isArray(this.valuesContainer[this.id]))
+	{
+		this.valuesContainer[this.id] = [this.valuesContainer[this.id]];
+		this.label = [this.label];
 	}
 	if (this.boolResult && BX.TreeMultiCondCtrlDialog.superclass.Init.apply(this, arguments))
 	{
@@ -956,19 +964,18 @@ BX.TreeMultiCondCtrlDialog.prototype.Init = function()
 		{
 			this.popup_params[this.popup_param_id] = this.parentContainer.id+'_'+this.id;
 		}
-		if(!this.IsValue())
+		if (!this.IsValue())
 		{
 			this.AppendInputNode(this.parentContainer.id+'_'+this.id, this.name+'[]', '');
 		}
 		else
 		{
-			for(var i in this.valuesContainer[this.id])
+			for (i in this.valuesContainer[this.id])
 			{
 				if(!this.valuesContainer[this.id].hasOwnProperty(i))
 					continue;
 
-				var value = this.valuesContainer[this.id][i];
-				this.AppendInputNode(this.parentContainer.id+'_'+this.id, this.name+'[]', value);
+				this.AppendInputNode(this.parentContainer.id+'_'+this.id, this.name+'[]', this.valuesContainer[this.id][i]);
 			}
 		}
 		this.boolResult = !!this.inputs;
@@ -978,6 +985,8 @@ BX.TreeMultiCondCtrlDialog.prototype.Init = function()
 
 BX.TreeMultiCondCtrlDialog.prototype.CreateLink = function()
 {
+	var i;
+
 	if (this.boolResult)
 	{
 		this.defaultLabel = BX.create('SPAN', {
@@ -1004,13 +1013,12 @@ BX.TreeMultiCondCtrlDialog.prototype.CreateLink = function()
 			}
 		));
 
-		for(var i in this.valuesContainer[this.id])
+		for (i in this.valuesContainer[this.id])
 		{
-			if(!this.valuesContainer[this.id].hasOwnProperty(i))
+			if (!this.valuesContainer[this.id].hasOwnProperty(i))
 				continue;
 
-			var value = this.valuesContainer[this.id][i];
-			this.AppendItemNode(value, this.label[i]);
+			this.AppendItemNode(this.valuesContainer[this.id][i], this.label[i]);
 		}
 
 		this.boolResult = !!this.link;

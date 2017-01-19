@@ -1854,6 +1854,7 @@ a.adm-nav-page:hover,
 	left: 0;
 	position: absolute;
 	right: 0;
+	pointer-events: none;
 }
 
 .adm-list-table-footer-fixed {
@@ -2833,6 +2834,10 @@ span.adm-detail-tab.adm-detail-tab-active:after {
 	padding:19px;
 }
 
+.adm-detail-content-without-bg .adm-detail-content-item-block {
+	background: none;
+	border: none;
+}
 
 /*=================================================================END DETAIL TOOLBAR=============================================*/
 
@@ -3518,7 +3523,11 @@ it's made to prevent appearing of artefacts from old admin button icons.
 	width:100%;
 }
 
-.adm-select-multiple option {padding:5px 0 3px 5px;}
+.adm-select-multiple option {
+	padding:5px 0 3px 5px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
 
 .adm-detail-toolbar-btn {
 	display:inline-block;

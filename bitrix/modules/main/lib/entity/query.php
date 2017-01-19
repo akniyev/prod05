@@ -408,9 +408,15 @@ class Query
 	 *
 	 * @return Query
 	 */
-	public function registerRuntimeField($name, $fieldInfo)
+	public function registerRuntimeField($name, $fieldInfo = null)
 	{
-		if ((empty($name) || is_numeric($name)) && $fieldInfo instanceof Field)
+		if ($name instanceof Field && $fieldInfo === null)
+		{
+			// short call for Field objects
+			$fieldInfo = $name;
+			$name = $fieldInfo->getName();
+		}
+		elseif ((empty($name) || is_numeric($name)) && $fieldInfo instanceof Field)
 		{
 			$name = $fieldInfo->getName();
 		}
@@ -707,8 +713,7 @@ class Query
 					$this->getRegisteredChain($this->init_entity->getPrimary(), true);
 				}
 			}
-
-			if (is_array($filter_match))
+			elseif (is_array($filter_match))
 			{
 				$this->setFilterChains($filter_match, $section);
 			}
@@ -1143,7 +1148,23 @@ class Query
 
 		foreach ($this->group_chains as $chain)
 		{
-			$sql[] = $chain->getSqlDefinition();
+			$connection = $this->init_entity->getConnection();
+			$sqlDefinition = $chain->getSqlDefinition();
+			$valueField = $chain->getLastElement()->getValue();
+
+			if ($valueField instanceof ExpressionField)
+			{
+				$valueField = $valueField->getValueField();
+			}
+
+			if (($connection instanceof Main\DB\OracleConnection || $connection instanceof Main\DB\MssqlConnection)
+				&& $valueField instanceof TextField)
+			{
+				// softTextCast
+				$sqlDefinition = $connection->getSqlHelper()->softCastTextToChar($sqlDefinition);
+			}
+
+			$sql[] = $sqlDefinition;
 		}
 
 		return join(', ', $sql);
@@ -1171,7 +1192,23 @@ class Query
 				? $this->order[$chain->getDefinition()]
 				: $this->order[$chain->getAlias()];
 
-			$sql[] = $chain->getSqlDefinition() . ' ' . $sort;
+			$connection = $this->init_entity->getConnection();
+			$sqlDefinition = $chain->getSqlDefinition();
+			$valueField = $chain->getLastElement()->getValue();
+
+			if ($valueField instanceof ExpressionField)
+			{
+				$valueField = $valueField->getValueField();
+			}
+
+			if (($connection instanceof Main\DB\OracleConnection || $connection instanceof Main\DB\MssqlConnection)
+				&& $valueField instanceof TextField)
+			{
+				// softTextCast
+				$sqlDefinition = $connection->getSqlHelper()->softCastTextToChar($sqlDefinition);
+			}
+
+			$sql[] = $sqlDefinition. ' ' . $sort;
 		}
 
 		return join(', ', $sql);
@@ -1262,16 +1299,34 @@ class Query
 			{
 				$sqlWhere = new \CSQLWhere();
 				$csw_result = $sqlWhere->makeOperation($filter_def);
-				list($definition, ) = array_values($csw_result);
+				list($definition, $operation) = array_values($csw_result);
 
 				$chain = $this->filter_chains[$definition];
 				$last = $chain->getLastElement();
 
 				// need to create an alternative of CSQLWhere in D7.Entity
 				$field_type = $last->getValue()->getDataType();
+				$callback = null;
 
 				// rewrite type & value for CSQLWhere
-				if ($field_type == 'integer')
+				if (in_array($operation, array('SE', 'SN'), true)
+					&& in_array($filter_match, array(null, true, false), true)
+				)
+				{
+					$field_type = 'callback';
+
+					if ($filter_match === null)
+					{
+						$callback = array($this, 'nullEqualityCallback');
+					}
+					else
+					{
+						// just boolean expression, without operator
+						// e.g. WHERE EXISTS(...)
+						$callback = array($this, 'booleanStrongEqualityCallback');
+					}
+				}
+				elseif ($field_type == 'integer')
 				{
 					$field_type = 'int';
 				}
@@ -1304,8 +1359,6 @@ class Query
 
 				$sqlDefinition = $chain->getSqlDefinition();
 
-				$callback = null;
-
 				// data-doubling-off mode
 				/** @see disableDataDoubling */
 				if ($chain->forcesDataDoublingOff() || ($this->data_doubling_off && $chain->hasBackReference()))
@@ -1329,6 +1382,12 @@ class Query
 					// change sql definition
 					$idChain = $this->getRegisteredChain($primaryName);
 					$sqlDefinition = $idChain->getSqlDefinition();
+				}
+
+				// set entity connection to the sql expressions
+				if ($filter_match instanceof Main\DB\SqlExpression)
+				{
+					$filter_match->setConnection($this->init_entity->getConnection());
 				}
 
 				//$is_having = $last->getValue() instanceof ExpressionField && $last->getValue()->isAggregated();
@@ -1377,8 +1436,7 @@ class Query
 					'CALLBACK' => $callback
 				);
 			}
-
-			if (is_array($filter_match))
+			elseif (is_array($filter_match))
 			{
 				$fields = array_merge($fields, $this->getFilterCswFields($filter_match));
 			}
@@ -1433,7 +1491,24 @@ class Query
 					if ($chain->getLastElement()->getValue() instanceof ExpressionField)
 					{
 						$this->collectExprChains($chain);
-						$this->buildJoinMap($chain->getLastElement()->getValue()->getBuildFromChains());
+						$buildFrom = $chain->getLastElement()->getValue()->getBuildFromChains();
+
+						foreach ($buildFrom as $bf)
+						{
+							// set base chain
+							$baseChain = clone $chain;
+
+							// remove the last one - expression itself
+							$baseChain->removeLastElement();
+
+							// remove parent entity for this child
+							$bf->removeFirstElement();
+
+							// set new parents
+							$bf->prepend($baseChain);
+						}
+
+						$this->buildJoinMap($buildFrom);
 					}
 
 					$k = \CSQLWhere::getOperationByCode($operation).$chain->getSqlDefinition();
@@ -1466,7 +1541,7 @@ class Query
 				}
 				else
 				{
-					throw new Main\SystemException(sprintf('Unknown reference key `%s`', $k));
+					throw new Main\SystemException(sprintf('Unknown reference key `%s`, it should start with "this." or "ref."', $k));
 				}
 
 				// value
@@ -1477,7 +1552,8 @@ class Query
 				}
 				elseif ($v instanceof Main\DB\SqlExpression)
 				{
-					// it's ok, nothing to do
+					// set entity connection
+					$v->setConnection($this->init_entity->getConnection());
 				}
 				elseif (!is_object($v))
 				{
@@ -1502,7 +1578,24 @@ class Query
 						if ($chain->getLastElement()->getValue() instanceof ExpressionField)
 						{
 							$this->collectExprChains($chain);
-							$this->buildJoinMap($chain->getLastElement()->getValue()->getBuildFromChains());
+							$buildFrom = $chain->getLastElement()->getValue()->getBuildFromChains();
+
+							foreach ($buildFrom as $bf)
+							{
+								// set base chain
+								$baseChain = clone $chain;
+
+								// remove the last one - expression itself
+								$baseChain->removeLastElement();
+
+								// remove parent entity for this child
+								$bf->removeFirstElement();
+
+								// set new parents
+								$bf->prepend($baseChain);
+							}
+
+							$this->buildJoinMap($buildFrom);
 						}
 
 						$field_def = $chain->getSqlDefinition();
@@ -1544,7 +1637,7 @@ class Query
 				}
 				else
 				{
-					throw new Main\SystemException(sprintf('Unknown reference value `%s`', $v));
+					throw new Main\SystemException(sprintf('Unknown reference value `%s`, it should start with "this." or "ref."', $v));
 				}
 
 				$new[$k] = $v;
@@ -1708,6 +1801,17 @@ class Query
 		}
 
 		return false;
+	}
+
+	public function booleanStrongEqualityCallback($field, $operation, $value)
+	{
+		$value = ($operation == 'SE') ? $value : !$value;
+		return ($value ? '' : 'NOT ') . $field;
+	}
+
+	public function nullEqualityCallback($field, $operation, $value)
+	{
+		return $field.' IS '.($operation == 'SE' ? '' : 'NOT ') . 'NULL';
 	}
 
 	public function dataDoublingCallback($field, $operation, $value)

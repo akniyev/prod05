@@ -4,6 +4,7 @@ namespace Bitrix\Sale\Services\PaySystem\Restrictions;
 
 use Bitrix\Main\ArgumentTypeException;
 use Bitrix\Main\Localization\Loc;
+use Bitrix\Sale\Internals\CollectableEntity;
 use Bitrix\Sale\Services\Base;
 use Bitrix\Sale\Payment;
 
@@ -12,19 +13,19 @@ Loc::loadMessages(__FILE__);
 class Price extends Base\Restriction
 {
 	/**
-	 * @param $entityParams
-	 * @param array $params
-	 * @param int $paymentId
+	 * @param $params
+	 * @param array $restrictionParams
+	 * @param int $serviceId
 	 * @return bool
 	 */
-	protected static function check($entityParams, array $params, $paymentId = 0)
+	protected static function check($params, array $restrictionParams, $serviceId = 0)
 	{
-		if ($entityParams['PRICE_PAYMENT'] === null)
+		if ($params['PRICE_PAYMENT'] === null)
 			return true;
 
-		$maxValue = static::getPrice($entityParams, $params['MAX_VALUE']);
-		$minValue = static::getPrice($entityParams, $params['MIN_VALUE']);
-		$price = (float)$entityParams['PRICE_PAYMENT'];
+		$maxValue = static::getPrice($params, $restrictionParams['MAX_VALUE']);
+		$minValue = static::getPrice($params, $restrictionParams['MIN_VALUE']);
+		$price = (float)$params['PRICE_PAYMENT'];
 
 		if ($maxValue > 0 && $minValue > 0)
 			return ($maxValue >= $price) && ($minValue <= $price);
@@ -39,14 +40,15 @@ class Price extends Base\Restriction
 	}
 
 	/**
-	 * @param Payment $entity
+	 * @param CollectableEntity $entity
 	 * @return array
 	 */
-	protected static function extractParams(Payment $entity)
+	protected static function extractParams(CollectableEntity $entity)
 	{
-		return array(
-			'PRICE_PAYMENT' => $entity->getField('SUM')
-		);
+		if ($entity instanceof Payment)
+			return array('PRICE_PAYMENT' => $entity->getField('SUM'));
+		else
+			return array('PRICE_PAYMENT' => null);
 	}
 
 	/**
@@ -76,11 +78,11 @@ class Price extends Base\Restriction
 	}
 
 	/**
-	 * @param $paySystemId
+	 * @param $entityId
 	 * @return array
 	 * @throws \Bitrix\Main\ArgumentException
 	 */
-	public static function getParamsStructure($paySystemId = null)
+	public static function getParamsStructure($entityId = 0)
 	{
 		return array(
 			"MIN_VALUE" => array(

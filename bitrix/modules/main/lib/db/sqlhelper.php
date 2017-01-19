@@ -253,6 +253,17 @@ abstract class SqlHelper
 	abstract public function castToChar($fieldName);
 
 	/**
+	 * Returns expression for text field being used in group or order
+	 * @see \Bitrix\Main\Entity\Query::buildGroup
+	 * @see \Bitrix\Main\Entity\Query::buildOrder
+	 *
+	 * @param string $fieldName
+	 *
+	 * @return string
+	 */
+	abstract public function softCastTextToChar($fieldName);
+
+	/**
 	 * Transforms Sql according to $limit and $offset limitations.
 	 * <p>
 	 * You must specify $limit when $offset is set.
@@ -281,12 +292,16 @@ abstract class SqlHelper
 
 		$tableFields = $this->connection->getTableFields($tableName);
 
-		foreach($tableFields as $columnName => $tableField)
+		foreach ($fields as $columnName => $value)
 		{
-			if(isset($fields[$columnName]) || array_key_exists($columnName, $fields))
+			if (isset($tableFields[$columnName]))
 			{
 				$columns[] = $this->quote($columnName);
-				$values[] = $this->convertToDb($fields[$columnName], $tableField);
+				$values[] = $this->convertToDb($value, $tableFields[$columnName]);
+			}
+			else
+			{
+				trigger_error("Column `{$columnName}` is not found in the `{$tableName}` table", E_USER_WARNING);
 			}
 		}
 
@@ -313,11 +328,15 @@ abstract class SqlHelper
 
 		$tableFields = $this->connection->getTableFields($tableName);
 
-		foreach($tableFields as $columnName => $tableField)
+		foreach ($fields as $columnName => $value)
 		{
-			if(isset($fields[$columnName]) || array_key_exists($columnName, $fields))
+			if (isset($tableFields[$columnName]))
 			{
-				$update[] = $this->quote($columnName).' = '.$this->convertToDb($fields[$columnName], $tableField);
+				$update[] = $this->quote($columnName).' = '.$this->convertToDb($value, $tableFields[$columnName]);
+			}
+			else
+			{
+				trigger_error("Column `{$columnName}` is not found in the `{$tableName}` table", E_USER_WARNING);
 			}
 		}
 
@@ -339,10 +358,7 @@ abstract class SqlHelper
 	 *
 	 * @return array (merge)
 	 */
-	public function prepareMerge($tableName, array $primaryFields, array $insertFields, array $updateFields)
-	{
-		return array();
-	}
+	abstract public function prepareMerge($tableName, array $primaryFields, array $insertFields, array $updateFields);
 
 	/**
 	 * Performs additional processing of CLOB fields.
@@ -435,13 +451,18 @@ abstract class SqlHelper
 		}
 		elseif($field instanceof Entity\FloatField)
 		{
+			$value = doubleval($value);
+			if(!is_finite($value))
+			{
+				$value = 0;
+			}
 			if(($scale = $field->getScale()) !== null)
 			{
-				$result = "'".round(doubleval($value), $scale)."'";
+				$result = "'".round($value, $scale)."'";
 			}
 			else
 			{
-				$result = "'".doubleval($value)."'";
+				$result = "'".$value."'";
 			}
 		}
 		elseif($field instanceof Entity\StringField)

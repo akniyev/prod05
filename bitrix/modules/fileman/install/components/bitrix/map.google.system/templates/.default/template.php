@@ -81,13 +81,13 @@ function BXMapLoader_<?echo $arParams['MAP_ID']?>(MAP_KEY)
 			<?$scheme = (CMain::IsHTTPS() ? "https" : "http");?>
 
 			BX.loadScript(
-				'<?=$scheme?>://www.google.com/jsapi?rnd=' + Math.random(),
+				'<?=$scheme?>://www.google.com/jsapi?key=<?=$arParams['API_KEY']?>&rnd=' + Math.random(),
 				function ()
 				{
 					if (BX.browser.IsIE())
-						setTimeout("window.google.load('maps', <?= intval($arParams['GOOGLE_VERSION'])?>, {callback: init_<?echo $arParams['MAP_ID']?>, other_params: 'sensor=false&language=<?= LANGUAGE_ID?>'})", 1000);
+						setTimeout("window.google.load('maps', <?= intval($arParams['GOOGLE_VERSION'])?>, {callback: init_<?echo $arParams['MAP_ID']?>, other_params: 'language=<?=LANGUAGE_ID?>&key=<?=$arParams['API_KEY']?>'})", 1000);
 					else
-						google.load('maps', <?echo intval($arParams['GOOGLE_VERSION'])?>, {callback: init_<?echo $arParams['MAP_ID']?>, other_params: 'sensor=false&language=<?=LANGUAGE_ID?>'});
+						google.load('maps', <?echo intval($arParams['GOOGLE_VERSION'])?>, {callback: init_<?echo $arParams['MAP_ID']?>, other_params: 'language=<?=LANGUAGE_ID?>&key=<?=$arParams['API_KEY']?>'});
 				}
 			);
 		}

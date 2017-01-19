@@ -25,6 +25,8 @@ $sAdmin = new CAdminSorting($tableId, "ORDER_ID", "DESC");
 $lAdmin = new CAdminList($tableId, $sAdmin);
 
 $filter = array(
+	'filter_payment_id_from',
+	'filter_payment_id_to',
 	'filter_order_id_from',
 	'filter_order_id_to',
 	'filter_date_paid_from',
@@ -51,6 +53,8 @@ $filter_order_id_to = intval($filter_order_id_to);
 $filter_sum_from = intval($filter_sum_from);
 $filter_sum_to = intval($filter_sum_to);
 
+if ($filter_payment_id_from > 0 && $filter_payment_id_to > 0)
+	$arFilter['><ID'] = array($filter_payment_id_from, $filter_payment_id_to);
 if ($filter_order_id_from > 0 && $filter_order_id_to > 0)
 	$arFilter['><ORDER_ID'] = array($filter_order_id_from, $filter_order_id_to);
 if (strlen($filter_order_paid) > 0 && $filter_order_paid != 'NOT_REF')
@@ -461,6 +465,22 @@ $oFilter = new CAdminFilter(
 
 $oFilter->Begin();
 ?>
+<tr>
+	<td>ID:</td>
+	<td>
+		<script type="text/javascript">
+			function changeFilterPaymentIdFrom()
+			{
+				if (document.find_form.filter_payment_id_to.value.length<=0)
+					document.find_form.filter_payment_id_to.value = document.find_form.filter_payment_id_from.value;
+			}
+		</script>
+		<?=GetMessage("PAYMENT_ORDER_ID_FROM");?>
+		<input type="text" name="filter_payment_id_from" onchange="changeFilterPaymentIdFrom()" value="<?=(intval($filter_payment_id_from)>0)?intval($filter_payment_id_from):""?>" size="10">
+		<?=GetMessage("PAYMENT_ORDER_ID_TO");?>
+		<input type="text" name="filter_payment_id_to" value="<?=(intval($filter_payment_id_to)>0)?intval($filter_payment_id_to):""?>" size="10">
+	</td>
+</tr>
 <tr>
 	<td><?=GetMessage("PAYMENT_ORDER_ID");?>:</td>
 	<td>

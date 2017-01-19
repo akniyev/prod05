@@ -218,7 +218,7 @@ final class ForumCommentsComponent extends CBitrixComponent
 			if (array_key_exists("ALLOW_EDIT_OWN_MESSAGE", $this->arParams))
 				$this->feed->setEditOwn($this->arParams["ALLOW_EDIT_OWN_MESSAGE"] == "ALL" ||
 					$this->arParams["ALLOW_EDIT_OWN_MESSAGE"] === "LAST");
-			$this->arParams["ALLOW_EDIT_OWN_MESSAGE"] = $this->feed->getEntity()->canEditOwn() ? "ALL" : "N";
+			$this->arParams["ALLOW_EDIT_OWN_MESSAGE"] = $this->feed->canEditOwn() ? "ALL" : "N";
 
 			if (!$this->errorCollection->hasErrors() && $this->feed->canRead())
 			{
@@ -295,9 +295,10 @@ final class ForumCommentsComponent extends CBitrixComponent
 				COption::SetOptionString("main", "captcha_password", $captchaPass);
 			}
 		}
+		AddEventHandler("forum", "OnAfterCommentTopicAdd", array(&$this, "readTopic"));
 		if ($this->arParams["SUBSCRIBE_AUTHOR_ELEMENT"] == "Y" && $this->getUser()->IsAuthorized())
 		{
-			AddEventHandler("forum", "OnAfterCommentTopicAdd", Array(&$this, "subscribeAuthor"));
+			AddEventHandler("forum", "OnAfterCommentTopicAdd", array(&$this, "subscribeAuthor"));
 		}
 		if (in_array($this->arParams["ALLOW_UPLOAD"], array("A", "Y", "F", "N", "I")))
 		{
@@ -320,9 +321,9 @@ final class ForumCommentsComponent extends CBitrixComponent
 		return $this;
 	}
 
-	private function subscribeAuthor($type, $id, $tid)
+	public function subscribeAuthor($type, $id, $tid)
 	{
-		if ($this->feed->getentity()->getType() == $type && $this->feed->getentity()->getId() == $id)
+		if ($this->feed->getEntity()->getType() == $type && $this->feed->getEntity()->getId() == $id)
 		{
 			CForumSubscribe::Add(array(
 				"USER_ID" => $this->getUser()->getId(),
@@ -332,6 +333,14 @@ final class ForumCommentsComponent extends CBitrixComponent
 				"NEW_TOPIC_ONLY" => "N")
 			);
 			BXClearCache(true, "/bitrix/forum/user/".$this->getUser()->getId()."/subscribe/");
+		}
+	}
+
+	public function readTopic($type, $id, $tid)
+	{
+		if ($this->feed->getEntity()->getType() == $type && $this->feed->getEntity()->getId() == $id)
+		{
+			ForumSetReadTopic($this->arParams["FORUM_ID"], $tid);
 		}
 	}
 

@@ -3,7 +3,12 @@ use Bitrix\Main\Localization\Loc;
 
 Loc::loadMessages(__FILE__);
 
-$description = Loc::getMessage('SALE_HPS_YANDEX_DESCRIPTION');
+$description = array(
+	'RETURN' => Loc::getMessage('SALE_HPS_YANDEX_RETURN'),
+	'RESTRICTION' => Loc::getMessage('SALE_HPS_YANDEX_RESTRICTION'),
+	'COMMISSION' => Loc::getMessage('SALE_HPS_YANDEX_COMMISSION'),
+	'MAIN' => Loc::getMessage('SALE_HPS_YANDEX_DESCRIPTION')
+);
 
 $data = array(
 	'NAME' => Loc::getMessage('SALE_HPS_YANDEX'),
@@ -33,7 +38,7 @@ $data = array(
 			'GROUP' => 'PAYMENT',
 			'DEFAULT' => array(
 				'PROVIDER_KEY' => 'PAYMENT',
-				'PROVIDER_VALUE' => 'ID'
+				'PROVIDER_VALUE' => 'ACCOUNT_NUMBER'
 			)
 		),
 		"PAYMENT_DATE_INSERT" => array(

@@ -414,9 +414,11 @@
 	background-color: #ffffff;
 	padding-right: 0;
 }
-
+.feed-add-post-form-but-wrap:empty{
+	display: none;
+}
 .feed-add-post-form-but {
-	background: url("images/sprite_mpf_5.png") no-repeat;
+	background: url("images/sprite_mpf_5.png?1") no-repeat;
 	cursor: pointer;
 	display: inline-block;
 	margin-right: 15px;
@@ -454,6 +456,32 @@
 	background-position: -138px 4px;
 }
 
+.feed-add-important {
+	background-position: -57px -807px;
+}
+.feed-add-important-active-block {
+	cursor: pointer;
+	vertical-align: top;
+}
+.feed-add-post-form-but.feed-add-important-active {
+	margin-right: 5px;
+	vertical-align: middle;
+	background-position: -28px -807px;
+	opacity: 1.0;
+}
+.feed-add-important-text {
+	line-height: 13px;
+	font-size: 13px;
+	font-weight: normal;
+	vertical-align: middle;
+}
+.feed-add-important-active-block::selection, .feed-add-important-active-block::-moz-selection,
+.feed-add-important-text::selection, .feed-add-important-text::-moz-selection {
+	background: transparent;
+	-ms-user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+}
 .feed-add-quote {
 	background-position: -11px -693px;
 }
@@ -750,7 +778,8 @@
 }
 
 .feed-add-post-destination.feed-add-post-destination-extranet,
-.feed-add-post-destination.feed-add-post-destination-email {
+.feed-add-post-destination.feed-add-post-destination-email,
+.feed-add-post-destination.feed-add-post-destination-crmemail {
 	background-color: #ffec91;
 	color: #a26b00;
 	padding-left: 32px;
@@ -758,7 +787,8 @@
 
 
 .feed-add-post-destination.feed-add-post-destination-extranet:before,
-.feed-add-post-destination.feed-add-post-destination-email:before {
+.feed-add-post-destination.feed-add-post-destination-email:before,
+.feed-add-post-destination.feed-add-post-destination-crmemail:before {
 	background: url("images/sprite_mpf_5.png?1") no-repeat 0 -92px;
 	content: "";
 	height: 13px;
@@ -768,24 +798,25 @@
 	top: 8px;
 }
 
+.feed-add-post-destination.feed-add-post-destination-crmemail:before {
+	background: url("images/icon-crmuser-block.png") no-repeat 0 0!important;
+}
 
-.feed-add-post-destination.feed-add-post-destination-email:before {
-	background-position: -30px -91px;
+.feed-add-post-destination.feed-add-post-destination-email::before {
+	background-position: -33px -92px;
 }
 
 .feed-add-post-destination.feed-add-post-destination-extranet .feed-add-post-del-but,
-.feed-add-post-destination.feed-add-post-destination-email .feed-add-post-del-but {
+.feed-add-post-destination.feed-add-post-destination-email .feed-add-post-del-but,
+.feed-add-post-destination.feed-add-post-destination-crmemail .feed-add-post-del-but {
 	background-position: -113px -61px;
 }
 
 .feed-add-post-destination-hover.feed-add-post-destination-extranet,
-.feed-add-post-destination-hover.feed-add-post-destination-email {
+.feed-add-post-destination-hover.feed-add-post-destination-email,
+.feed-add-post-destination-hover.feed-add-post-destination-crmemail {
 	background-color: #ffe25a;
 }
-
-
-
-
 
 .feed-add-destination-inp {
 	background: #fff;
@@ -1390,29 +1421,4 @@ div.lhe-list-item-cont[title="xx-large"] span.lhe-list-font-span {
 .feed-add-post-destination.feed-add-post-destination-email::before {
 	background-position: -33px -92px;
 
-}
-
-.bx-feed-email-popup {
-	font-size: 0;
-	padding: 0 6px 13px 6px;
-}
-
-.bx-feed-email-title {
-	color: #525c68;
-	font-size: 14px;
-	font-weight: bold;
-	margin: 7px 0 12px;
-}
-
-.bx-feed-email-input {
-	background-color: #fff;
-	border: 1px solid #e4e4e4;
-	height: 37px;
-	margin-right: 11px;
-	vertical-align: top;
-	padding: 0 10px;
-}
-
-.bx-feed-email-popup .webform-small-button-blue {
-	margin-right: 0;
 }

@@ -38,6 +38,7 @@ class RusPost extends Base
 		);
 	}
 
+
 	/**
 	 * @param $trackingNumber
 	 * @return \Bitrix\Sale\Delivery\Tracking\StatusResult.
@@ -115,6 +116,15 @@ class RusPost extends Base
 			return preg_match('/^\d{14}?$/', $trackNumber) == 1;
 		else
 			return false;
+	}
+
+	/**
+	 * @param string $trackingNumber
+	 * @return string Url were we can see tracking information
+	 */
+	public function getTrackingUrl($trackingNumber = '')
+	{
+		return 'https://pochta.ru/tracking'.(strlen($trackingNumber) > 0 ? '#'.$trackingNumber : '');
 	}
 }
 
@@ -302,10 +312,10 @@ class RusPostSingle
 	 */
 	protected function extractStatus(array $lastOperation)
 	{
-		if(empty($lastOperation['#']['OperationParameters']['0']['#']['OperType']['0']['#']['Id']['0']['#']))
+		if(!isset($lastOperation['#']['OperationParameters']['0']['#']['OperType']['0']['#']['Id']['0']['#']))
 			return Statuses::UNKNOWN;
 
-		if(empty($lastOperation['#']['OperationParameters'][0]['#']['OperAttr'][0]['#']['Id'][0]['#']))
+		if(!isset($lastOperation['#']['OperationParameters'][0]['#']['OperAttr'][0]['#']['Id'][0]['#']))
 			return Statuses::UNKNOWN;
 
 		$oper = $lastOperation['#']['OperationParameters'][0]['#']['OperType'][0]['#']['Id'][0]['#'];
@@ -398,7 +408,7 @@ class RusPostSingle
 			22 => Statuses::PROBLEM
 		);
 
-		if(empty($rusPostStatuses[$oper]))
+		if(!isset($rusPostStatuses[$oper]))
 			return Statuses::UNKNOWN;
 
 		if(!is_array($rusPostStatuses[$oper]))
@@ -407,7 +417,7 @@ class RusPostSingle
 		if(strlen($attr) <= 0)
 			return Statuses::UNKNOWN;
 
-		if(empty($rusPostStatuses[$oper][$attr]))
+		if(!isset($rusPostStatuses[$oper][$attr]))
 			return Statuses::UNKNOWN;
 
 		return $rusPostStatuses[$oper][$attr];

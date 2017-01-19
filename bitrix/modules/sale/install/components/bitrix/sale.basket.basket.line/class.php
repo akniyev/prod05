@@ -182,14 +182,13 @@ class SaleBasketLineComponent extends CBitrixComponent
 			$this->arResult = $this->getProducts() + $this->arResult;
 		else
 		{
+			$fuserId = \Bitrix\Sale\Fuser::getId(true);
 			if($this->arParams["SHOW_TOTAL_PRICE"] == "Y")
-				$this->arResult = $this->getTotalPrice() + $this->arResult;
-			else
 			{
-				$this->arResult["NUM_PRODUCTS"] = isset($_SESSION["SALE_BASKET_NUM_PRODUCTS"][SITE_ID]) // && $_SESSION["SALE_BASKET_NUM_PRODUCTS"][SITE_ID] !== 0)
-					? $_SESSION["SALE_BASKET_NUM_PRODUCTS"][SITE_ID]
-					: $this->getNumProducts();
+				$this->arResult["TOTAL_PRICE"] = \Bitrix\Sale\BasketComponentHelper::getFUserBasketPrice($fuserId, SITE_ID);
 			}
+
+			$this->arResult["NUM_PRODUCTS"] = \Bitrix\Sale\BasketComponentHelper::getFUserBasketQuantity($fuserId, SITE_ID);
 		}
 
 		if($this->arParams["SHOW_TOTAL_PRICE"] == "Y")
@@ -279,10 +278,7 @@ class SaleBasketLineComponent extends CBitrixComponent
 			$totalPrice = $arOrder['ORDER_PRICE'];
 		}
 
-		return array(
-			'NUM_PRODUCTS' => count($arBasketItems),
-			'TOTAL_PRICE' => $totalPrice
-		);
+		return $totalPrice;
 	}
 
 	private function calculateOrder($arBasketItems)
@@ -411,10 +407,28 @@ class SaleBasketLineComponent extends CBitrixComponent
 				$arOrder = $this->calculateOrder($arResult["CATEGORIES"]["READY"]);
 				$arResult["CATEGORIES"]["READY"] = $arOrder['BASKET_ITEMS'];
 
+				if (!empty($arResult["CATEGORIES"]["DELAY"]) && is_array($arResult["CATEGORIES"]["DELAY"]))
+				{
+					$orderDelay = $this->calculateOrder($arResult["CATEGORIES"]["DELAY"]);
+					$arResult["CATEGORIES"]["DELAY"] = $orderDelay['BASKET_ITEMS'];
+				}
+
+
 				foreach ($arResult["CATEGORIES"]["READY"] as &$arItem)
 				{
 					$arItem["SUM"] = CCurrencyLang::CurrencyFormat($arItem["PRICE"] * $arItem["QUANTITY"], $arItem["CURRENCY"], true);
 					$arItem["PRICE_FMT"] = CCurrencyLang::CurrencyFormat($arItem["PRICE"], $arItem["CURRENCY"], true);
+				}
+				unset($arItem);
+
+				if (!empty($arResult["CATEGORIES"]["DELAY"]) && is_array($arResult["CATEGORIES"]["DELAY"]))
+				{
+					foreach ($arResult["CATEGORIES"]["DELAY"] as &$arItem)
+					{
+						$arItem["SUM"] = CCurrencyLang::CurrencyFormat($arItem["PRICE"] * $arItem["QUANTITY"], $arItem["CURRENCY"], true);
+						$arItem["PRICE_FMT"] = CCurrencyLang::CurrencyFormat($arItem["PRICE"], $arItem["CURRENCY"], true);
+					}
+					unset($arItem);
 				}
 
 				$arResult["TOTAL_PRICE"] = $arOrder['ORDER_PRICE'];
@@ -422,7 +436,7 @@ class SaleBasketLineComponent extends CBitrixComponent
 		}
 
 		return array(
-			'NUM_PRODUCTS' => count($arBasketItems),
+			'NUM_PRODUCTS' => count($arResult["CATEGORIES"]["READY"]),
 			'TOTAL_PRICE'  => $arResult["TOTAL_PRICE"],
 			'CATEGORIES'   => $arResult["CATEGORIES"],
 		);
@@ -476,6 +490,82 @@ class SaleBasketLineComponent extends CBitrixComponent
 				$arItem["PICTURE_SRC"] = $arFileTmp["src"];
 			}
 		}
+	}
+
+	/**
+	 * @param \Bitrix\Main\Event $event
+	 *
+	 * @return \Bitrix\Main\EventResult
+	 */
+	public function onSaleBasketItemEntitySaved(\Bitrix\Main\Event $event)
+	{
+		return \Bitrix\Sale\BasketComponentHelper::onSaleBasketItemEntitySaved($event);
+	}
+
+	/**
+	 * @param \Bitrix\Main\Event $event
+	 *
+	 * @return \Bitrix\Main\EventResult
+	 */
+	public function onSaleBasketItemDeleted(\Bitrix\Main\Event $event)
+	{
+		return \Bitrix\Sale\BasketComponentHelper::onSaleBasketItemDeleted($event);
+	}
+
+	/**
+	 * @param \Bitrix\Sale\Basket $basket
+	 *
+	 * @return float
+	 */
+	protected static function getActualBasketPrice(\Bitrix\Sale\Basket $basket)
+	{
+		$basketPrice = 0;
+
+		/** @var \Bitrix\Sale\Basket $basketOrderable */
+		$basketOrderable = $basket->getOrderableItems();
+
+		/** @var \Bitrix\Sale\BasketItem $basketItem */
+		foreach ($basketOrderable as $basketItem)
+		{
+			if (intval($basketItem->getField('ORDER_ID')) > 0)
+			{
+				continue;
+			}
+
+			if (!$basketItem->isBundleChild())
+			{
+				$basketPrice += $basketItem->getFinalPrice();
+			}
+		}
+
+		return $basketPrice;
+	}
+
+	/**
+	 * @param \Bitrix\Sale\Basket $basket
+	 *
+	 * @return float
+	 */
+	protected static function getActualBasketQuantity(\Bitrix\Sale\Basket $basket)
+	{
+		$basketQuantity = 0;
+
+		/** @var \Bitrix\Sale\Basket $basketOrderable */
+		$basketOrderable = $basket->getOrderableItems();
+		foreach ($basketOrderable as $basketItem)
+		{
+			if (intval($basketItem->getField('ORDER_ID')) > 0)
+			{
+				continue;
+			}
+
+			if (!$basketItem->isBundleChild())
+			{
+				$basketQuantity++;
+			}
+		}
+
+		return $basketQuantity;
 	}
 }
 

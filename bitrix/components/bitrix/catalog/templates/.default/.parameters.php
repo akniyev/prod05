@@ -78,6 +78,13 @@ $arTemplateParameters["FILTER_VIEW_MODE"] = array(
 	"HIDDEN" => (!isset($arCurrentValues['USE_FILTER']) || 'N' == $arCurrentValues['USE_FILTER'])
 );
 
+$arTemplateParameters["INSTANT_RELOAD"] = array(
+	"PARENT" => "FILTER_SETTINGS",
+	"NAME" => GetMessage("CPT_BC_INSTANT_RELOAD"),
+	"TYPE" => "CHECKBOX",
+	"DEFAULT" => "N",
+);
+
 $arTemplateParameters['TEMPLATE_THEME'] = array(
 	'PARENT' => 'VISUAL',
 	'NAME' => GetMessage("CP_BC_TPL_TEMPLATE_THEME"),

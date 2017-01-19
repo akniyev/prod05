@@ -151,6 +151,22 @@ class CControllerClient
 
 			$arParams["REMEMBER"] = "N";
 
+			if (
+				$ar_mem
+				&& $USER_ID
+				&& class_exists("\\Bitrix\\Controller\\AuthLogTable")
+				&& \Bitrix\Controller\AuthLogTable::isEnabled()
+			)
+			{
+				\Bitrix\Controller\AuthLogTable::logSiteToControllerAuth(
+					$ar_mem["ID"],
+					$USER_ID,
+					true,
+					'CONTROLLER_MEMBER',
+					$arUser['NAME'].' '.$arUser['LAST_NAME'].' ('.$arUser['LOGIN'].')'
+				);
+			}
+
 			return $USER_ID;
 		}
 
@@ -1146,9 +1162,11 @@ class __CControllerPacketRequest extends __CControllerPacket
 	/**
 	 * Sends packet.
 	 *
+	 * @param string $url
+	 * @param string $page
 	 * @return __CControllerPacketResponse
-	 **/
-	public function Send($url, $page)
+	 */
+	public function Send($url = "", $page = "")
 	{
 		global $APPLICATION;
 
@@ -1468,7 +1486,7 @@ class CControllerClientRequestTo extends __CControllerPacketRequest
 
 	function SendWithCheck($page="/bitrix/admin/controller_ws.php")
 	{
-		$oResponse = $this->Send($page);
+		$oResponse = $this->Send("", $page);
 		if($oResponse===false)
 			return false;
 
@@ -1485,7 +1503,7 @@ class CControllerClientRequestTo extends __CControllerPacketRequest
 		return $oResponse;
 	}
 
-	function Send($page="/bitrix/admin/controller_ws.php")
+	public function Send($url = "", $page = "/bitrix/admin/controller_ws.php")
 	{
 		$this->Sign();
 		$oResponsePacket = parent::Send(COption::GetOptionString("main", "controller_url", ""), $page);

@@ -23,6 +23,7 @@ $dsc_cookie_name = COption::GetOptionString('main', 'cookie_name', 'BITRIX_SM').
 $bSearch = false;
 $bCurrency = false;
 $arCurrencyList = array();
+$elementsList = array();
 
 $listImageSize = Main\Config\Option::get('iblock', 'list_image_size');
 $minImageSize = array("W" => 1, "H"=>1);
@@ -785,7 +786,13 @@ if($lAdmin->EditAction())
 									"QUANTITY_TO" => $CATALOG_QUANTITY_TO[$elID][$arCatalogGroup["ID"]],
 								);
 								if($arFields["PRICE"] < 0 || trim($arFields["PRICE"]) === '')
+								{
 									CPrice::Delete($CATALOG_PRICE_ID[$elID][$arCatalogGroup["ID"]]);
+								}
+								elseif((int)($CATALOG_PRICE_ID[$elID][$arCatalogGroup["ID"]])>0)
+								{
+									CPrice::Update((int)($CATALOG_PRICE_ID[$elID][$arCatalogGroup["ID"]]), $arFields);
+								}
 								elseif((int)$CATALOG_PRICE_ID[$elID][$arCatalogGroup["ID"]] > 0)
 									CPrice::Update($CATALOG_PRICE_ID[$elID][$arCatalogGroup["ID"]], $arFields);
 								elseif($arFields["PRICE"] >= 0)
@@ -846,6 +853,7 @@ if($lAdmin->EditAction())
 
 				$ipropValues = new \Bitrix\Iblock\InheritedProperty\ElementValues($IBLOCK_ID, $elID);
 				$ipropValues->clearValues();
+				\Bitrix\Iblock\PropertyIndex\Manager::updateElementIndex($IBLOCK_ID, $elID);
 			}
 			unset($arCatalogGroupList);
 		}
@@ -860,11 +868,14 @@ if(($arID = $lAdmin->GroupAction()))
 	{
 		$rsData = CIBlockSection::GetMixedList($arOrder, $arFilter);
 		while($arRes = $rsData->Fetch())
+		{
 			$arID[] = $arRes['TYPE'].$arRes['ID'];
+		}
 	}
 
 	foreach($arID as $ID)
 	{
+
 		if(strlen($ID)<=1)
 			continue;
 		$TYPE = substr($ID, 0, 1);
@@ -876,7 +887,6 @@ if(($arID = $lAdmin->GroupAction()))
 			$arRes = $arRes->Fetch();
 			if(!$arRes)
 				continue;
-
 			$WF_ID = $ID;
 			if($bWorkFlow)
 			{
@@ -904,7 +914,6 @@ if(($arID = $lAdmin->GroupAction()))
 					continue;
 				}
 			}
-
 			$bPermissions = false;
 			//delete and modify can:
 			if($bWorkFlow)
@@ -935,13 +944,11 @@ if(($arID = $lAdmin->GroupAction()))
 			{
 				$bPermissions = true;
 			}
-
 			if(!$bPermissions)
 			{
 				$lAdmin->AddGroupError(GetMessage("IBLIST_A_UPDERR_ACCESS", array("#ID#" => $ID)));
 				continue;
 			}
-
 		}
 
 		switch($_REQUEST['action'])
@@ -1000,7 +1007,6 @@ if(($arID = $lAdmin->GroupAction()))
 		case "activate":
 		case "deactivate":
 			$arFields = Array("ACTIVE"=>($_REQUEST['action']=="activate"?"Y":"N"));
-
 			if($TYPE=="S")
 			{
 				if(CIBlockSectionRights::UserHasRightTo($IBLOCK_ID, $ID, "section_edit"))
@@ -1181,11 +1187,59 @@ if(($arID = $lAdmin->GroupAction()))
 				}
 			}
 			break;
+		case 'change_price':
+			if ($TYPE=="S")
+			{
+				$elementsList['SECTIONS'][] = $ID;
+			}
+
+			if ($TYPE=="E")
+			{
+				if (CIBlockElementRights::UserHasRightTo($IBLOCK_ID, $ID, "element_edit"))
+				{
+					$elementsList['ELEMENTS'][] = $ID;
+				}
+				else
+				{
+					$lAdmin->AddGroupError(GetMessage("IBLIST_A_UPDERR_ACCESS", array("#ID#" => $ID)), $TYPE.$ID);
+				}
+			}
+			break;
 		}
 	}
 
-	if(isset($return_url) && strlen($return_url)>0)
+	if (($_REQUEST['action']) === 'change_price' && !empty($_REQUEST['chprice_value_changing_price']))
+	{
+		$changePriceParams['PRICE_TYPE'] = $_REQUEST['chprice_id_price_type'];
+		$changePriceParams['UNITS'] = $_REQUEST['chprice_units'];
+		$changePriceParams['FORMAT_RESULTS'] = $_REQUEST['chprice_format_result'];
+		$changePriceParams['INITIAL_PRICE_TYPE'] = $_REQUEST['chprice_initial_price_type'];
+		$changePriceParams['RESULT_MASK'] = $_REQUEST['chprice_result_mask'];
+		$changePriceParams['DIFFERENCE_VALUE'] = $_REQUEST['chprice_difference_value'];
+		$changePriceParams['VALUE_CHANGING'] = $_REQUEST['chprice_value_changing_price'];
+
+		$changePrice = new Catalog\Helpers\Admin\IblockPriceChanger( $changePriceParams, $IBLOCK_ID );
+		$resultChanging = $changePrice->updatePrices( $elementsList );
+
+		if (!$resultChanging->isSuccess())
+		{
+			foreach ($resultChanging->getErrors() as $error)
+			{
+				$lAdmin->AddGroupError(GetMessage($error->getMessage(), $error->getCode()));
+			}
+		}
+		unset($resultChanging, $changePrice);
+
+		$_SESSION['CHANGE_PRICE_PARAMS']['PRICE_TYPE'] = $changePriceParams['PRICE_TYPE'];
+		$_SESSION['CHANGE_PRICE_PARAMS']['UNITS'] = $changePriceParams['UNITS'];
+		$_SESSION['CHANGE_PRICE_PARAMS']['FORMAT_RESULTS'] = $changePriceParams['FORMAT_RESULTS'];
+		$_SESSION['CHANGE_PRICE_PARAMS']['INITIAL_PRICE_TYPE'] = $changePriceParams['INITIAL_PRICE_TYPE'];
+	}
+
+	if (isset($return_url) && strlen($return_url)>0)
+	{
 		LocalRedirect($return_url);
+	}
 }
 
 CJSCore::Init(array('date'));
@@ -1495,6 +1549,12 @@ if($bCatalog)
 			$arCatExtra[$extras['ID']] = $extras;
 		unset($extras, $db_extras);
 	}
+
+	$arHeader[] = array(
+		"id" => "SUBSCRIPTIONS",
+		"content" => GetMessage("IBLOCK_FIELD_SUBSCRIPTIONS"),
+		"default" => true,
+	);
 }
 
 if ($bBizproc)
@@ -1524,12 +1584,12 @@ if ($bBizproc)
 	);
 }
 
-
 $lAdmin->AddHeaders($arHeader);
 $lAdmin->AddVisibleHeaderColumn('ID');
 
 $arSelectedFields = $lAdmin->GetVisibleHeaderColumns();
 $arSelectedProps = array();
+$selectedPropertyIds = array();
 $arSelect = array();
 foreach($arProps as $i => $arProperty)
 {
@@ -1537,6 +1597,7 @@ foreach($arProps as $i => $arProperty)
 	if($k!==false)
 	{
 		$arSelectedProps[] = $arProperty;
+		$selectedPropertyIds[] = $arProperty['ID'];
 		if($arProperty["PROPERTY_TYPE"] == "L")
 		{
 			$arSelect[$arProperty['ID']] = array();
@@ -1698,6 +1759,8 @@ $arElemID = array();
 $arProductIDs = array();
 $arCatalogRights = array();
 
+
+
 // List build
 while($arRes = $rsData->NavNext(true, "f_"))
 {
@@ -1782,6 +1845,7 @@ while($arRes = $rsData->NavNext(true, "f_"))
 			}
 			if (
 				$arRes['CATALOG_TYPE'] == \Bitrix\Catalog\ProductTable::TYPE_SKU
+				&& !$showCatalogWithOffers
 			)
 			{
 				$arRes['CATALOG_QUANTITY'] = '';
@@ -1801,6 +1865,7 @@ while($arRes = $rsData->NavNext(true, "f_"))
 			if ($arRes['CATALOG_MEASURE'] < 0)
 				$arRes['CATALOG_MEASURE'] = 0;
 		}
+
 	}
 
 	if($f_TYPE=="S") // double click moves deeper
@@ -2020,15 +2085,17 @@ while($arRes = $rsData->NavNext(true, "f_"))
 	$row->AddViewField("ID", '<a href="'.($f_TYPE=="S"?$sec_edit_url:$el_edit_url).'" title="'.GetMessage("IBLIST_A_EDIT").'">'.$f_ID.'</a>');
 
 	$arProperties = array();
-	if($f_TYPE=="E" && count($arSelectedProps)>0)
+	if($f_TYPE=="E" && !empty($arSelectedProps))
 	{
-		$rsProperties = CIBlockElement::GetProperty($IBLOCK_ID, $arRes["ID"]);
+		$rsProperties = CIBlockElement::GetProperty($IBLOCK_ID, $arRes['ID'], 'id', 'asc', array('ID' => $selectedPropertyIds));
 		while($ar = $rsProperties->GetNext())
 		{
 			if(!array_key_exists($ar["ID"], $arProperties))
 				$arProperties[$ar["ID"]] = array();
 			$arProperties[$ar["ID"]][$ar["PROPERTY_VALUE_ID"]] = $ar;
 		}
+		unset($ar);
+		unset($rsProperties);
 
 		foreach($arSelectedProps as $aProp)
 		{
@@ -3163,6 +3230,22 @@ if ($bCatalog)
 				unset($intOneElemID);
 		}
 	}
+
+	if(!empty($arElemID))
+	{
+		$subscriptions = Catalog\SubscribeTable::getList(array(
+			'select' => array('ITEM_ID', 'CNT'),
+			'filter' => array('@ITEM_ID' => $arElemID, 'DATE_TO' => null),
+			'runtime' => array(new Bitrix\Main\Entity\ExpressionField('CNT', 'COUNT(*)'))
+		));
+		while($subscribe = $subscriptions->fetch())
+		{
+			if(isset($arRows['E'.$subscribe['ITEM_ID']]))
+			{
+				$arRows['E'.$subscribe['ITEM_ID']]->addField('SUBSCRIPTIONS', $subscribe['CNT']);
+			}
+		}
+	}
 }
 
 // List footer
@@ -3172,6 +3255,7 @@ $lAdmin->AddFooter(
 		array("counter"=>true, "title"=>GetMessage("MAIN_ADMIN_LIST_CHECKED"), "value"=>"0"),
 	)
 );
+
 
 // Action bar
 if(true)
@@ -3198,6 +3282,13 @@ if(true)
 
 		$arActions["section"] = GetMessage("IBLIST_A_MOVE_TO_SECTION");
 		$arActions["add_section"] = GetMessage("IBLIST_A_ADD_TO_SECTION");
+		if ($bCatalog && $USER->CanDoOperation('catalog_price'))
+		{
+			$arActions["change_price"] = array(
+				"action" => "CreateDialogChPrice()",
+				"value" => "change_price",
+				"name" => GetMessage("IBLOCK_CHANGE_PRICE"));
+		}
 		$arActions["section_chooser"] = array("type" => "html", "value" => $sections);
 
 		$arParams["select_onchange"] = "BX('section_to_move').style.display = (this.value == 'section' || this.value == 'add_section'? 'block':'none');";
@@ -3223,6 +3314,60 @@ if(true)
 
 	$lAdmin->AddGroupActionTable($arActions, $arParams);
 }
+
+if($bCatalog && $USER->CanDoOperation('catalog_price'))
+{
+	$lAdmin->BeginEpilogContent();
+	?>
+	<div>
+		<input type="hidden" name="chprice_value_changing_price">
+		<input type="hidden" name="chprice_units">
+		<input type="hidden" name="chprice_id_price_type">
+		<input type="hidden" name="chprice_format_result">
+		<input type="hidden" name="chprice_result_mask">
+		<input type="hidden" name="chprice_initial_price_type">
+		<input type="hidden" name="chprice_difference_value">
+	</div>
+
+	<?
+
+	/** Creation window of common price changer */
+	CJSCore::Init(array('window'));
+	?>
+
+	<script>
+		/**
+		 * @func CreateDialogChPrice - creation of common changing price dialog
+		 */
+		function CreateDialogChPrice()
+		{
+			var paramsWindowChanger =
+			{
+				title: "<?=GetMessage("IBLOCK_CHANGING_PRICE")?>",
+				content_url: "/bitrix/tools/catalog/iblock_catalog_change_price.php?lang=" + "<?=LANGUAGE_ID?>" + "&bxpublic=Y",
+				content_post: "<?=bitrix_sessid_get()?>" + "&sTableID=<?=$sTableID?>",
+				width: 800,
+				height: 415,
+				resizable: false,
+				buttons: [
+					{
+						title: top.BX.message('JS_CORE_WINDOW_SAVE'),
+						id: 'savebtn',
+						name: 'savebtn',
+						className: top.BX.browser.IsIE() && top.BX.browser.IsDoctype() && !top.BX.browser.IsIE10() ? '' : 'adm-btn-save'
+					},
+					top.BX.CAdminDialog.btnCancel
+				]
+			};
+			var priceChanger = (new top.BX.CAdminDialog(paramsWindowChanger));
+			priceChanger.Show();
+		}
+	</script>
+
+	<?
+	$lAdmin->EndEpilogContent();
+}
+
 
 $sLastFolder = '';
 $sSectionUrl = CIBlock::GetAdminSectionListLink($IBLOCK_ID, array('find_section_section'=>0));

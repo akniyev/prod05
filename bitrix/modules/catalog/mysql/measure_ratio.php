@@ -3,21 +3,6 @@ require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/catalog/general/measure_
 
 class CCatalogMeasureRatio extends CCatalogMeasureRatioAll
 {
-	public static function add($arFields)
-	{
-		global $DB;
-		if (!static::checkFields('ADD', $arFields))
-			return false;
-
-		$arInsert = $DB->PrepareInsert("b_catalog_measure_ratio", $arFields);
-		$strSql = "insert into b_catalog_measure_ratio (".$arInsert[0].") values(".$arInsert[1].")";
-
-		$res = $DB->Query($strSql, true, "File: ".__FILE__."<br>Line: ".__LINE__);
-		if (!$res)
-			return false;
-		return  (int)$DB->LastID();
-	}
-
 	/**
 	 * @param array $arOrder
 	 * @param array $arFilter
@@ -65,10 +50,9 @@ class CCatalogMeasureRatio extends CCatalogMeasureRatioAll
 		$intTopCount = 0;
 		$boolNavStartParams = (!empty($arNavStartParams) && is_array($arNavStartParams));
 		if ($boolNavStartParams && isset($arNavStartParams['nTopCount']))
-		{
-			$intTopCount = intval($arNavStartParams["nTopCount"]);
-		}
-		if ($boolNavStartParams && 0 >= $intTopCount)
+			$intTopCount = (int)$arNavStartParams['nTopCount'];
+		
+		if ($boolNavStartParams && $intTopCount <= 0)
 		{
 			$strSql_tmp = "select COUNT('x') as CNT FROM b_catalog_measure_ratio MR ".$arSqls["FROM"];
 			if (!empty($arSqls["WHERE"]))
@@ -94,7 +78,7 @@ class CCatalogMeasureRatio extends CCatalogMeasureRatioAll
 		}
 		else
 		{
-			if ($boolNavStartParams && 0 < $intTopCount)
+			if ($boolNavStartParams && $intTopCount > 0)
 				$strSql .= " limit ".$intTopCount;
 
 			$dbRes = $DB->Query($strSql, false, "File: ".__FILE__."<br>Line: ".__LINE__);

@@ -145,23 +145,30 @@ class Storage
 	{
 		$connection = \Bitrix\Main\Application::getConnection();
 
-		$connection->query("
-			INSERT INTO ".$this->getTableName()." (
-				SECTION_ID
-				,ELEMENT_ID
-				,FACET_ID
-				,VALUE
-				,VALUE_NUM
-				,INCLUDE_SUBSECTIONS
-			) VALUES (
-				".intval($sectionId)."
-				,".intval($elementId)."
-				,".intval($facetId)."
-				,".intval($value)."
-				,".doubleval($valueNum)."
-				,".($includeSubsections > 0? 1: 0)."
-			)
-		");
+		try
+		{
+			$connection->query("
+				INSERT INTO ".$this->getTableName()." (
+					SECTION_ID
+					,ELEMENT_ID
+					,FACET_ID
+					,VALUE
+					,VALUE_NUM
+					,INCLUDE_SUBSECTIONS
+				) VALUES (
+					".intval($sectionId)."
+					,".intval($elementId)."
+					,".intval($facetId)."
+					,".intval($value)."
+					,".doubleval($valueNum)."
+					,".($includeSubsections > 0? 1: 0)."
+				)
+			");
+		}
+		catch (\Bitrix\Main\DB\SqlException $e)
+		{
+			return false;
+		}
 
 		return true;
 	}

@@ -601,10 +601,11 @@ class Base
 		$replaced_aliases = array_flip($query->getReplacedAliases());
 
 		// generate fieldsMap
-		$fieldsMap = array('TMP_ID' => array('data_type' => 'integer', 'primary' => true));
+		$fieldsMap = array();
 
 		foreach ($query->getSelect() as $k => $v)
 		{
+			// convert expressions to regular field, clone in case of regular scalar field
 			if (is_array($v))
 			{
 				// expression
@@ -615,28 +616,52 @@ class Base
 				if ($v instanceof ExpressionField)
 				{
 					$fieldDefinition = $v->getName();
+
+					// better to initialize fields as objects after entity is created
+					$dataType = Field::getOldDataTypeByField($query_chains[$fieldDefinition]->getLastElement()->getValue());
+					$fieldsMap[$fieldDefinition] = array('data_type' => $dataType);
 				}
 				else
 				{
 					$fieldDefinition = is_numeric($k) ? $v : $k;
+
+					/** @var Field $field */
+					$field = $query_chains[$fieldDefinition]->getLastElement()->getValue();
+
+					if ($field instanceof ExpressionField)
+					{
+						$dataType = Field::getOldDataTypeByField($query_chains[$fieldDefinition]->getLastElement()->getValue());
+						$fieldsMap[$fieldDefinition] = array('data_type' => $dataType);
+					}
+					else
+					{
+						/** @var ScalarField[] $fieldsMap */
+						$fieldsMap[$fieldDefinition] = clone $field;
+						$fieldsMap[$fieldDefinition]->setName($fieldDefinition);
+						$fieldsMap[$fieldDefinition]->setColumnName($fieldDefinition);
+						$fieldsMap[$fieldDefinition]->resetEntity();
+					}
 				}
-
-				// better to initialize fields as objects after entity is created
-				$dataType = Field::getOldDataTypeByField($query_chains[$fieldDefinition]->getLastElement()->getValue());
-
-				$fieldsMap[$fieldDefinition] = array('data_type' => $dataType);
 			}
 
 			if (isset($replaced_aliases[$k]))
 			{
-				$fieldsMap[$k]['column_name'] = $replaced_aliases[$k];
+				if (is_array($fieldsMap[$k]))
+				{
+					$fieldsMap[$k]['column_name'] = $replaced_aliases[$k];
+				}
+				elseif ($fieldsMap[$k] instanceof ScalarField)
+				{
+					/** @var ScalarField[] $fieldsMap */
+					$fieldsMap[$k]->setColumnName($replaced_aliases[$k]);
+				}
 			}
 		}
 
 		// generate class content
 		$eval = 'class '.$entity_name.'Table extends '.__NAMESPACE__.'\DataManager {'.PHP_EOL;
 		$eval .= 'public static function getMap() {'.PHP_EOL;
-		$eval .= 'return '.var_export($fieldsMap, true).';'.PHP_EOL;
+		$eval .= 'return '.var_export(array('TMP_ID' => array('data_type' => 'integer', 'primary' => true)), true).';'.PHP_EOL;
 		$eval .= '}';
 		$eval .= 'public static function getTableName() {'.PHP_EOL;
 		$eval .= 'return '.var_export($query_string, true).';'.PHP_EOL;
@@ -645,7 +670,14 @@ class Base
 
 		eval($eval);
 
-		return self::getInstance($entity_name);
+		$entity = self::getInstance($entity_name);
+
+		foreach ($fieldsMap as $k => $v)
+		{
+			$entity->addField($v, $k);
+		}
+
+		return $entity;
 	}
 
 	/**
@@ -740,7 +772,7 @@ class Base
 		{
 			if ($field->isAutocomplete())
 			{
-				$autocomplete[] = $field->getColumnName();
+				$autocomplete[] = $field->getName();
 			}
 		}
 

@@ -8,6 +8,7 @@ use Bitrix\Sale\Services\PaySystem\Restrictions;
 use Bitrix\Sale\PaySystem;
 use Bitrix\Sale\BusinessValue;
 use Bitrix\Main\SystemException;
+use Bitrix\Main\IO;
 
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_admin_before.php");
 require_once($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/sale/include.php");
@@ -52,6 +53,7 @@ $context = $instance->getContext();
 $request = $context->getRequest();
 $server = $context->getServer();
 $documentRoot = Application::getDocumentRoot();
+$paySystem = array();
 
 $id = (int)$request->get('ID');
 
@@ -70,7 +72,7 @@ $aTabs = array(
 if ($id > 0 && $request->getRequestMethod() !== 'POST')
 {
 	$aTabs[] = array(
-		"DIV" => "edit3",
+		"DIV" => "edit2",
 		"TAB" => GetMessage("SPS_PAY_SYSTEM_RESTRICTION"),
 		"ICON" => "sale",
 		"TITLE" => GetMessage("SPS_PAY_SYSTEM_RESTRICTION_DESC"),
@@ -106,6 +108,8 @@ if ($server->getRequestMethod() == "POST"
 
 	if ($errorMessage === '')
 	{
+		$isNewSystem = ($id <= 0);
+
 		$fields = array(
 			"NAME" => $name,
 			"PSA_NAME" => $request->get('PSA_NAME'),
@@ -117,11 +121,14 @@ if ($server->getRequestMethod() == "POST"
 			"SORT" => $sort,
 			"ENCODING" => $request->get('ENCODING'),
 			"DESCRIPTION" => $request->get('DESCRIPTION'),
-			"ACTION_FILE" => $actionFile
+			"ACTION_FILE" => $actionFile,
+			'PS_MODE' => ($request->get('PS_MODE')) ? $request->get('PS_MODE') : ''
 		);
 
-		if ($request->get('PS_MODE'))
-			$fields['PS_MODE'] = $request->get('PS_MODE');
+		if ($request->get('AUTO_CHANGE_1C') == 'Y')
+			$fields['AUTO_CHANGE_1C'] = 'Y';
+		else
+			$fields['AUTO_CHANGE_1C'] = 'N';
 
 		$path = PaySystem\Manager::getPathToHandlerFolder($actionFile);
 		if (\Bitrix\Main\IO\File::isFileExists($documentRoot.$path.'/handler.php'))
@@ -236,7 +243,7 @@ if ($server->getRequestMethod() == "POST"
 					if (!$result->isSuccess())
 						$errorMessage .= join(',', $result->getErrorMessages());
 
-					$service = new PaySystem\Service($fields);
+					$service = PaySystem\Manager::getObjectById($id);
 					$currency = $service->getCurrency();
 					if ($currency)
 					{
@@ -259,7 +266,7 @@ if ($server->getRequestMethod() == "POST"
 			if ($isConsumerChange)
 			{
 				$priorActionFile = $request->get('PRIOR_ACTION_FILE');
-				if (empty($priorActionFile))
+				if ($isNewSystem)
 					BusinessValue::addConsumer('PAYSYSTEM_NEW', $data);
 				else
 					BusinessValue::changeConsumer('PAYSYSTEM_'.$id, $data);
@@ -267,7 +274,7 @@ if ($server->getRequestMethod() == "POST"
 
 			if ($businessValueControl->setMapFromPost())
 			{
-				if ($isConsumerChange && empty($priorActionFile))
+				if ($isConsumerChange && $isNewSystem)
 					$businessValueControl->changeConsumerKey('PAYSYSTEM_NEW', 'PAYSYSTEM_'.$id);
 
 				if (!$businessValueControl->saveMap())
@@ -402,11 +409,17 @@ $tabControl->BeginNextTab();
 
 					if ($pathToDesc !== '')
 						include $pathToDesc;
+
+					$selected = false;
 				?>
 				<option value=""><?=Loc::getMessage("SPS_NO_ACT_FILE") ?></option>
 				<?if ($handlerList['USER']):?>
 					<optgroup label="<?=Loc::getMessage("SPS_ACT_USER");?>">
 						<?foreach($handlerList['USER'] as $handler => $title): ?>
+							<?
+								if (ToLower($handlerName) == ToLower($handler))
+									$selected = true;
+							?>
 							<option value="<?=htmlspecialcharsbx($handler) ?>"<?=(ToLower($handlerName) == ToLower($handler)) ? " selected" : '';?>>
 								<?=htmlspecialcharsbx($title);?>
 							</option>
@@ -421,7 +434,7 @@ $tabControl->BeginNextTab();
 							if ($innerId > 0 && $handler == 'inner' && $handlerName != 'inner')
 								continue;
 						?>
-						<option value="<?=htmlspecialcharsbx($handler) ?>"<?=(ToLower($handlerName) == ToLower($handler) ? " selected" : '');?>>
+						<option value="<?=htmlspecialcharsbx($handler) ?>"<?=((!$selected && ToLower($handlerName) == ToLower($handler)) ? " selected" : '');?>>
 							<?=htmlspecialcharsEx($title) ?>
 						</option>
 					<?endforeach;?>
@@ -431,33 +444,34 @@ $tabControl->BeginNextTab();
 		</td>
 	</tr>
 	<tbody id="pay_system_ps_mode">
-		<?
-			$psMode = $request->get('PS_MODE') ? $request->get('PS_MODE') : $paySystem['PS_MODE'];
-		?>
-		<?if ($paySystem['PS_MODE'] || $request->get('PS_MODE')):?>
+	<?
+		$psMode = $request->get('PS_MODE') ? $request->get('PS_MODE') : $paySystem['PS_MODE'];
+
+		/** @var PaySystem\BaseServiceHandler $className */
+		$className = PaySystem\Manager::getClassNameFromPath($handlerName);
+		if (!class_exists($className))
+		{
+			$path = PaySystem\Manager::getPathToHandlerFolder($handler);
+			$fullPath = $documentRoot.$path.'/handler.php';
+			if ($path && \Bitrix\Main\IO\File::isFileExists($fullPath))
+				require_once $fullPath;
+		}
+
+		$handlerModeList = array();
+		if (class_exists($className))
+			$handlerModeList = $className::getHandlerModeList();
+
+		if ($handlerModeList):?>
 			<tr>
 				<td width="40%" valign="top"><?=Loc::getMessage("F_PS_MODE");?>:</td>
 				<td width="60%" valign="top">
-					<?
-						$className = PaySystem\Manager::getClassNameFromPath($handlerName);
+				<?
+					if (!class_exists('\Bitrix\Sale\Internals\Input\Enum'))
+						require $documentRoot.'/bitrix/modules/sale/lib/internals/input.php';
 
-						if (!class_exists($className))
-						{
-							$path = PaySystem\Manager::getPathToHandlerFolder($handler);
-							if ($path)
-								require_once $documentRoot.$path.'/handler.php';
-						}
-
-						if (!class_exists('\Bitrix\Sale\Internals\Input\Enum'))
-							require $documentRoot.'/bitrix/modules/sale/lib/internals/input.php';
-
-						if (class_exists($className))
-						{
-							echo Bitrix\Sale\Internals\Input\Enum::getEditHtml(
-								'PS_MODE',
-								array('OPTIONS' => $className::getHandlerModeList()), $psMode);
-						}
-					?>
+					if (class_exists($className))
+						echo Bitrix\Sale\Internals\Input\Enum::getEditHtml('PS_MODE', array('OPTIONS' => $handlerModeList), $psMode);
+				?>
 				</td>
 			</tr>
 		<?endif;?>
@@ -465,9 +479,21 @@ $tabControl->BeginNextTab();
 	<?
 		$handlerDescription = '';
 		if (isset($psDescription))
+		{
 			$handlerDescription = $psDescription;
+		}
 		elseif (isset($description))
-			$handlerDescription = $description;
+		{
+			if (is_array($description))
+			{
+				if (array_key_exists('MAIN', $description))
+					$handlerDescription = $description['MAIN'];
+			}
+			else
+			{
+				$handlerDescription = $description;
+			}
+		}
 	?>
 	<tbody id="pay_system_ps_description">
 		<?if ($handlerDescription !== ''):?>
@@ -584,6 +610,21 @@ $tabControl->BeginNextTab();
 			<input type="checkbox" name="ALLOW_EDIT_PAYMENT" id="ALLOW_EDIT_PAYMENT" value="Y"<?=($allowEditPayment == 'Y') ? ' checked' : '';?>>
 		</td>
 	</tr>
+	<!--
+	<tr>
+		<td width="40%" align="right"><label for="AUTO_CHANGE_1C"><?=Loc::getMessage("SPS_AUTO_CHANGE_1C");?>:</label></td>
+		<td width="60%">
+			<?
+				if ($request->isPost())
+					$autoChange1c = $request->get('AUTO_CHANGE_1C') ? $request->get('AUTO_CHANGE_1C') : '';
+				else
+					$autoChange1c = isset($paySystem['AUTO_CHANGE_1C']) ? $paySystem['AUTO_CHANGE_1C'] : 'N';
+			?>
+
+			<input type="checkbox" name="AUTO_CHANGE_1C" id="AUTO_CHANGE_1C" value="Y"<?=($autoChange1c == 'Y') ? ' checked' : '';?>>
+		</td>
+	</tr>
+	-->
 	<tr>
 		<td width="40%" align="right"><?=Loc::getMessage("SPS_ENCODING");?>:</td>
 		<td width="60%">
@@ -610,7 +651,7 @@ $tabControl->BeginNextTab();
 		</td>
 	</tr>
 	<tr>
-		<td colspan="2" id="paysystem-business-value-settings" style="padding-top: 10px">
+		<td colspan="2" id="paysystem-business-value-settings" style="padding: 10px 0">
 			<?
 				if ($request->get('ACTION_FILE') !== null)
 				{
@@ -689,6 +730,35 @@ $tabControl->BeginNextTab();
 				echo "<script type=\"text/javascript\">BX.Sale.PaySystem.initTariffLoad();</script>";
 			}
 		?>
+	</tbody>
+	<tbody id="pay_system_yandex_return">
+	<?
+		if ($paySystem && array_key_exists('ACTION_FILE', $paySystem) && $paySystem['ACTION_FILE'] == 'yandex')
+		{
+			$service = new PaySystem\Service($paySystem);
+			if ($service->isRefundable())
+			{
+				$pathToReturnPage = $documentRoot.'/bitrix/modules/sale/admin/yandex_return_settings.php';
+				if (IO\File::isFileExists($pathToReturnPage)):?>					
+					<tr>
+						<td colspan="2" align="center" class="heading" style="padding-top: 10px">
+							<?=Loc::getMessage('SALE_PSE_RETURN')?>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2" style="padding-top: 10px" align="center">
+							<?
+								if (PaySystem\YandexCert::isLoaded($id, null))
+									echo Loc::getMessage('SALE_PS_RETURN_SETTINGS_YANDEX_OK', array('#ID#' => $id));
+								else
+									echo Loc::getMessage('SALE_PS_RETURN_SETTINGS_YANDEX', array('#ID#' => $id));
+							?>
+						</td>
+					</tr>
+				<?endif;
+			}
+		}
+	?>
 	</tbody>
 <?
 

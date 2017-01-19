@@ -15,6 +15,7 @@ use Bitrix\Main\Web\Uri;
 class UrlPreview
 {
 	const SIGN_SALT = 'url_preview';
+	const USER_AGENT = 'Bitrix link preview';
 	/** @var int Maximum allowed length of the description. */
 	const MAX_DESCRIPTION = 500;
 
@@ -477,7 +478,7 @@ class UrlPreview
 		$httpClient = new HttpClient();
 		$httpClient->setTimeout(5);
 		$httpClient->setStreamTimeout(5);
-		$httpClient->setHeader('User-Agent', 'Bitrix link preview', true);
+		$httpClient->setHeader('User-Agent', self::USER_AGENT, true);
 		if(!$httpClient->query('GET', $uri->getUri()))
 			return false;
 

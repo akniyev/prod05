@@ -63,7 +63,7 @@ class CSaleBasketDiscountConvert extends CCatalogStepOperations
 			if (!$migrateResult->isSuccess())
 			{
 				$this->errorCounter++;
-				$this->errors[] = Loc::getMessage(
+				$this->stepErrors[] = Loc::getMessage(
 					'SALE_BASKET_DISCOUNT_ORDER_ERROR_REPORT',
 					array(
 						'#URL#' => str_replace('#ID#', $order['ID'], $this->orderViewUrl),
@@ -246,7 +246,7 @@ class CSaleDiscountReindex extends CCatalogStepOperations
 			if (!empty($error))
 			{
 				$this->errorCounter++;
-				$this->errors[] = Loc::getMessage(
+				$this->stepErrors[] = Loc::getMessage(
 					'SALE_DISCOUNT_REINDEX_ORDER_ERROR_REPORT',
 					array(
 						'#URL#' => str_replace('#ID#', $discount['ID'], $this->discountEditUrl),
@@ -355,7 +355,7 @@ class CSaleDiscountConvertExt extends CCatalogStepOperations
 			if (!empty($error))
 			{
 				$this->errorCounter++;
-				$this->errors[] = Loc::getMessage(
+				$this->stepErrors[] = Loc::getMessage(
 					'SALE_DISCOUNT_REINDEX_ORDER_ERROR_REPORT',
 					array(
 						'#URL#' => str_replace('#ID#', $discount['ID'], $this->discountEditUrl),
@@ -378,7 +378,11 @@ class CSaleDiscountConvertExt extends CCatalogStepOperations
 	{
 		$countQuery = new Main\Entity\Query(Sale\Internals\DiscountTable::getEntity());
 		$countQuery->addSelect(new Main\Entity\ExpressionField('CNT', 'COUNT(1)'));
-		$countQuery->setFilter(array('=VERSION' => Sale\Internals\DiscountTable::VERSION_NEW));
+		$countQuery->setFilter(array(
+			'=VERSION' => Sale\Internals\DiscountTable::VERSION_NEW,
+			'=DISCOUNT_ENTITY.ENTITY' => 'ORDER',
+			'=DISCOUNT_ENTITY.FIELD_ENTITY' => 'PAY_SYSTEM_ID'
+		));
 		$totalCount = $countQuery->setLimit(null)->setOffset(null)->exec()->fetch();
 		return (int)$totalCount['CNT'];
 	}

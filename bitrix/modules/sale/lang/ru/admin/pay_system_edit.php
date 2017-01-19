@@ -66,6 +66,7 @@ $MESS["SPS_SHOW_PROPS"] = "Развернуть свойства обработ�
 $MESS["SPS_NAME"] = "Название";
 $MESS["SPS_ACT_FILE"] = "Обработчик";
 $MESS["SPS_NO_ACT_FILE"] = "Выберите обработчик";
+$MESS["SPS_AUTO_CHANGE_1C"] = "Разрешить автоматическое изменение оплаты при импорте из 1С";
 $MESS["SPS_ACT_USER"] = "Пользовательские";
 $MESS["SPS_ACT_SYSTEM"] = "Системные";
 $MESS["SPS_NEW_WINDOW"] = "Открывать в новом окне";
@@ -103,4 +104,6 @@ $MESS["SALE_PSE_ERROR_SET_BIZVAL_MAP"] = "Ошибка при сохранени
 $MESS["SALE_PSE_ERROR_RSRT_CURRENCY_SAVE"] = "Ошибка при сохранении ограничения по валютам";
 $MESS["SALE_PSE_ERROR_NO_ACTION_FILE"] = "Не выбран обработчик ПС";
 $MESS["SALE_PS_TARIFF"] = "Тарифы";
-?>
+$MESS["SALE_PSE_RETURN"] = "Настройка возвратов";
+$MESS["SALE_PS_RETURN_SETTINGS_YANDEX"] = "Перед использованием механизма возвратов, необходимо его <a href='/bitrix/admin/sale_yandex_return_settings.php?lang=".LANG."&pay_system_id=#ID#' target='_blank'>настоить</a>";
+$MESS["SALE_PS_RETURN_SETTINGS_YANDEX_OK"] = "Механизм возвратов успешно настроен. Изменить настройки можно <a href='/bitrix/admin/sale_yandex_return_settings.php?lang=".LANG."&pay_system_id=#ID#' target='_blank'>тут</a>";

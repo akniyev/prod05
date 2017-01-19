@@ -66,17 +66,23 @@ else
 	}
 }
 
+$by = isset($_GET['by']) ?trim($_GET['by']) : '';
+$order = isset($_GET['order']) ?trim($_GET['order']) : '';
+
 if (($arID = $lAdmin->GroupAction()) && $saleModulePermissions >= "W")
 {
 	if ($_REQUEST['action_target']=='selected')
 	{
 		$arID = Array();
-		$dbResultList = \Bitrix\Sale\Delivery\Services\Table::GetList( array(
-			'order' => array($by => $order),
+		$params = array(
 			'filter' => $filter,
 			'select' => array("ID")
-			)
 		);
+
+		if(strlen($by) > 0 && strlen($order) > 0)
+			$params['order'] = array($by => $order);
+
+		$dbResultList = \Bitrix\Sale\Delivery\Services\Table::GetList($params);
 
 		while ($arResult = $dbResultList->fetch())
 			$arID[] = $arResult['ID'];
@@ -143,9 +149,11 @@ while($site = $db->fetch())
 	$sitesList[$site['LID']] = $site['NAME'];
 
 $glParams = array(
-	'order' => array($by => $order),
 	'filter' => $filter
 );
+
+if(strlen($by) > 0 && strlen($order) > 0)
+	$glParams['order'] = array($by => $order);
 
 $lAdmin->AddHeaders(array(
 	array("id"=>"NAME", "content"=>Loc::getMessage("SALE_SDL_NAME"),  "sort"=>"NAME", "default" => true),
@@ -327,11 +335,30 @@ if ($saleModulePermissions == "W")
 			if($class::isProfile())
 				continue;
 
-			$menu[] = array(
-				"TEXT" => $class::getClassTitle(),
-				"LINK" => "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".(intval($filter["=PARENT_ID"]) > 0 ? $filter["=PARENT_ID"] : 0).
-					"&CLASS_NAME=".urlencode($class)."&back_url=".$backUrl
-			);
+			$supportedServices = $class::getSupportedServicesList();
+
+			if(is_array($supportedServices) && !empty($supportedServices))
+			{
+				foreach($supportedServices as $srvType => $srvParams)
+				{
+					if(!empty($srvParams["NAME"]))
+					{
+						$menu[] = array(
+							"TEXT" => $srvParams["NAME"],
+							"LINK" => "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".(intval($filter["=PARENT_ID"]) > 0 ? $filter["=PARENT_ID"] : 0).
+								"&CLASS_NAME=".urlencode($class)."&SERVICE_TYPE=".$srvType."&back_url=".$backUrl
+						);
+					}
+				}
+			}
+			else
+			{
+				$menu[] = array(
+					"TEXT" => $class::getClassTitle(),
+					"LINK" => "sale_delivery_service_edit.php?lang=".LANG."&PARENT_ID=".(intval($filter["=PARENT_ID"]) > 0 ? $filter["=PARENT_ID"] : 0).
+						"&CLASS_NAME=".urlencode($class)."&back_url=".$backUrl
+				);
+			}
 		}
 
 		$aContext[] = array(

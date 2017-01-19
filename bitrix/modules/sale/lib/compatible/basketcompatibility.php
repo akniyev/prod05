@@ -396,11 +396,18 @@ class BasketCompatibility
 	 * Add the position of the basket
 	 *
 	 * @param array $fields - an array of fields with data element baskets
-	 * @return Sale\BasketItem|bool
+	 * @return Sale\Result
+	 * @throws Main\ArgumentNullException
+	 * @throws Main\ArgumentTypeException
+	 * @throws Main\NotSupportedException
+	 * @throws Main\ObjectNotFoundException
 	 */
 	public static function add(array $fields)
 	{
+		$result = new Sale\Result();
+
 		$order = null;
+		$basket = null;
 		$item = null;
 
 		if (!array_key_exists('FUSER_ID', $fields) || intval($fields['FUSER_ID']) <= 0)
@@ -408,19 +415,39 @@ class BasketCompatibility
 			$fields['FUSER_ID'] = Sale\Fuser::getId(false);
 		}
 
-		/** @var Sale\Basket $basket */
-		$basket = Sale\Basket::loadItemsForFUser($fields["FUSER_ID"], $fields['LID']);
+		if (!empty($fields['ORDER_ID']) && intval($fields['ORDER_ID']) > 0)
+		{
+			/** @var Sale\Order $order */
+			$order = Sale\Order::load(intval($fields['ORDER_ID']));
+
+			if ($order)
+			{
+				/** @var Sale\Basket $basket */
+				$basket = $order->getBasket();
+			}
+		}
+
+		if (!$basket)
+		{
+			/** @var Sale\Basket $basket */
+			$basket = Sale\Basket::loadItemsForFUser($fields["FUSER_ID"], $fields['LID']);
+		}
+
 
 		/** @var \Bitrix\Sale\BasketItem|bool $item */
 		if ($item = $basket->getExistsItem($fields["MODULE"], $fields["PRODUCT_ID"], ((!empty($fields["PROPS"]) && is_array($fields["PROPS"]))? $fields["PROPS"] : array())))
 		{
 			$item->setField('QUANTITY', $item->getQuantity() + $fields['QUANTITY']);
-		}
 
-		if (!empty($fields['ORDER_ID']) && intval($fields['ORDER_ID']) > 0)
-		{
-			/** @var Sale\Order $order */
-			$order = Sale\Order::load(intval($fields['ORDER_ID']));
+			unset($fields['QUANTITY']);
+
+			/** @var Sale\Result $r */
+			$r = $item->setFields(static::clearFields($fields));
+			if (!$r->isSuccess())
+			{
+				$result->addErrors($r->getErrors());
+				return $result;
+			}
 		}
 
 		if ($item === null)
@@ -435,19 +462,20 @@ class BasketCompatibility
 				$property->setProperty($fields["PROPS"]);
 			}
 
-			$item->setFields(static::clearFields($fields));
+			/** @var Sale\Result $r */
+			$r = $item->setFields(static::clearFields($fields));
+			if (!$r->isSuccess())
+			{
+				$result->addErrors($r->getErrors());
+				return $result;
+			}
 
 			if ($order)
 			{
-				$basketCollection = $order->getBasket();
-
-				$basketCollection->addItem($item);
-				$item->setCollection($basketCollection);
-
 				$shipmentCollection = $order->getShipmentCollection();
 				$systemShipment = $shipmentCollection->getSystemShipment();
 				$systemShipmentItemCollection = $systemShipment->getShipmentItemCollection();
-				$systemShipmentItemCollection->resetCollection($basketCollection);
+				$systemShipmentItemCollection->resetCollection($basket);
 
 				if ($systemShipment->getDeliveryId() > 0)
 				{
@@ -468,20 +496,32 @@ class BasketCompatibility
 					{
 						$shipmentItemCollection = $shipment->getShipmentItemCollection();
 
+						/** @var Sale\ShipmentItem $shipmentItem */
 						$shipmentItem = $shipmentItemCollection->createItem($item);
 						if ($shipmentItem)
 							$shipmentItem->setQuantity($item->getQuantity());
 					}
 				}
 
-				$order->refreshData(array('PRICE', 'PRICE_DELIVERY'));
+				/** @var Sale\Result $r */
+				$r = $order->refreshData(array('PRICE', 'PRICE_DELIVERY'));
+				if (!$r->isSuccess())
+				{
+					$result->addErrors($r->getErrors());
+					return $result;
+				}
 
 			}
 		}
 
 		if ($order !== null)
 		{
+			/** @var Sale\Result $r */
 			$r = $order->save();
+			if (!$r->isSuccess())
+			{
+				$result->addErrors($r->getErrors());
+			}
 		}
 		else
 		{
@@ -497,6 +537,10 @@ class BasketCompatibility
 				$siteID = (isset($fields["LID"])) ? $fields["LID"] : SITE_ID;
 				$_SESSION["SALE_BASKET_NUM_PRODUCTS"][$siteID]++;
 			}
+			elseif (!$r->isSuccess())
+			{
+				$result->addErrors($r->getErrors());
+			}
 		}
 
 		if ($r->isSuccess())
@@ -509,10 +553,15 @@ class BasketCompatibility
 				DiscountCompatibility::setBasketItemData($id, $fields);
 				DiscountCompatibility::setBasketCode($id, $item->getBasketCode());
 			}
-			return $item;
+
+			$result->setId($item->getId());
+			$result->addData(array(
+				'QUANTITY' => $item->getQuantity()
+			));
 		}
 
-		return false;
+
+		return $result;
 	}
 
 	/**
@@ -588,13 +637,17 @@ class BasketCompatibility
 			$result->addErrors($r->getErrors());
 		}
 
-		if (!DiscountCompatibility::isInited())
-			DiscountCompatibility::init();
-		if (DiscountCompatibility::usedByClient())
+		if(DiscountCompatibility::isUsed())
 		{
-			DiscountCompatibility::setBasketItemData($id, $fields);
-			DiscountCompatibility::setBasketCode($id, $item->getBasketCode());
+			if (!DiscountCompatibility::isInited())
+				DiscountCompatibility::init();
+			if (DiscountCompatibility::usedByClient())
+			{
+				DiscountCompatibility::setBasketItemData($id, $fields);
+				DiscountCompatibility::setBasketCode($id, $item->getBasketCode());
+			}
 		}
+
 
 		if ($order === null && !empty($fields['ORDER_ID']) && intval($fields['ORDER_ID']) > 0)
 		{
@@ -879,9 +932,10 @@ class BasketCompatibility
 	}
 
 	/**
+	 * @internal 
 	 * @return array
 	 */
-	protected static function getAliasFields()
+	public static function getAliasFields()
 	{
 		return array(
 			'ORDER_STATUS' => 'ORDER.STATUS_ID',
@@ -1357,7 +1411,7 @@ class BasketCompatibility
 
 	protected function getWhiteListFields()
 	{
-		return array_merge(parent::getWhiteListFields(), array('USER_ID'));
+		return array_merge(parent::getWhiteListFields(), array('USER_ID'), array_keys(static::getAliasFields()));
 	}
 }
 

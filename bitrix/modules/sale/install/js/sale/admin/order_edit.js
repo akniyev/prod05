@@ -15,6 +15,7 @@ BX.Sale.Admin.OrderEditPage =
 	adminTabControlId: "",
 	discountRefreshTimeoutId: 0,
 	autoPriceChange: true,
+	runningCheckTimeout: {},
 
 	getForm: function()
 	{
@@ -172,7 +173,7 @@ BX.Sale.Admin.OrderEditPage =
 
 	callFieldsUpdaters: function(orderData)
 	{
-		var ordered = ["DISCOUNTS_LIST", "DELIVERY_PRICE"],
+		var ordered = ["DISCOUNTS_LIST", "DELIVERY_PRICE", "PROPERTIES_ARRAY", "BUYER_PROFILES_LIST","BUYER_PROFILES_DATA"],
 			orderedDone = {};
 
 		for(var i = 0, l = ordered.length-1; i<=l; i++)
@@ -317,6 +318,63 @@ BX.Sale.Admin.OrderEditPage =
 	setStatus: function(statusId)
 	{
 		BX("STATUS_ID").value = statusId;
+	},
+
+	desktopMakeCall: function(phone)
+	{
+		var isMobile = BX.browser.IsMobile();
+		BX.Sale.Admin.OrderEditPage.desktopRunningCheck(
+			function(){ location.href = 'bx://callto/phone/'+phone; },
+			function(){ location.href = (isMobile ? 'tel:' : 'callto:')+phone; }
+		);
+	},
+
+	desktopRunningCheck: function(successCallback, failureCallback)
+	{
+		if(typeof(successCallback) == 'undefined')
+		{
+			return false;
+		}
+		if(typeof(failureCallback) == 'undefined')
+		{
+			failureCallback = function(){};
+		}
+
+		var dateCheck = (+new Date());
+		//Don't work for linux
+		var checkUrl = "http://127.0.0.1:20141/";
+		var checkElement = BX.create("img", {
+			attrs : {
+				"src" : checkUrl+"icon.png?"+dateCheck,
+				"data-id": dateCheck,
+				"style": "position:absolute; left: -100px; opacity: 0; width: 1px; height: 1px"
+			},
+			props : {className : "bx-messenger-out-of-view"},
+			events : {
+				"error" : function () {
+					var checkId = this.getAttribute('data-id');
+					failureCallback(false, checkId);
+					clearTimeout(BX.Sale.Admin.OrderEditPage.runningCheckTimeout[checkId]);
+					BX.remove(this);
+				},
+				"load" : function () {
+					var checkId = this.getAttribute('data-id');
+					successCallback(true, checkId);
+					clearTimeout(BX.Sale.Admin.OrderEditPage.runningCheckTimeout[checkId]);
+					BX.remove(this);
+				}
+			}
+		});
+
+		document.body.appendChild(checkElement);
+
+		BX.Sale.Admin.OrderEditPage.runningCheckTimeout[dateCheck] = setTimeout(function(){
+			failureCallback(false, dateCheck);
+			clearTimeout(BX.Sale.Admin.OrderEditPage.runningCheckTimeout[dateCheck]);
+			BX.remove(this);
+		}, 500);
+
+		return true;
 	},
 
 	changeCancelBlock: function(orderId, params)
@@ -712,6 +770,19 @@ BX.Sale.Admin.OrderEditPage =
 			return BX.Sale.Admin.OrderAjaxer.refreshOrderData.modifyParams(postData);
 		},
 
+		getProductIdBySkuProps: function(params)
+		{
+			return {
+				action: "getProductIdBySkuProps",
+				productId: params.productId,
+				iBlockId: params.iBlockId,
+				skuProps: params.skuProps,
+				skuOrder: params.skuOrder,
+				changedSkuId: params.changedSkuId,
+				callback: params.callback
+			};
+		},
+
 		cancelOrder: function(orderId, canceled, comment)
 		{
 			return {
@@ -832,12 +903,13 @@ BX.Sale.Admin.OrderEditPage =
 			};
 		},
 
-		getOrderTails: function(orderId, formType)
+		getOrderTails: function(orderId, formType, idPrefix)
 		{
 			return {
 				action: "getOrderTails",
 				orderId: orderId,
 				formType: formType,
+				idPrefix: idPrefix,
 				callback: function(result)
 				{
 					if(result && !result.ERROR)
@@ -871,7 +943,7 @@ BX.Sale.Admin.OrderEditPage =
 					}
 					else if(result && result.ERROR)
 					{
-						BX.Sale.Admin.OrderEditPage.showDialog("Can't get order view tails: "+result.ERROR);
+						BX.Sale.Admin.OrderEditPage.showDialog(result.ERROR);
 					}
 					else
 					{

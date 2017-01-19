@@ -119,6 +119,7 @@ Class sale extends CModule
 
 		$eventManager = \Bitrix\Main\EventManager::getInstance();
 		$eventManager->registerEventHandlerCompatible('main', 'OnUserLogout', 'sale', '\Bitrix\Sale\DiscountCouponsManager', 'logout');
+		$eventManager->registerEventHandler('sale', 'OnSaleBasketItemRefreshData', 'sale', '\Bitrix\Sale\Compatible\DiscountCompatibility', 'OnSaleBasketItemRefreshData');
 
 		RegisterModuleDependences("main", "OnUserLogin", "sale", "CSaleUser", "OnUserLogin");
 		RegisterModuleDependences("main", "OnUserLogout", "sale", "CSaleUser", "OnUserLogout");
@@ -209,6 +210,10 @@ Class sale extends CModule
 
 		COption::SetOptionString("sale", "expiration_processing_events", 'Y');
 
+		$eventManager->registerEventHandler('sale', 'OnSaleBasketItemEntitySaved', 'sale', '\Bitrix\Sale\Internals\Events', 'onSaleBasketItemEntitySaved');
+		$eventManager->registerEventHandler('sale', 'OnSaleBasketItemDeleted', 'sale', '\Bitrix\Sale\Internals\Events', 'onSaleBasketItemDeleted');
+
+
 		COption::SetOptionString("sale", "p2p_status_list", serialize(array(
 			"N", "P", "F", "F_CANCELED", "F_DELIVERY", "F_PAY", "F_OUT"
 		)));
@@ -247,8 +252,10 @@ Class sale extends CModule
 					Bitrix\Main\TaskOperationTable::add(array('TASK_ID' => $taskId, 'OPERATION_ID' => $result->getId()));
 		}
 
-		if (Bitrix\Main\Loader::IncludeModule('sale'))
+		if (\Bitrix\Main\Loader::includeModule('sale'))
 		{
+			\Bitrix\Sale\Compatible\EventCompatibility::registerEvents();
+			
 			// install statuses
 			$orderInitialStatus = Bitrix\Sale\OrderStatus::getInitialStatus();
 			$orderFinalStatus   = Bitrix\Sale\OrderStatus::getFinalStatus();
@@ -308,8 +315,6 @@ Class sale extends CModule
 			}
 
 			CSaleYMHandler::install();
-
-			\Bitrix\Sale\Delivery\Services\EmptyDeliveryService::create();
 		}
 
 		return true;
@@ -404,11 +409,18 @@ Class sale extends CModule
 		UnRegisterModuleDependences('sale'      , 'OnBasketDelete'       , 'sale', '\Bitrix\Sale\Internals\ConversionHandlers', 'onBasketDelete'       );
 		UnRegisterModuleDependences('sale'      , 'OnOrderAdd'           , 'sale', '\Bitrix\Sale\Internals\ConversionHandlers', 'onOrderAdd'           );
 		UnRegisterModuleDependences('sale'      , 'OnSalePayOrder'       , 'sale', '\Bitrix\Sale\Internals\ConversionHandlers', 'onSalePayOrder'       );
-
 		UnRegisterModuleDependences("perfmon", "OnGetTableSchema", "sale", "sale", "OnGetTableSchema");
 
 		$eventManager = \Bitrix\Main\EventManager::getInstance();
 		$eventManager->unRegisterEventHandler('main', 'OnUserLogout', 'sale', '\Bitrix\Sale\DiscountCouponsManager', 'logout');
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleBasketItemEntitySaved', 'sale', '\Bitrix\Sale\Internals\Events', 'onSaleBasketItemEntitySaved');
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleBasketItemDeleted', 'sale', '\Bitrix\Sale\Internals\Events', 'onSaleBasketItemDeleted');
+		$eventManager->unRegisterEventHandler('sale', 'OnSaleBasketItemRefreshData', 'sale', '\Bitrix\Sale\Compatible\DiscountCompatibility', 'OnSaleBasketItemRefreshData');
+
+		if (\Bitrix\Main\Loader::includeModule('sale'))
+		{
+			\Bitrix\Sale\Compatible\EventCompatibility::unRegisterEvents();
+		}
 
 		CAgent::RemoveModuleAgents("sale");
 
@@ -557,4 +569,3 @@ Class sale extends CModule
 		);
 	}
 }
-?>

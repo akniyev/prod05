@@ -295,4 +295,3 @@ class CIBlock extends CAllIBlock
 		return "if(".$column." is null, 0, 1)";
 	}
 }
-?>

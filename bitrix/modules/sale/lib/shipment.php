@@ -12,6 +12,7 @@ use Bitrix\Main\Entity;
 use Bitrix\Main\Localization\Loc;
 use Bitrix\Sale\Delivery;
 use Bitrix\Sale\Internals;
+use Bitrix\Sale\Services\Company;
 
 Loc::loadMessages(__FILE__);
 
@@ -24,7 +25,9 @@ class Shipment
 
 	/** @var  DeliveryService */
 	protected $deliveryService = null;
+
 	protected $extraServices = null;
+
 	protected $storeId = 0;
 
 	/** @var int */
@@ -75,15 +78,6 @@ class Shipment
 			static::$mapFields = parent::getAllFieldsByMap(Internals\ShipmentTable::getMap());
 		}
 		return static::$mapFields;
-	}
-
-	/**
-	 * @return DeliveryService
-	 */
-	public function getDeliveryService()
-	{
-		// load
-		return $this->deliveryService;
 	}
 
 	/**
@@ -568,6 +562,8 @@ class Shipment
 			$event->send();
 		}
 
+		$isChanged = $this->isChanged();
+
 		if ($id > 0)
 		{
 			$fields = $this->fields->getChangedValues();
@@ -577,6 +573,8 @@ class Shipment
 				if (array_key_exists('REASON_MARKED', $fields) && strlen($fields['REASON_MARKED']) > 255)
 				{
 					$fields['REASON_MARKED'] = substr($fields['REASON_MARKED'], 0, 255);
+
+					$this->setFieldNoDemand('REASON_MARKED', $fields['REASON_MARKED']);
 				}
 
 				$r = Internals\ShipmentTable::update($id, $fields);
@@ -610,17 +608,27 @@ class Shipment
 					'VALUES' => $oldEntityValues,
 				));
 				$event->send();
+
+				Notify::callNotify($shipment, EventActions::EVENT_ON_SHIPMENT_TRACKING_NUMBER_CHANGE);
 			}
+
 		}
 		else
 		{
 			$fields['ORDER_ID'] = $this->getParentOrderId();
+			$this->setFieldNoDemand('ORDER_ID', $fields['ORDER_ID']);
+
 			$fields['DATE_INSERT'] = new Main\Type\DateTime();
+			$this->setFieldNoDemand('DATE_INSERT', $fields['DATE_INSERT']);
+
 			$fields['SYSTEM'] = $fields['SYSTEM']? 'Y' : 'N';
+			$this->setFieldNoDemand('SYSTEM', $fields['SYSTEM']);
 
 			if (array_key_exists('REASON_MARKED', $fields) && strlen($fields['REASON_MARKED']) > 255)
 			{
 				$fields['REASON_MARKED'] = substr($fields['REASON_MARKED'], 0, 255);
+
+				$this->setFieldNoDemand('REASON_MARKED', $fields['REASON_MARKED']);
 			}
 
 			$r = Internals\ShipmentTable::add($fields);
@@ -647,7 +655,7 @@ class Shipment
 
 			$this->setAccountNumber($id);
 
-			if ($order->getId() > 0 && !$this->isSystem())
+			if ($order->getId() > 0 && !$this->isSystem() && $isChanged)
 			{
 				OrderHistory::addAction(
 					'SHIPMENT',
@@ -667,6 +675,8 @@ class Shipment
 				'VALUES' => $oldEntityValues,
 			));
 			$event->send();
+
+			Notify::callNotify($shipment, EventActions::EVENT_ON_SHIPMENT_ALLOW_DELIVERY);
 		}
 
 		if (!empty($fields['DEDUCTED']) && (($isNew && $fields['DEDUCTED'] == "Y") || !$isNew))
@@ -677,6 +687,8 @@ class Shipment
 				'VALUES' => $oldEntityValues,
 			));
 			$event->send();
+
+			Notify::callNotify($shipment, EventActions::EVENT_ON_SHIPMENT_DEDUCTED);
 		}
 
 		if ($id > 0)
@@ -700,6 +712,18 @@ class Shipment
 			$event->send();
 		}
 
+		if (($eventList = Internals\EventsPool::getEvents('s'.$this->getId())) && !empty($eventList) && is_array($eventList))
+		{
+			foreach ($eventList as $eventName => $eventData)
+			{
+				$event = new Main\Event('sale', $eventName, $eventData);
+				$event->send();
+
+				Notify::callNotify($this, $eventName);
+			}
+
+			Internals\EventsPool::resetEvents('s'.$this->getId());
+		}
 
 		/** @var ShipmentItemCollection $shipmentItemCollection */
 		if (!$shipmentItemCollection = $this->getShipmentItemCollection())
@@ -902,7 +926,7 @@ class Shipment
 	 */
 	public function isMarked()
 	{
-		return ($this->getField('MARKED') == "Y"? true : false);
+		return ($this->getField('MARKED') == "Y");
 	}
 
 	/**
@@ -910,7 +934,7 @@ class Shipment
 	 */
 	public function isReserved()
 	{
-		return ($this->getField('RESERVED') == "Y"? true : false);
+		return ($this->getField('RESERVED') == "Y");
 	}
 
 	/**
@@ -918,7 +942,7 @@ class Shipment
 	 */
 	public function isAllowDelivery()
 	{
-		return ($this->getField('ALLOW_DELIVERY') == "Y"? true : false);
+		return ($this->getField('ALLOW_DELIVERY') == "Y");
 	}
 
 	/**
@@ -1201,6 +1225,8 @@ class Shipment
 	{
 		global $USER;
 
+		$result = new Result();
+
 		if ($name == "MARKED")
 		{
 			if ($oldValue != "Y")
@@ -1214,26 +1240,86 @@ class Shipment
 			}
 
 		}
-		
-		if ($name == "ALLOW_DELIVERY")
+		elseif ($name == "ALLOW_DELIVERY")
 		{
 			if ($oldValue != $value)
 			{
 				$this->setField('DATE_ALLOW_DELIVERY', new Main\Type\DateTime());
 				$this->setField('EMP_ALLOW_DELIVERY_ID', $USER->GetID());
 			}
-		}
 
-		if ($name == "DEDUCTED")
+			if ($oldValue === 'N')
+			{
+				$shipmentStatus = Main\Config\Option::get('sale', 'shipment_status_on_allow_delivery', '');
+
+				if (strval($shipmentStatus) != '' && $this->getField('STATUS_ID') != DeliveryStatus::getFinalStatus())
+				{
+					$r = $this->setStatus($shipmentStatus);
+					if (!$r->isSuccess())
+					{
+						$result->addErrors($r->getErrors());
+					}
+				}
+			}
+		}
+		elseif ($name == "DEDUCTED")
 		{
 			if ($oldValue != $value)
 			{
 				$this->setField('DATE_DEDUCTED', new Main\Type\DateTime());
 				$this->setField('EMP_DEDUCTED_ID', $USER->GetID());
 			}
+
+			if ($oldValue === 'N')
+			{
+				$shipmentStatus = Main\Config\Option::get('sale', 'shipment_status_on_shipped', '');
+
+				if (strval($shipmentStatus) != '' && $this->getField('STATUS_ID') != DeliveryStatus::getFinalStatus())
+				{
+					$r = $this->setStatus($shipmentStatus);
+					if (!$r->isSuccess())
+					{
+						$result->addErrors($r->getErrors());
+					}
+				}
+			}
+		}
+		elseif ($name == "STATUS_ID")
+		{
+
+			$event = new Main\Event('sale', EventActions::EVENT_ON_BEFORE_SHIPMENT_STATUS_CHANGE, array(
+				'ENTITY' => $this,
+				'VALUE' => $value,
+				'OLD_VALUE' => $oldValue,
+			));
+			$event->send();
+
+			Internals\EventsPool::addEvent('s'.$this->getId(), EventActions::EVENT_ON_SHIPMENT_STATUS_CHANGE, array(
+				'ENTITY' => $this,
+				'VALUE' => $value,
+				'OLD_VALUE' => $oldValue,
+			));
+
+			Internals\EventsPool::addEvent('s'.$this->getId(), EventActions::EVENT_ON_SHIPMENT_STATUS_CHANGE_SEND_MAIL, array(
+				'ENTITY' => $this,
+				'VALUE' => $value,
+				'OLD_VALUE' => $oldValue,
+			));
 		}
 
-		return parent::onFieldModify($name, $oldValue, $value);
+
+		$r = parent::onFieldModify($name, $oldValue, $value);
+		if (!$r->isSuccess())
+		{
+			$result->addErrors($r->getErrors());
+		}
+
+		if (($resultData = $r->getData()) && !empty($resultData))
+		{
+			$result->addData($resultData);
+		}
+
+		return $result;
 	}
 
 	/**
@@ -1407,7 +1493,7 @@ class Shipment
 				/** @var BasketItem $basketItem */
 				if (!$basketItem = $shipmentItem->getBasketItem())
 				{
-					throw new Main\ObjectNotFoundException('Entity "BasketItem" not found');
+					continue;
 				}
 
 				$weight += $basketItem->getWeight() * $shipmentItem->getQuantity();
@@ -1541,6 +1627,21 @@ class Shipment
 		{
 			$result->addError(new ResultError(Loc::getMessage("SALE_SHIPMENT_DELIVERY_SERVICE_EMPTY")));
 		}
+
+		/** @var ShipmentItemCollection $shipmentItemCollection */
+		if ($shipmentItemCollection = $this->getShipmentItemCollection())
+		{
+			/** @var ShipmentItem $shipmentItem */
+			foreach ($shipmentItemCollection as $shipmentItem)
+			{
+				$r = $shipmentItem->verify();
+				if (!$r->isSuccess())
+				{
+					$result->addErrors($r->getErrors());
+				}
+			}
+		}
+		
 		return $result;
 	}
 
@@ -1620,6 +1721,125 @@ class Shipment
 		return ($collection = $this->getCollection()) && ($order = $collection->getOrder())
 			? $order->getPersonTypeId()
 			: null;
+	}
+
+	/**
+	 * @param array $filter
+	 *
+	 * @return Main\DB\Result
+	 * @throws Main\ArgumentException
+	 */
+	public static function getList(array $filter)
+	{
+		return Internals\ShipmentTable::getList($filter);
+	}
+
+	/**
+	 * @internal
+	 * @param \SplObjectStorage $cloneEntity
+	 *
+	 * @return Shipment
+	 */
+	public function createClone(\SplObjectStorage $cloneEntity)
+	{
+		if ($this->isClone() && $cloneEntity->contains($this))
+		{
+			return $cloneEntity[$this];
+		}
+
+		$shipmentClone = clone $this;
+		$shipmentClone->isClone = true;
+
+		/** @var Internals\Fields $fields */
+		if ($fields = $this->fields)
+		{
+			$shipmentClone->fields = $fields->createClone($cloneEntity);
+		}
+
+		if (!$cloneEntity->contains($this))
+		{
+			$cloneEntity[$this] = $shipmentClone;
+		}
+
+		/** @var ShipmentItemCollection $shipmentItemCollection */
+		if ($shipmentItemCollection = $this->getShipmentItemCollection())
+		{
+			if (!$cloneEntity->contains($shipmentItemCollection))
+			{
+				$cloneEntity[$shipmentItemCollection] = $shipmentItemCollection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($shipmentItemCollection))
+			{
+				$shipmentClone->shipmentItemCollection = $cloneEntity[$shipmentItemCollection];
+			}
+		}
+
+		if ($collection = $this->getCollection())
+		{
+			if (!$cloneEntity->contains($collection))
+			{
+				$cloneEntity[$collection] = $collection->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($collection))
+			{
+				$shipmentClone->collection = $cloneEntity[$collection];
+			}
+		}
+
+		/** @var \Bitrix\Sale\Delivery\Services\Manager $deliveryService */
+		
+		/** @var Delivery\Services\Manager $deliveryService */
+		if ($deliveryService = $this->getDelivery())
+		{
+			if (!$cloneEntity->contains($deliveryService))
+			{
+				$cloneEntity[$deliveryService] = $deliveryService->createClone($cloneEntity);
+			}
+
+			if ($cloneEntity->contains($deliveryService))
+			{
+				$shipmentClone->deliveryService = $cloneEntity[$deliveryService];
+			}
+		}
+
+		return $shipmentClone;
+	}
+
+
+	/**
+	 * @param $status
+	 *
+	 * @return Result
+	 */
+	protected function setStatus($status)
+	{
+		global $USER;
+
+		$result = new Result();
+
+		if ($USER && $USER->isAuthorized())
+		{
+			$statusesList = DeliveryStatus::getAllowedUserStatuses($USER->getID(), $this->getField('STATUS_ID'));
+		}
+		else
+		{
+			$statusesList = DeliveryStatus::getAllStatuses();
+		}
+
+		if($this->getField('STATUS_ID') != $status && array_key_exists($status, $statusesList))
+		{
+			/** @var Result $r */
+			$r = $this->setField('STATUS_ID', $status);
+			if (!$r->isSuccess())
+			{
+				$result->addErrors($r->getErrors());
+				return $result;
+			}
+		}
+
+		return $result;
 	}
 }
 

@@ -248,7 +248,8 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 					'HEIGHT',
 					'LENGTH',
 					'BARCODE_MULTI',
-					'TYPE'
+					'TYPE',
+					'MEASURE'
 				)
 			);
 
@@ -259,7 +260,10 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 
 		if (!empty($arCatalogProduct) && is_array($arCatalogProduct))
 		{
-			if ($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+			if (
+				($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+				&& (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') != 'Y'
+			)
 			{
 				$APPLICATION->ThrowException(Loc::getMessage("CATALOG_ERR_SKU_PRODUCT"), 'CATALOG_SKU_PRODUCT');
 				return $arResult;
@@ -285,7 +289,7 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 		if ($arParams["CHECK_PRICE"] == "Y")
 		{
 			$productHash = array(
-				'MODULE' => 'catalog',
+				'MODULE_ID' => 'catalog',
 				'PRODUCT_ID' => $productID,
 				'BASKET_ID' => $arParams['BASKET_ID']
 			);
@@ -293,7 +297,7 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 			$arCoupons = array();
 			if ($arParams['CHECK_COUPONS'] == 'Y')
 			{
-				$arCoupons = DiscountCouponsManager::getForApply(array(), $productHash, true);
+				$arCoupons = DiscountCouponsManager::getForApply(array('MODULE_ID' => 'catalog'), $productHash, true);
 				if (!empty($arCoupons))
 					$arCoupons = array_keys($arCoupons);
 			}
@@ -410,7 +414,36 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 		}
 
 		if ($arParams["CHECK_QUANTITY"] == "Y" && $boolQuantity && $dblQuantity < $quantity)
-			$APPLICATION->ThrowException(Loc::getMessage("CATALOG_QUANTITY_NOT_ENOGH", array("#NAME#" => htmlspecialcharsbx($arProduct["~NAME"]), "#CATALOG_QUANTITY#" => $arCatalogProduct["QUANTITY"], "#QUANTITY#" => $quantity)), "CATALOG_QUANTITY_NOT_ENOGH");
+		{
+
+			$arCatalogProduct['MEASURE'] = intval($arCatalogProduct['MEASURE']);
+			$arCatalogProduct['MEASURE_NAME'] = '';
+			$arCatalogProduct['MEASURE_CODE'] = 0;
+			if (intval($arCatalogProduct['MEASURE']) == 0)
+			{
+				$arMeasure = CCatalogMeasure::getDefaultMeasure(true, true);
+				$arCatalogProduct['MEASURE_NAME'] = $arMeasure['~SYMBOL_RUS'];
+				$arCatalogProduct['MEASURE_CODE'] = $arMeasure['CODE'];
+			}
+			else
+			{
+				$rsMeasures = CCatalogMeasure::getList(
+					array(),
+					array('ID' => $arCatalogProduct['MEASURE']),
+					false,
+					false,
+					array('ID', 'SYMBOL_RUS', 'CODE')
+				);
+				if ($arMeasure = $rsMeasures->GetNext())
+				{
+					$arCatalogProduct['MEASURE_NAME'] = $arMeasure['~SYMBOL_RUS'];
+					$arCatalogProduct['MEASURE_CODE'] = $arMeasure['CODE'];
+				}
+			}
+			
+			
+			$APPLICATION->ThrowException(Loc::getMessage("CATALOG_QUANTITY_NOT_ENOGH", array("#NAME#" => htmlspecialcharsbx($arProduct["~NAME"]), "#CATALOG_QUANTITY#" => $arCatalogProduct["QUANTITY"], "#QUANTITY#" => $quantity, '#MEASURE_NAME#' => $arCatalogProduct['MEASURE_NAME'])), "CATALOG_QUANTITY_NOT_ENOGH");
+		}
 
 		if ($arParams['CHECK_PRICE'] == 'Y')
 		{
@@ -618,7 +651,10 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 
 		if (!empty($arCatalogProduct) && is_array($arCatalogProduct))
 		{
-			if ($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+			if (
+				($arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arCatalogProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+				&& (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') != 'Y'
+			)
 				return $arResult;
 
 			$arCatalogProduct["QUANTITY"] = (double)$arCatalogProduct["QUANTITY"];
@@ -842,7 +878,10 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 			return $arRes;
 		}
 
-		if ($arProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+		if (
+			($arProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+			&& (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') != 'Y'
+		)
 		{
 			$APPLICATION->ThrowException(Loc::getMessage("RSRV_SKU_FOUND", array("#PRODUCT_ID#" => $arParams["PRODUCT_ID"])), "SKU_FOUND");
 			$arRes["RESULT"] = false;
@@ -1066,7 +1105,10 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 
 		if ($arProduct = $rsProducts->Fetch())
 		{
-			if ($arProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+			if (
+				($arProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+				&& (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') != 'Y'
+			)
 			{
 				$arRes["RESULT"] = false;
 			}
@@ -1083,30 +1125,9 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 
 						if ($isOrderConverted == "Y" && empty($arParams["STORE_DATA"]) && $basketItem)
 						{
-
-							$countStores = static::GetStoresCount(array('SITE_ID' => $basketItem->getField('LID')));
-							$defaultDeductionStore = Main\Config\Option::get("sale", "deduct_store_id", "", $basketItem->getField('LID'));
-
-							if (($countStores == 1 || $countStores == -1 || $defaultDeductionStore > 0) && !$basketItem->isBarcodeMulti())
+							if (static::canProductAutoShip($basketItem))
 							{
-
-								if ($productStore = static::GetProductStores(array(
-									'PRODUCT_ID' => $arParams["PRODUCT_ID"],
-									'SITE_ID' => $basketItem->getField('LID')
-								)))
-								{
-									$productStore = reset($productStore);
-
-									$arParams["STORE_DATA"] = array(
-										$productStore['STORE_ID'] => array(
-											'STORE_ID' => $productStore['STORE_ID'],
-											'QUANTITY' => $arParams["QUANTITY"]
-										),
-									);
-
-
-								}
-
+								$arParams["STORE_DATA"] = static::getProductStoreData($basketItem, $arParams["QUANTITY"]);
 							}
 						}
 
@@ -1434,24 +1455,9 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 					{
 						if ($isOrderConverted == "Y" && empty($arParams["STORE_DATA"]) && $basketItem)
 						{
-							$countStores = static::GetStoresCount(array('SITE_ID' => $basketItem->getField('LID')));
-
-							if ($countStores == 1 && !$basketItem->isBarcodeMulti())
+							if (static::canProductAutoShip($basketItem))
 							{
-								if ($productStore = static::GetProductStores(array(
-									'PRODUCT_ID' => $arParams["PRODUCT_ID"],
-									'SITE_ID' => $basketItem->getField('LID')
-								)))
-								{
-									$productStore = reset($productStore);
-									$arParams["STORE_DATA"] = array(
-										$productStore['STORE_ID'] => array(
-											'STORE_ID' => $productStore['STORE_ID'],
-											'QUANTITY' => $arParams["QUANTITY"]
-										),
-									);
-								}
-
+								$arParams["STORE_DATA"] = static::getProductStoreData($basketItem, $arParams["QUANTITY"]);
 							}
 						}
 
@@ -1654,65 +1660,20 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 			return $result;
 		}
 
-		if ($arProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+		if (
+			($arProduct['TYPE'] == Catalog\ProductTable::TYPE_SKU || $arProduct['TYPE'] == Catalog\ProductTable::TYPE_EMPTY_SKU)
+			&& (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') != 'Y'
+		)
 			return $result;
 
 		if ($strUseStoreControl == "Y")
 		{
 			if (empty($basketStoreData))
 			{
-				$countStores = static::GetStoresCount(array('SITE_ID' => $basketItem->getField('LID')));
-				$defaultDeductionStore = Main\Config\Option::get("sale", "deduct_store_id", "", $basketItem->getField('LID'));
-
-				$canAutoShipped = (($countStores == 1 || $countStores == -1 || $defaultDeductionStore > 0) && !$basketItem->isBarcodeMulti());
-
-				if ($canAutoShipped)
+				if (static::canProductAutoShip($basketItem))
 				{
-					if ($productStore = static::GetProductStores(array(
-						'PRODUCT_ID' => $productId,
-						'SITE_ID' => $basketItem->getField('LID')
-					)))
-					{
-						$productStore = reset($productStore);
-						$basketStoreData = array(
-							$productStore['STORE_ID'] => array(
-								'QUANTITY' => $quantity
-							),
-						);
-					}
+					$basketStoreData = static::getProductStoreData($basketItem, $quantity);
 				}
-
-
-				if (empty($basketStoreData))
-				{
-					$productStore = static::GetProductStores(array(
-						'PRODUCT_ID' => $productId,
-						'SITE_ID' => $basketItem->getField('LID')
-					));
-					if (!empty($productStore) && is_array($productStore))
-					{
-						$productInStoreList = array();
-						foreach($productStore as $productStoreData)
-						{
-							if ($productStoreData['AMOUNT'] > 0)
-							{
-								$productInStoreList[] = $productStoreData;
-							}
-						}
-
-						if (count($productInStoreList) == 1)
-						{
-							$productInStore = reset($productInStoreList);
-							$basketStoreData = array(
-								$productInStore['STORE_ID'] => array(
-									'QUANTITY' => $quantity
-								),
-							);
-						}
-					}
-				}
-
-
 			}
 
 			if (!empty($basketStoreData))
@@ -1914,7 +1875,10 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 
 		if ($arProduct = $rsProducts->Fetch())
 		{
-			if ($arProduct['TYPE'] != Catalog\ProductTable::TYPE_SKU && $arProduct['TYPE'] != Catalog\ProductTable::TYPE_EMPTY_SKU)
+			if (
+				($arProduct['TYPE'] != Catalog\ProductTable::TYPE_SKU && $arProduct['TYPE'] != Catalog\ProductTable::TYPE_EMPTY_SKU)
+				|| (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') == 'Y'
+			)
 			{
 				$fields["QUANTITY_TRACE"] = ($arProduct["QUANTITY_TRACE"] == "Y");
 			}
@@ -2438,7 +2402,10 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 
 		if ($arCatalogProduct = $rsProducts->Fetch())
 		{
-			if ($arCatalogProduct['TYPE'] != Catalog\ProductTable::TYPE_SKU && $arCatalogProduct['TYPE'] != Catalog\ProductTable::TYPE_EMPTY_SKU)
+			if (
+				($arCatalogProduct['TYPE'] != Catalog\ProductTable::TYPE_SKU && $arCatalogProduct['TYPE'] != Catalog\ProductTable::TYPE_EMPTY_SKU)
+				|| (string)Main\Config\Option::get('catalog', 'show_catalog_tab_with_offers') == 'Y'
+			)
 			{
 				return $arCatalogProduct['QUANTITY'];
 			}
@@ -2607,4 +2574,74 @@ class CCatalogProductProvider implements IBXSaleProductProvider
 		if (!empty(self::$hitCache[$type]))
 			unset(self::$hitCache[$type]);
 	}
+
+	/**
+	 * @param \Bitrix\Sale\BasketItem $basketItem
+	 *
+	 * @return bool
+	 * @throws Main\ArgumentNullException
+	 */
+	protected static function canProductAutoShip(\Bitrix\Sale\BasketItem $basketItem)
+	{
+		$countStores = static::GetStoresCount(array('SITE_ID' => $basketItem->getField('LID')));
+		$defaultDeductionStore = Main\Config\Option::get("sale", "deduct_store_id", "", $basketItem->getField('LID'));
+
+		$canAutoDeduct = (($countStores == 1 || $countStores == -1 || $defaultDeductionStore > 0) && !$basketItem->isBarcodeMulti());
+
+		$countProductStores = 0;
+
+		if ($canAutoDeduct === true)
+			return true;
+
+		if ($productStore = static::GetProductStores(array(
+			'PRODUCT_ID' => $basketItem->getProductId(),
+			'SITE_ID' => $basketItem->getField('LID')
+		)))
+		{
+			foreach ($productStore as $productStoreItem)
+			{
+				if ($productStoreItem['AMOUNT'] > 0)
+				{
+					$countProductStores++;
+				}
+			}
+		}
+
+
+		return ($countProductStores == 1);
+	}
+
+	/**
+	 * @param \Bitrix\Sale\BasketItem $basketItem
+	 * @param $quantity
+	 *
+	 * @return array|bool
+	 */
+	protected static function getProductStoreData(\Bitrix\Sale\BasketItem $basketItem, $quantity)
+	{
+		$productStoreData = array();
+
+		if ($productStore = static::GetProductStores(array(
+			'PRODUCT_ID' => $basketItem->getProductId(),
+			'SITE_ID' => $basketItem->getField('LID')
+		)))
+		{
+			foreach ($productStore as $productStoreItem)
+			{
+				if ($productStoreItem['AMOUNT'] > 0)
+				{
+					$productStoreData = array(
+						$productStoreItem['STORE_ID'] => array(
+							'STORE_ID' => $productStoreItem['STORE_ID'],
+							'QUANTITY' => $quantity
+						)
+					);
+					break;
+				}
+			}
+		}
+
+		return (!empty($productStoreData) ? $productStoreData : false);
+	}
+
 }

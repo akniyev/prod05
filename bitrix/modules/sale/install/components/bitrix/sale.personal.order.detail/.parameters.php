@@ -24,6 +24,14 @@ $arComponentParameters = Array(
 			"COLS" => 25,
 			"PARENT" => "ADDITIONAL_SETTINGS",
 		),
+		"PATH_TO_COPY" => Array(
+			"NAME" => GetMessage("SPOL_PATH_TO_COPY"),
+			"TYPE" => "STRING",
+			"MULTIPLE" => "N",
+			"DEFAULT" => "",
+			"COLS" => 25,
+			"PARENT" => "ADDITIONAL_SETTINGS",
+		),
 		"PATH_TO_PAYMENT" => Array(
 			"NAME" => GetMessage("SPOD_PATH_TO_PAYMENT"),
 			"TYPE" => "STRING",

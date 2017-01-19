@@ -644,7 +644,7 @@ class CBitrixCatalogSmartFilter extends CBitrixComponent
 			$resultItem["VALUES"][$htmlKey]['FILE'] = CFile::GetFileArray($file_id);
 		}
 
-		if ($url_id)
+		if (strlen($url_id))
 		{
 			$resultItem["VALUES"][$htmlKey]['URL_ID'] = urlencode($url_id);
 		}
@@ -715,16 +715,12 @@ class CBitrixCatalogSmartFilter extends CBitrixComponent
 
 	public function _sort($v1, $v2)
 	{
-		if ($v1["SORT"] > $v2["SORT"])
-			return 1;
-		elseif ($v1["SORT"] < $v2["SORT"])
+		if ($v1["SORT"] < $v2["SORT"])
 			return -1;
-		elseif ($v1["UPPER"] > $v2["UPPER"])
+		elseif ($v1["SORT"] > $v2["SORT"])
 			return 1;
-		elseif ($v1["UPPER"] < $v2["UPPER"])
-			return -1;
 		else
-			return 0;
+			return strcmp($v1["UPPER"], $v2["UPPER"]);
 	}
 
 	/*
@@ -950,7 +946,7 @@ class CBitrixCatalogSmartFilter extends CBitrixComponent
 				elseif ($smartElement === "is" || $smartElement === "or")
 				{
 					$valueId = $this->searchValue($item["VALUES"], $smartPart[$i+1]);
-					if ($valueId)
+					if (strlen($valueId))
 					{
 						$result[$item["VALUES"][$valueId]["CONTROL_NAME"]] = $item["VALUES"][$valueId]["HTML_VALUE"];
 					}
@@ -973,13 +969,10 @@ class CBitrixCatalogSmartFilter extends CBitrixComponent
 				//Prices
 				if ($arItem["PRICE"])
 				{
-					if ($arItem["VALUES"]["MIN"]["HTML_VALUE"] || $arItem["VALUES"]["MAX"]["HTML_VALUE"])
-					{
-						if ($arItem["VALUES"]["MIN"]["HTML_VALUE"])
-							$smartPart["from"] = $arItem["VALUES"]["MIN"]["HTML_VALUE"];
-						if ($arItem["VALUES"]["MAX"]["HTML_VALUE"])
-							$smartPart["to"] = $arItem["VALUES"]["MAX"]["HTML_VALUE"];
-					}
+					if (strlen($arItem["VALUES"]["MIN"]["HTML_VALUE"]) > 0)
+						$smartPart["from"] = $arItem["VALUES"]["MIN"]["HTML_VALUE"];
+					if (strlen($arItem["VALUES"]["MAX"]["HTML_VALUE"]) > 0)
+						$smartPart["to"] = $arItem["VALUES"]["MAX"]["HTML_VALUE"];
 				}
 
 				if ($smartPart)
@@ -1002,13 +995,10 @@ class CBitrixCatalogSmartFilter extends CBitrixComponent
 					|| $arItem["DISPLAY_TYPE"] == "U"
 				)
 				{
-					if ($arItem["VALUES"]["MIN"]["HTML_VALUE"] || $arItem["VALUES"]["MAX"]["HTML_VALUE"])
-					{
-						if ($arItem["VALUES"]["MIN"]["HTML_VALUE"])
-							$smartPart["from"] = $arItem["VALUES"]["MIN"]["HTML_VALUE"];
-						if ($arItem["VALUES"]["MAX"]["HTML_VALUE"])
-							$smartPart["to"] = $arItem["VALUES"]["MAX"]["HTML_VALUE"];
-					}
+					if (strlen($arItem["VALUES"]["MIN"]["HTML_VALUE"]) > 0)
+						$smartPart["from"] = $arItem["VALUES"]["MIN"]["HTML_VALUE"];
+					if (strlen($arItem["VALUES"]["MAX"]["HTML_VALUE"]) > 0)
+						$smartPart["to"] = $arItem["VALUES"]["MAX"]["HTML_VALUE"];
 				}
 				else
 				{
@@ -1019,7 +1009,7 @@ class CBitrixCatalogSmartFilter extends CBitrixComponent
 								$ar["CHECKED"]
 								|| $ar["CONTROL_ID"] === $checkedControlId
 							)
-							&& $ar["URL_ID"]
+							&& strlen($ar["URL_ID"])
 						)
 						{
 							$smartPart[] = $ar["URL_ID"];

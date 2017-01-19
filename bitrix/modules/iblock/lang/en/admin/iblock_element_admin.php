@@ -116,4 +116,14 @@ $MESS["IBEL_CATALOG_WIDTH"] = "Width";
 $MESS["IBEL_CATALOG_LENGTH"] = "Length";
 $MESS["IBEL_CATALOG_HEIGHT"] = "Height";
 $MESS["IBEL_CATALOG_EXTRA_DESCRIPTION"] = "Surcharge of #VALUE# to the base price";
+$MESS["IBLOCK_CHANGE_PRICE"] = "update prices";
+$MESS["IBLOCK_CHANGING_PRICE"] = "Update prices";
+$MESS["IBLIST_CHPRICE_ERROR_WRONG_INPUT_VALUE"] = "Update error: incorrect value provided.";
+$MESS["IBLIST_CHPRICE_ERROR_WRONG_CURRENCY"] = "Update error: currency not specified.";
+$MESS["IBLIST_CHPRICE_ERROR_WRONG_VALUE_SIMPLE_ELEMENTS"] = "Update error: the new value for product [##ID#] \"#NAME#\" is less than or equal to zero.";
+$MESS["IBLIST_CHPRICE_ERROR_PRICE_WITH_EXTRA_SIMPLE_ELEMENTS"] = "Error updating [##ID#] \"#NAME#\": cannot change price defined as surcharge to the base price.";
+$MESS["IBLIST_CHPRICE_ERROR_BASE_FROM_EXTRA_SIMPLE_ELEMENTS"] = "Error updating [##ID#] \"#NAME#\": cannot calculate base price using surcharge and the specified price.";
+$MESS["IBLIST_CHPRICE_ERROR_WRONG_VALUE_SKU_ELEMENTS"] = "Update error: the new value of the SKU [##ID#] \"#NAME#\" is less than or equal to zero.";
+$MESS["IBLIST_CHPRICE_ERROR_PRICE_WITH_EXTRA_SKU_ELEMENTS"] = "Error updating SKU [##ID#] \"#NAME#\": cannot change price defined as surcharge to the base price.";
+$MESS["IBLIST_CHPRICE_ERROR_BASE_FROM_EXTRA_SKU_ELEMENTS"] = "Error updating SKU [##ID#] \"#NAME#\": cannot calculate base price using surcharge and the specified price.";
 ?>

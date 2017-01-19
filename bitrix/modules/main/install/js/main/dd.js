@@ -409,12 +409,14 @@ jsDD = {
 		jsDD.x = e.clientX + jsDD.wndSize.scrollLeft;
 		jsDD.y = e.clientY + jsDD.wndSize.scrollTop;
 
-		var delta = 5;
-		if(jsDD.x >= jsDD.start_x-delta && jsDD.x <= jsDD.start_x+delta && jsDD.y >= jsDD.start_y-delta && jsDD.y <= jsDD.start_y+delta)
-			return true;
-
 		if (!jsDD.bStarted)
+		{
+			var delta = 5;
+			if(jsDD.x >= jsDD.start_x-delta && jsDD.x <= jsDD.start_x+delta && jsDD.y >= jsDD.start_y-delta && jsDD.y <= jsDD.start_y+delta)
+				return true;
+
 			jsDD.start();
+		}
 
 		if (jsDD.current_node.onbxdrag)
 		{

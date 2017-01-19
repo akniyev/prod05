@@ -8,7 +8,7 @@ $SECURITY_SESSION_DBH = false;
  */
 class CSecurityDB
 {
-	function Init($bDoConnect = false)
+	public static function Init($bDoConnect = false)
 	{
 		global $SECURITY_SESSION_DBH, $DB;
 		static $DBLogin, $DBPassword, $DBName;
@@ -75,7 +75,7 @@ class CSecurityDB
 		return is_resource($rs);
 	}
 
-	function Disconnect()
+	public static function Disconnect()
 	{
 		global $SECURITY_SESSION_DBH;
 		if(is_resource($SECURITY_SESSION_DBH))
@@ -85,17 +85,17 @@ class CSecurityDB
 		}
 	}
 
-	function CurrentTimeFunction()
+	public static function CurrentTimeFunction()
 	{
 		return "now()";
 	}
 
-	function SecondsAgo($sec)
+	public static function SecondsAgo($sec)
 	{
 		return "DATE_ADD(now(), INTERVAL - ".intval($sec)." SECOND)";
 	}
 
-	function Query($strSql, $error_position)
+	public static function Query($strSql, $error_position)
 	{
 		global $SECURITY_SESSION_DBH;
 
@@ -119,14 +119,14 @@ class CSecurityDB
 		return false;
 	}
 
-	function QueryBind($strSql, $arBinds, $error_position)
+	public static function QueryBind($strSql, $arBinds, $error_position)
 	{
 		foreach($arBinds as $key => $value)
 			$strSql = str_replace(":".$key, "'".$value."'", $strSql);
 		return CSecurityDB::Query($strSql, $error_position);
 	}
 
-	function Fetch($result)
+	public static function Fetch($result)
 	{
 		if($result)
 			return mysql_fetch_array($result, MYSQL_ASSOC);
@@ -134,7 +134,7 @@ class CSecurityDB
 			return false;
 	}
 
-	function Lock($id, $timeout = 60)
+	public static function Lock($id, $timeout = 60)
 	{
 		static $lock_id = "";
 
@@ -158,7 +158,7 @@ class CSecurityDB
 		return is_resource($rsLock);
 	}
 
-	function LockTable($table_name, $lock_id)
+	public static function LockTable($table_name, $lock_id)
 	{
 		$rsLock = CSecurityDB::Query("SELECT GET_LOCK('".md5($lock_id)."', 0) as L", "Module: security; Class: CSecurityDB; Function: LockTable; File: ".__FILE__."; Line: ".__LINE__);
 		if($rsLock)
@@ -175,7 +175,7 @@ class CSecurityDB
 		}
 	}
 
-	function UnlockTable($table_lock)
+	public static function UnlockTable($table_lock)
 	{
 		if(is_array($table_lock))
 			CSecurityDB::Query("SELECT RELEASE_LOCK('".$table_lock["lock_id"]."')", "Module: security; Class: CSecurityDB; Function: UnlockTable; File: ".__FILE__."; Line: ".__LINE__);

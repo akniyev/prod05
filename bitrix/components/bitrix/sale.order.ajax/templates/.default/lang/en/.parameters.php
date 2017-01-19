@@ -25,7 +25,6 @@ $MESS["PRODUCT_COLUMNS_HIDDEN"] = "Additional hidden columns in order products t
 $MESS["SHOW_MAP_FOR_DELIVERIES"] = "Show map for delivery services";
 $MESS["PROPS_FADE_LIST"] = "Visible order properties when block is hidden";
 $MESS["USE_CUSTOM_MESSAGES"] = "Use custom messages";
-$MESS["USE_YM_GOALS"] = "Use Yandex.Metrics goals (Requires active Yandex.Metrics counter on your web page";
 $MESS["YM_GOALS_COUNTER"] = "Yandex.Metrics counter code";
 $MESS["YM_GOALS_EDIT_REGION"] = "Goal ID for editing delivery area";
 $MESS["YM_GOALS_EDIT_DELIVERY"] = "Goal ID for editing delivery ";
@@ -119,4 +118,17 @@ $MESS["SERVICES_IMAGES_SCALING"] = "View mode for additional images";
 $MESS["SHOW_ORDER_BUTTON"] = "Show checkout button (for unauthorized users)";
 $MESS["SHOW_ALWAYS"] = "always";
 $MESS["SHOW_FINAL_STEP"] = "last step only";
+$MESS["USE_YM_GOALS1"] = "Use Yandex.Metrics counter targets";
+$MESS["USE_YM_GOALS_TIP"] = "This requires that a Yandex.Metrics counter is on the page.";
+$MESS["SUCCESS_PRELOAD_TEXT"] = "Notification text to display on order data load success";
+$MESS["SUCCESS_PRELOAD_TEXT_DEFAULT"] = "
+You previously shopped with us and we remember you, so we took the liberty to fill in the fields for you.<br />
+If the information is correct, click \"#ORDER_BUTTON#\".
+";
+$MESS["FAIL_PRELOAD_TEXT"] = "Notification text to display on order data load failure";
+$MESS["FAIL_PRELOAD_TEXT_DEFAULT"] = "
+You previously shopped with us and we remember you, so we have taken the liberty to fill in the fields for you.<br />
+Check the order information thoroughly and edit your order if required. Once you see everything is good, click \"#ORDER_BUTTON#\".
+";
+$MESS["SERVICES_IMAGES_SCALING_TIP"] = "This also affects logos of payment and delivery systems, and pick-up locations.";
 ?>

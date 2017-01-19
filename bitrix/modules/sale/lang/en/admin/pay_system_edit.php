@@ -151,4 +151,9 @@ $MESS["SPS_ORDER_PAY_BEFORE"] = "Pay before";
 $MESS["SPS_DELIVERY_HANDLERS"] = "Delivery services";
 $MESS["SPS_DELIVERY_HANDLERS_DESC"] = "Delivery services linked to payment system";
 $MESS["SPS_JREGION"] = "region";
+$MESS["SPS_AUTO_CHANGE_1C"] = "Enable payment auto change when importing fro  1C";
+$MESS["SPS_IS_CASH"] = "Payment type";
+$MESS["SPS_IS_CASH_TYPE_CASH"] = "Cash";
+$MESS["SPS_IS_CASH_TYPE_NO_CASH"] = "Cashless";
+$MESS["SPS_IS_CASH_TYPE_ACQUIRING"] = "Card transaction";
 ?>

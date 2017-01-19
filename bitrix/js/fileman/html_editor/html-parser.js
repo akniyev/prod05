@@ -528,6 +528,30 @@
 				}
 			}
 
+			//mantis:74639
+			if (nodeName == 'THEAD')
+			{
+				var trs = oldNode.getElementsByTagName('TR'), st;
+				for (i = 0; i < trs.length; i++)
+				{
+					if (trs[i] && trs[i].getAttribute)
+					{
+						st = trs[i].getAttribute('style');
+						if (st
+							&& st.indexOf('mso-yfti-irow') !== -1
+							&& st.indexOf('mso-yfti-irow:0') === -1
+							&& st.indexOf('mso-yfti-irow:-1') === -1
+							&& st.indexOf('mso-yfti-firstrow:yes') === -1
+						)
+						{
+							oldNode.setAttribute('data-bx-new-rule', 'rename_tag');
+							oldNode.setAttribute('data-bx-rename_tag', 'TBODY');
+							break;
+						}
+					}
+				}
+			}
+
 			// Clean pasted div's
 			if (nodeName == 'DIV' || oldNode.style.display == 'block' || nodeName == 'FORM')
 			{
@@ -546,7 +570,7 @@
 				oldNode.setAttribute('data-bx-replace_with_children', '1');
 			}
 
-			// Content pastet from google docs sometimes comes with unused <b style="font-weight: normal"> wrapping
+			// Content pasted from google docs sometimes comes with unused <b style="font-weight: normal"> wrapping
 			if (nodeName == 'B' && oldNode.style.fontWeight == 'normal')
 			{
 				oldNode.setAttribute('data-bx-new-rule', 'replace_with_children');
@@ -679,6 +703,7 @@
 							((nodeName == 'SPAN' || nodeName == 'P') && (styleName == 'width' || styleName == 'height')) || // Sizes for SPAN and P
 							(typeof whiteCssList[styleName] == 'object' && BX.util.in_array(styleValue.toLowerCase(), whiteCssList[styleName])))
 						{
+
 							continue;
 						}
 
@@ -718,7 +743,6 @@
 				node.removeAttribute('style');
 			}
 		},
-
 
 		CheckAltImage: function(img)
 		{
