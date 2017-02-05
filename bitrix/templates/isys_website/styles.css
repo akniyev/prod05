@@ -1,0 +1,48 @@
+.catalog-sections {
+    float: left;
+    width: 20%;
+}
+
+.catalog-sections .catalog-title {
+    font-size: 18pt;
+}
+
+.shop-info, .search-block {
+    margin: 0 auto;
+    width: 400px;
+}
+
+.right-sidebar {
+    float: right;
+    width: 20%;
+}
+
+.right-sidebar .title {
+    font-weight: bold;
+}
+
+.main-bestsellers {
+    width: 50%;
+    margin: 0 auto;
+}
+
+.section-elements .catalog-item {
+    float: left;
+    width: 300px;
+    height: 350px;
+}
+
+
+
+.center {
+    width: 50%;
+    margin: 0 auto;
+}
+
+.section-elements-container {
+    float: left;
+}
+
+.section-pager {
+    width: 100%;
+}
