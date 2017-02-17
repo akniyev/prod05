@@ -9,14 +9,14 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, width=device-width">
-    <link rel="shortcut icon" type="image/x-icon" href="<?=SITE_TEMPLATE_PATH?>favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="<?=SITE_TEMPLATE_PATH?>/favicon.ico" />
 
     <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=PT+Sans+Narrow:400,700" />
 
     <?
     $APPLICATION->ShowHead();
     //$APPLICATION->SetAdditionalCSS(SITE_TEMPLATE_PATH."/colors.css", true);
-    $asset->addJs("https://code.jquery.com/jquery-1.12.4.min.js");
+    //$asset->addJs("https://code.jquery.com/jquery-1.12.4.min.js");
     //$asset->addJs("https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js");
 
     $asset->addCss("/bitrix/css/bootstrap.min.css");
@@ -24,10 +24,27 @@
 
     //Custom Csses
     $asset->addCss("/bitrix/css/prodnew.css");
+
+
+    //Scripts
+    $asset->addJs("https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js");
+    $asset->addJs("/bitrix/js/bootstrap.min.js");
     ?>
 
 
+
     <title><?$APPLICATION->ShowTitle()?></title>
+
+
+
+
+    <!-- Bootstrap
+    <link href="/bitrix/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/bitrix/css/font-awesome.min.css">
+    <link href="/bitrix/css/prodnew.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    -->
+
 
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
@@ -52,7 +69,7 @@
 
             <a id="hcompanyname"class="navbar-brand lightgreentext" href="#">ПродМаркет</a>
 
-            <img id="logotop" src="img/prod05logo.png" alt="ПродМаркет" title="ПродМаркет">
+            <img id="logotop" src="/images/prod05logo.png" alt="ПродМаркет" title="ПродМаркет">
 
             <span  id="hcompany" class="navbar-brand">
             <a id="hphone" href="#">8 (988) 293-78-87 </a>

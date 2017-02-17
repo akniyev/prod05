@@ -2,7 +2,7 @@
 
 </div><!--//workarea-->
 
-<footer class="footer navbar navbar-fixed-bottom" id="ffoot">
+<footer class="navbar navbar-fixed-bottom" id="ffoot">
     <div id="fffoot" class="container nopod-mdlg">
         <div class="lefty">
             <div class="lefty margn-lr-5">
@@ -27,8 +27,8 @@
 
 
 <? //jQuery (necessary for Bootstrap's JavaScript plugins)
-$asset->addJs("https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js");
-$asset->addJs("/bitrix/js/bootstrap.min.js"); ?>
+//$asset->addJs("https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js");
+//$asset->addJs("/bitrix/js/bootstrap.min.js"); ?>
 
 </body>
 </html>

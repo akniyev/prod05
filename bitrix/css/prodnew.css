@@ -332,6 +332,15 @@ a:hover, a:visited{
 }
 
 
+.prodphotosmall {
+    height:180px !important;
+}
+.prodtitle{
+    height:45px !important;
+}
+
+
+
 @media only screen and (max-device-width : 480px){
     .nopod-smxs { padding-left:0 !important; padding-right:0 !important; }
 }
