@@ -41,6 +41,19 @@ a:hover, a:visited{
     text-decoration: none !important;
 }
 
+#navbar li.dropdown>a.dropdown-toggle {
+    float:left; z-index:5000;
+}
+
+#navbar li.active>a {
+    background:#337ab7;
+}
+
+#navbar li.dropdown>ul a {
+    background: #738369;/*#91a586*/
+}
+
+
 #topmenu {
     background: #62705a;
 }

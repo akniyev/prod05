@@ -67,14 +67,15 @@ $strTitle = "";
             }
         } else {
             if ($sectionState == 1) {
-                echo "<li class=\"dropdown ".($wasActive ? "active" : "")."\"><a href=\"".$link."\" class=\"dropdown-toggle\" data-toggle=\"dropdown\" 
-                role=\"button\" aria-haspopup=\"true\" aria-expanded=\"false\">" . $title . "<span class=\"caret\"></span></a>
-                <ul class=\"dropdown-menu\">";
+                echo "<li class=\"dropdown ".($wasActive ? "active" : "")."\">
+                <a href=\"\" class=\"dropdown-toggle\" data-toggle=\"dropdown\" role=\"button\" aria-haspopup=\"true\" 
+                aria-expanded=\"false\"> <i class=\"fa fa-chevron-circle-down\" aria-hidden=\"true\"></i></a>
+                <a href=\"".$link."\" class=\"linker\" >" . $title . "</a> <ul class=\"dropdown-menu\">";
 
                 $sectionState = 2;
             }
 
-            echo "<li ".($isActive ? "class=\"active\"" : "")."><a href=\"".$arSection["SECTION_PAGE_URL"]."\">".$arSection["NAME"]."</a></li>";
+            echo "<li ".($isActive ? "class=\"active\"" : "")."><a href=\"".$arSection["SECTION_PAGE_URL"]."\"><i class=\"fa fa-chevron-circle-right\" aria-hidden=\"true\"></i>&nbsp;&nbsp;".$arSection["NAME"]."</a></li>";
         }
 	}
 	//last one
