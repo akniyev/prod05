@@ -353,6 +353,10 @@ p{
     .nopod-mdlg { padding-left:0 !important; padding-right:0 !important; }
 }
 
+.nopad-left{
+    padding-left:0 !important;
+}
+
 
 /*SIDE MENU*/
 .sidemenu {
