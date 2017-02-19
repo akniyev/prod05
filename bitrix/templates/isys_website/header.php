@@ -78,29 +78,34 @@
 
 
         <div id="navbar" class="navbar-collapse collapse">
-            <ul class="nav navbar-nav">
-                <li class="active"><a href="#">Home</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#contact">Contact</a></li>
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Dropdown <span class="caret"></span></a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#">Action</a></li>
-                        <li><a href="#">Another action</a></li>
-                        <li><a href="#">Something else here</a></li>
-                        <!--<li role="separator" class="divider"></li>
-                        <li class="dropdown-header">Nav header</li> -->
-                        <li><a href="#">Separated link</a></li>
-                        <li><a href="#">One more separated link</a></li>
-                    </ul>
-                </li>
-            </ul>
-            <ul class="nav navbar-nav navbar-right">
-                <li><a href="../navbar/">Default</a></li>
-                <li><a href="../navbar-static-top/">Static top</a></li>
-                <li class="active"><a href="./">Fixed top <span class="sr-only">(current)</span></a></li>
-            </ul>
+            <?$APPLICATION->IncludeComponent("bitrix:catalog.section.list", "isys_tree_top", Array(
+                "ADD_SECTIONS_CHAIN" => "Y",	// Включать раздел в цепочку навигации
+                "CACHE_GROUPS" => "Y",	// Учитывать права доступа
+                "CACHE_TIME" => "36000000",	// Время кеширования (сек.)
+                "CACHE_TYPE" => "A",	// Тип кеширования
+                "COUNT_ELEMENTS" => "Y",	// Показывать количество элементов в разделе
+                "IBLOCK_ID" => "2",	// Инфоблок
+                "IBLOCK_TYPE" => "catalog",	// Тип инфоблока
+                "SECTION_CODE" => "",	// Код раздела
+                "SECTION_FIELDS" => array(	// Поля разделов
+                    0 => "",
+                    1 => "",
+                ),
+                "SECTION_ID" => $_REQUEST["SECTION_ID"],	// ID раздела
+                "SECTION_URL" => "",	// URL, ведущий на страницу с содержимым раздела
+                "SECTION_USER_FIELDS" => array(	// Свойства разделов
+                    0 => "",
+                    1 => "",
+                ),
+                "SHOW_PARENT_NAME" => "Y",
+                "TOP_DEPTH" => "2",	// Максимальная отображаемая глубина разделов
+                "VIEW_MODE" => "LINE"
+            ),
+                false
+            );?>
         </div><!--/.nav-collapse -->
+
+
     </div>
 
     <div class="container" id="maincontainer">

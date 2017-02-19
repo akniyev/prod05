@@ -348,9 +348,13 @@ p{
 
 @media only screen and (max-device-width : 480px){
     .nopod-smxs { padding-left:0 !important; padding-right:0 !important; }
+    .nopad-left-smxs { padding-left:0 !important; }
+    .text-center-smxs { text-align: center !important;}
 }
 @media only screen and (min-device-width : 641px){
     .nopod-mdlg { padding-left:0 !important; padding-right:0 !important; }
+    .nopad-left-mdlg { padding-left:0 !important; }
+    .text-center-mdlg { text-align: center !important;}
 }
 
 .nopad-left{

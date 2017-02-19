@@ -93,7 +93,9 @@ $strAlt = (
         ); ?>
     </h2>
 
-    <div class="col-md-6 col-lg-6 col-sm-12 col-xs-12 nopad-left">
+    <div class="clearfix"></div>
+
+    <div class="col-md-6 col-lg-6 col-sm-12 col-xs-12 nopad-left-mdlg text-center-smxs">
 
         <?if (isset($arResult["DETAIL_PICTURE"]) && ($arResult["DETAIL_PICTURE"]["SRC"] != "")) {
             $imgFile = $arResult["DETAIL_PICTURE"]["SRC"];
@@ -109,7 +111,6 @@ $strAlt = (
              title="<?=$arResult["NAME"]?>" alt="<?=$arResult["NAME"]?>"
              class="img-responsive img-rounded img-thumbnail">
 
-        <?//test_dump($arResult)?>
     </div>
     <br>
 
@@ -136,14 +137,14 @@ $strAlt = (
             </div>
         </div>
 
-        <input type="hidden" id="<?=$strMainID; ?>_price" value="210<?//=$arItem['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>">
+        <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arResult['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>">
 
         <div class="col-xs-1"></div>
 
         <div class="col-xs-5 nopad buybutton2">
             <button class="btn btn-block btn-lg btn-success buybutton">
                 <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
-                <span class="sumprice">210 руб.</span>
+                <span class="sumprice"><?=$arResult['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?></span>
             </button>
         </div>
 
