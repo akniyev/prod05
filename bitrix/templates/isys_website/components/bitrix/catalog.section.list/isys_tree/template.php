@@ -14,8 +14,20 @@ $this->setFrameMode(true);
 
 $strTitle = "";
 ?>
-<div class="catalog-section-list">
-	<?
+
+
+
+<div class="well"><div>
+<ul class="nav nav-list">
+	<? $URLADRESS = $_SERVER['REQUEST_URI'];
+	if (strpos($URLADRESS, "/catalog/") != -1) {
+        $CAT_SEC = str_replace("/catalog/","",$URLADRESS);
+        $CAT_PROD = strstr($CAT_SEC, "/");
+        $CAT_SEC = str_replace($CAT_PROD,"",$CAT_SEC);
+    } else {
+        $CAT_SEC = "";
+    }
+
 	$TOP_DEPTH = $arResult["SECTION"]["DEPTH_LEVEL"];
 	$CURRENT_DEPTH = $TOP_DEPTH;
 
@@ -25,7 +37,11 @@ $strTitle = "";
 		$this->AddDeleteAction($arSection['ID'], $arSection['DELETE_LINK'], CIBlock::GetArrayByID($arSection["IBLOCK_ID"], "SECTION_DELETE"), array("CONFIRM" => GetMessage('CT_BCSL_ELEMENT_DELETE_CONFIRM')));
 		if($CURRENT_DEPTH < $arSection["DEPTH_LEVEL"])
 		{
-			echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH),"<ul>";
+		    if ($arSection["DEPTH_LEVEL"] == 1) {
+                echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH),"<ul class='nav nav-list tree maintree'>";
+            } else {
+			    echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH),"<ul class='nav nav-list tree' style='display: none;'>";
+		    }
 		}
 		elseif($CURRENT_DEPTH == $arSection["DEPTH_LEVEL"])
 		{
@@ -44,9 +60,9 @@ $strTitle = "";
 
 		$count = $arParams["COUNT_ELEMENTS"] && $arSection["ELEMENT_CNT"] ? "&nbsp;(".$arSection["ELEMENT_CNT"].")" : "";
 
-		if ($_REQUEST['SECTION_ID']==$arSection['ID'])
+		if ($CAT_SEC==$arSection['CODE'])
 		{
-			$link = '<b>'.$arSection["NAME"].$count.'</b>';
+			$link = '<b><i class="fa fa-chevron-right" aria-hidden="true"></i>&nbsp;'.$arSection["NAME"].$count.'</b>';
 			$strTitle = $arSection["NAME"];
 		}
 		else
@@ -54,10 +70,19 @@ $strTitle = "";
 			$link = '<a href="'.$arSection["SECTION_PAGE_URL"].'">'.$arSection["NAME"].$count.'</a>';
 		}
 
-		echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH);
-		?><li id="<?=$this->GetEditAreaId($arSection['ID']);?>"><?=$link?><?
+		echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH);?>
+        <li id="<?=$this->GetEditAreaId($arSection['ID']);?>">
 
-		$CURRENT_DEPTH = $arSection["DEPTH_LEVEL"];
+            <?if ($arSection["DEPTH_LEVEL"] == 1) {?>
+                <label class=" tree-toggle nav-header">
+                    <?=$link?>&nbsp;
+                    <i class="fa fa-chevron-circle-down" aria-hidden="true"></i>
+                </label>
+            <?} else {?>
+                <?=$link?>
+            <?}?>
+
+        <?$CURRENT_DEPTH = $arSection["DEPTH_LEVEL"];
 	}
 
 	while($CURRENT_DEPTH > $TOP_DEPTH)
@@ -67,5 +92,16 @@ $strTitle = "";
 		$CURRENT_DEPTH--;
 	}
 	?>
-</div>
-<?=($strTitle?'<br/><h2>'.$strTitle.'</h2>':'')?>
+</ul>
+</div></div>
+
+<?//=($strTitle?'<br/><h2>'.$strTitle.'</h2>':'')?>
+
+
+
+
+<script type="text/javascript">
+    $('.tree-toggle').click(function () {
+        $(this).parent().children('ul.tree').toggle(200);
+    });
+</script>

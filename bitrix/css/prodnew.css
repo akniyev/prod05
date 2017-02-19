@@ -5,7 +5,7 @@
     src: local('PT Sans Narrow'), local('PTSans-Narrow'), url(https://fonts.gstatic.com/s/ptsansnarrow/v7/UyYrYy3ltEffJV9QueSi4Z4t0mJKPaLVqklzZuc32b4.woff) format('woff');
 }
 
-h1,h2,h3,h4,p,a {
+h1,h2,h3,h4,p,a,li {
     font-family: 'PT Sans Narrow' !important;
 }
 
@@ -326,14 +326,19 @@ a:hover, a:visited{
 .text-red{
     color: #eb302a !important;
 }
-
-.p11{
-    font-size:1.1em;
+.text-italic{
+    font-style: italic;
+}
+p{
+    font-size:1.2em;
 }
 
 
 .prodphotosmall {
     height:180px !important;
+}
+.prodphotoverysmall {
+    height:100px !important;
 }
 .prodtitle{
     height:45px !important;
@@ -344,111 +349,72 @@ a:hover, a:visited{
 @media only screen and (max-device-width : 480px){
     .nopod-smxs { padding-left:0 !important; padding-right:0 !important; }
 }
-@media only screen and (min-device-width : 481px){
+@media only screen and (min-device-width : 641px){
     .nopod-mdlg { padding-left:0 !important; padding-right:0 !important; }
 }
 
 
 /*SIDE MENU*/
-@media (min-width: 768px){
-    .affix-content .container {
-        width: 700px;
-    }
-
-    .affix-content .container .page-header{
-        margin-top: 0;
-    }
-
-    .affix-sidebar{
-        padding-right:0;
-        font-size:small;
-        padding-left: 0;
-    }
-    .affix-row, .affix-container, .affix-content{
-        height: 100%;
-        overflow: scroll;
-        margin-left: 0;
-        margin-right: 0;
-    }
-    .affix-content{
-        background-color:white;
-    }
-    .sidebar-nav .navbar .navbar-collapse {
-        padding: 0;
-        max-height: none;
-    }
-    .sidebar-nav .navbar{
-        border-radius:0;
-        margin-bottom:0;
-        border:0;
-    }
-    .sidebar-nav .navbar ul {
-        float: none;
-        display: block;
-    }
-    .sidebar-nav .navbar li {
-        float: none;
-        display: block;
-    }
-    .sidebar-nav .navbar li a {
-        padding-top: 12px;
-        padding-bottom: 12px;
-    }
+.sidemenu {
+    margin-left:-15px;
+    margin-right: 15px;
+}
+.sidemenu a {
+    font-size: 1.2em;
+    line-height:1em;
+}
+.sidemenu ul.maintree>li>label>a {
+    font-size: 1.3em;
+    line-height:1.3em;
+}
+.sidemenu .well {
+    padding-left:30px;
+}
+.sidemenu .sideheader {
+    padding-left:30px;
 }
 
-@media (min-width: 769px){
-    .affix-content .container {
-        width: 600px;
-    }
-    .affix-content .container .page-header{
-        margin-top: 0;
-    }
+.sidemenu .well label {
+    font-family: 'PT Sans Narrow';
+ }
+.sidemenu .well label>b {
+    font-size: 1.3em;
+    line-height:1.3em;
+    color: #225280;
+}
+.sidemenu .well label a {
+    font-weight:normal;
+}
+.sidemenu .well label a{
+    cursor: default;
+}
+.sidemenu .well label i{
+    margin-top:-5px;
+    cursor: pointer;
+    color:#5e8054;
 }
 
-@media (min-width: 992px){
-    .affix-content .container {
-        width: 900px;
-    }
-    .affix-content .container .page-header{
-        margin-top: 0;
-    }
+.sidemenu .well ul ul li>b {
+    font-family: 'PT Sans Narrow';
+    display: block;
+    font-size: 1.2em;
+    line-height:1em;
+    color: #225280;
+    padding:10px 15px;
 }
 
-@media (min-width: 1220px){
-    .affix-row{
-        overflow: hidden;
-    }
+ul.bxe-lis-blue {
+    list-style-type: none;
+    font-style:italic;
+    padding-left:10px;
+}
+ul.bxe-lis-blue i {
+    color: #225280;
+}
 
-    .affix-content{
-        overflow: auto;
-    }
-
-    .affix-content .container {
-        width: 1000px;
-    }
-
-    .affix-content .container .page-header{
-        margin-top: 0;
-    }
-    .affix-content{
-        padding-right: 30px;
-        padding-left: 30px;
-    }
-    .affix-title{
-        border-bottom: 1px solid #ecf0f1;
-        padding-bottom:10px;
-    }
-    .navbar-nav {
-        margin: 0;
-    }
-    .navbar-collapse{
-        padding: 0;
-    }
-    .sidebar-nav .navbar li a:hover {
-        background-color: #428bca;
-        color: white;
-    }
-    .sidebar-nav .navbar li a > .caret {
-        margin-top: 8px;
-    }
+.p12{
+    font-size:1.2em;
+}
+.p13{
+    font-size:1.3em;
 }

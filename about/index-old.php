@@ -1,66 +1,58 @@
-<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
+<?
+require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
 $APPLICATION->SetPageProperty("title", "Онлайн-магазин «ПродМаркет»");
-$APPLICATION->SetTitle("Онлайн-магазин «ПродМаркет» ");?>
-
-
-<div class="col-xs-12 col-sm-12 col-md-9 col-lg-9">
-        <h2 class="darkbluetext text-right">
-            ПродМаркет: Лучшая доставка продуктов!
-        </h2>
-		<p class="text-justify">
+$APPLICATION->SetTitle("Онлайн-магазин «ПродМаркет» ");
+?><div class="row">
+	<div class="col-xs-12">
+		<p>
 			 Забудьте о пробках, очередях или поиске товаров на полках. Заказ продуктов в режиме онлайн избавит Вас от этих пережитков прошлого. Теперь все необходимые продукты у вас в смартфоне.
 		</p>
-		<p class="text-justify">
+		<p>
 			 Онлайн–супермаркет «ПродМаркет» был создан для того , чтобы хоть немного облегчить жизнь жителям &nbsp;нашей столицы и ее пригорода. Вы освобождаете себя от тягостных и нудных походов на рынок или супермаркет, тем самым экономя свое бесценное время для любимых занятий . Добавляйте понравившиеся товары в корзину и не переживайте о весе или объёме упаковки, ведь Вам не придётся нести тяжёлые сумки!&nbsp;
 		</p>
-		<p class="text-justify">
+		<p>
 			 В кратчайшие сроки мы доставим самые качественные и самые свежие продукты в Ваш дом, офис, кафе или магазин. Вы можете не беспокоиться о том, что Вам привезут испорченные продукты, так как если привезенный товар не оправдал Ваши ожидания (имелся дефект или привезли не то, что заказали) то Вы имеете полное право вернуть данный товар обратно. Кроме того, мы акцентировали свое внимание на ценах, сделав их ниже так называемых&nbsp;«низких».&nbsp;
 		</p>
-		<p class="text-justify">
+		<p>
 			 Мы специализируется на оптовой и розничной продаже продуктов как для дома, так и для небольших розничных магазинов и кафе. Собственный склад c постоянным наличием необходимого запаса товаров, квалифицированные сборщики и служба доставки позволяют нам работать не только с конечным потребителем, но и обслуживать малый бизнес –&nbsp;гастрономы, HoReCa (отели, рестораны, кафе).
 		</p>
-		<p class="text-justify">
+		<p>
 			 Мы оперативно реагируем на потребности каждого покупателя и сотрудничаем напрямую только с проверенными поставщиками . Буквально каждый день ассортимент нашего товара обновляется и увеличивается. Мы постарались для Вас максимально упростить повседневную покупку необходимых продуктов. Сделайте свою жизнь легче!<br>
 		</p>
-
-		<h2 class="darkbluetext text-right">
-            Преимущества нашего магазина
-		</h2><br>
+		<p>
+ <span style="color: inherit; font-family: &quot;Open Sans&quot;, &quot;Helvetica Neue&quot;, Arial, Helvetica, sans-serif; font-size: 30px;"><br>
+ </span>
+		</p>
+		<p>
+ <span style="color: inherit; font-family: &quot;Open Sans&quot;, &quot;Helvetica Neue&quot;, Arial, Helvetica, sans-serif; font-size: 30px;">Преимущества нашего магазина</span><br>
+		</p>
 		<div class="row">
-			<div class="col-xs-4 text-left">
+			<div class="col-xs-4">
 				<ul class="bxe-list bxe-lis-blue">
 					<li><i class="fa fa-check"></i> <span style="font-size:13px;">Экономия времени</span></li>
 					<li><i class="fa fa-check"></i> <span style="font-size:13px;">Качественные и свежие продукты</span></li>
 					<li><i class="fa fa-check"></i> <span style="font-size:13px;">Самые низкие цены</span></li>
 				</ul>
 			</div>
-			<div class="col-xs-4 text-left">
+			<div class="col-xs-4">
 				<ul class="bxe-list bxe-lis-blue">
-                    <li><i class="fa fa-check"></i> <span style="font-size:13px;">Широкий ассортимент</span></li>
+<li><i class="fa fa-check"></i> <span style="font-size:13px;">Широкий ассортимент</span></li>
 					<li><i class="fa fa-check"></i> <span style="font-size:13px;">Отличное обслуживание</span></span></li>
 					<li><i class="fa fa-check"></i> <span style="font-size:13px;">Своевременная и бесплатная доставка</span></li>
-                </ul>
-            </div>
-            <div class="col-xs-4 text-left">
-                <ul class="bxe-list bxe-lis-blue">
-                    <li><i class="fa fa-check"></i> <span style="font-size:13px;">Гарантия на все товары</span></li>
+					</ul></div><div class="col-xs-4"><ul class="bxe-list bxe-lis-blue">
+<li><i class="fa fa-check"></i> <span style="font-size:13px;">Гарантия на все товары</span></li>
 					<li><i class="fa fa-check"></i> <span style="font-size:13px;">Надежные поставщики</span></li>
 					<li><i class="fa fa-check"></i> <span style="font-size:13px;">С нами легко и удобно!</li>
 				</ul>
 			</div>
 		</div>
-            <br>
-		<p class="text-justify">
+ <br>
+		<p><br></p><p>
 			 Мы всегда рады помочь нашим&nbsp;клиентам в осуществлении заказов на нашем сайте. Если у вас возникли какие-то замечания, предложения или пожелания относительно работы нашего онлайн-супермаркета,&nbsp;пишите нам, и мы с благодарностью примем ваше мнение во внимание:
 		</p>
 		<p>
-            <b>Электронная почта</b>: <a href="mailto:sale@prod05.ru">sale@prod05.ru</a>
+ <b>Электронная почта</b>: <a href="mailto:sale@prod05.ru">sale@prod05.ru</a>
 		</p>
-
-
-</div><br><br>
-
-
-
-
-<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>
+	</div>
+</div><br>
+ <br><?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>

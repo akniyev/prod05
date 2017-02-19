@@ -3,58 +3,7 @@ $APPLICATION->SetPageProperty("title", "ПродМаркет: Лучшая до�
 $APPLICATION->SetTitle("ПродМаркет: Лучшая доставка продуктов");?>
 
 
-<?$APPLICATION->IncludeComponent(
-    "bitrix:main.include",
-    ".default",
-    array(
-        "AREA_FILE_SHOW" => "file",
-        "AREA_FILE_SUFFIX" => "inc",
-        "EDIT_TEMPLATE" => "",
-        "COMPONENT_TEMPLATE" => ".default",
-        "PATH" => "/include/mainpage-greet.php"
-    ),
-    false
-);?>
 
-<div class="clearfix"></div>
-
-
-<div class="col-md-3 col-lg-3 hidden-xs hidden-sm nopad">
-
-    <div class="col-sm-12 col-xs-12 col-md-12 col-lg-12  nopod-smxs">
-        <h3 class="text-left darkgreentext">
-            <i class="fa fa-list" aria-hidden="true"></i>&nbsp;Каталог
-        </h3><br>
-    </div>
-
-
-    <?$APPLICATION->IncludeComponent("bitrix:catalog.section.list", "isys_tree", Array(
-	"ADD_SECTIONS_CHAIN" => "Y",	// Включать раздел в цепочку навигации
-		"CACHE_GROUPS" => "Y",	// Учитывать права доступа
-		"CACHE_TIME" => "36000000",	// Время кеширования (сек.)
-		"CACHE_TYPE" => "A",	// Тип кеширования
-		"COUNT_ELEMENTS" => "Y",	// Показывать количество элементов в разделе
-		"IBLOCK_ID" => "2",	// Инфоблок
-		"IBLOCK_TYPE" => "catalog",	// Тип инфоблока
-		"SECTION_CODE" => "",	// Код раздела
-		"SECTION_FIELDS" => array(	// Поля разделов
-			0 => "",
-			1 => "",
-		),
-		"SECTION_ID" => $_REQUEST["SECTION_ID"],	// ID раздела
-		"SECTION_URL" => "",	// URL, ведущий на страницу с содержимым раздела
-		"SECTION_USER_FIELDS" => array(	// Свойства разделов
-			0 => "",
-			1 => "",
-		),
-		"SHOW_PARENT_NAME" => "Y",
-		"TOP_DEPTH" => "2",	// Максимальная отображаемая глубина разделов
-		"VIEW_MODE" => "LINE"
-	),
-	false
-);?>
-
-</div>
 
 
 
