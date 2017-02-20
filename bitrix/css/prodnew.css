@@ -28,7 +28,9 @@ body {
 }
 
 
-
+.ptsans {
+    font-family: "PT Sans Narrow" !important;
+}
 
 #maincontainer {
     background: #ecf8e5;
