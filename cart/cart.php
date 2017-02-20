@@ -1,5 +1,4 @@
-<?
-require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_before.php");
+<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_before.php");
 
 //file_put_contents("test.txt",print_r($_SERVER,true));
 
@@ -74,7 +73,7 @@ if (CModule::IncludeModule("catalog"))
                 $arItems[] = $arFields;
             }
             //formatting price
-            $totalPriceF = CurrencyHandler::convertToCurrentAndFormat($totalPrice);
+            $totalPriceF = "$totalPrice руб.";
             echo "{\"id\": $r_id , \"count\": $totalQuantity, \"price\": \"$totalPriceF\"}";
             //echo "{'id': $r_id , 'count': $cntBasketItems}";
             exit(0);
@@ -95,5 +94,4 @@ if (CModule::IncludeModule("catalog"))
     }
 }
 
-require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/epilog_after.php");
-?>
+require($_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/epilog_after.php");?>
