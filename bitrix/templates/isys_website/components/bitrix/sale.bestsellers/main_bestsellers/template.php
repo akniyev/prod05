@@ -9,8 +9,9 @@ $this->setFrameMode(true);
 $strElementEdit = CIBlock::GetArrayByID($arParams["IBLOCK_ID"], "ELEMENT_EDIT");
 $strElementDelete = CIBlock::GetArrayByID($arParams["IBLOCK_ID"], "ELEMENT_DELETE");
 $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELETE_CONFIRM'));
-
 ?>
+
+
 <? if (!empty($arResult['ITEMS'])): ?>
 <?foreach ($arResult['ITEMS'] as $key => $arItem):
     $this->AddEditAction($arItem['ID'], $arItem['EDIT_LINK'], $strElementEdit);
@@ -32,18 +33,18 @@ $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELET
             <div class="container-fluid nopad prodquantity">
                 <div class="input-group number-spinner">
                     <span class="input-group-btn">
-                        <button class="btn btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
+                        <button id="<?=$strMainID; ?>_minus" class="btn btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
                     </span>
                     <input type="text" id="<?=$strMainID; ?>_quantity" class="prodquant form-control text-center btn-block" value="1">
                     <span class="input-group-btn">
-                        <button class="btn btn-primary" data-dir="up"><span class="glyphicon glyphicon-plus"></span></button>
+                        <button id="<?=$strMainID; ?>_plus" class="btn btn-primary" data-dir="up"><span class="glyphicon glyphicon-plus"></span></button>
                     </span>
                 </div>
             </div>
 
 
             <div class="container-fluid nopad">
-                <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arItem['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>">
+                <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arItem['PRICES']['Продажа через интернет-магазин']['VALUE']?>">
                 <button class="btn btn-block btn-lg btn-success buybutton addtocart-button">
                     <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
                     <span class="sumprice">
@@ -53,100 +54,50 @@ $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELET
             </div>
 
 
-            <script type="text/javascript">
-                $(".number-spinner>span>button").click(function() {
-                    var btn = $(this),
-                        oldValue = btn.closest('.number-spinner').find('input').val().trim(),
-                        newVal = 0,
-                        price = parseFloat(btn.closest('.proditem').find('input[type=hidden]').val().trim());
-
-                    if (btn.attr('data-dir') == 'up') {
-                        newVal = parseInt(oldValue) + 1;
-                    } else {
-                        if (oldValue > 1) {
-                            newVal = parseInt(oldValue) - 1;
-                        } else {
-                            newVal = 1;
-                        }
-                    }
-                    btn.closest('.number-spinner').find('input').val(newVal);
-
-                    var newPrice = newVal*price;
-                    btn.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
-                });
-            </script>
-
-
             </div></div>
 
-        <?/*<div class="catalog-item" id="<? echo $strMainID; ?>">
-            <a href="<?=$arItem['DETAIL_PAGE_URL']?>">
-                <img src="<?=$arItem['PREVIEW_PICTURE']['SRC']?>" />
-                <div class="title"><?=$arItem['NAME']?></div>
-            </a>
-            <div class="price"><?=$arItem['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?></div>
-            <div>
-                <span>+</span>
-                <span class="addtocart-button">Добавить в корзину</span>
-                <span>-</span>
-            </div>
-        </div>*/?>
-
-        <?/*<div class="col-xs-6 col-sm-6 col-md-4 col-lg-3"><div class="thumbnail nopad proditem">
-
-            <img src="/images/food1.png" title="Радость Русика" alt="Радость Русика" class="img-responsive img-rounded img-thumbnail">
-            <h4 class="prodtitle text-center">
-                <a href="#">
-                    Продуктовый комплект "Радость Русика"
-                </a>
-            </h4>
-            <!--<h3 class="prodprice text-right">
-                210 руб.
-            </h3>-->
-
-            <div class="container-fluid nopad prodquantity">
-                <div class="input-group number-spinner">
-                <span class="input-group-btn">
-                    <button class="btn btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
-                </span>
-                    <input type="text" class="prodquant form-control text-center btn-block" value="2">
-                    <span class="input-group-btn">
-                    <button class="btn btn-primary" data-dir="up"><span class="glyphicon glyphicon-plus"></span></button>
-                </span>
-                </div>
-            </div>
-
-            <script type="text/javascript">
-                $(".number-spinner>button").click(function() {
-                    var btn = $(this),
-                        oldValue = btn.closest('.number-spinner').find('input').val().trim(),
-                        newVal = 0;
-
-                    if (btn.attr('data-dir') == 'up') {
-                        newVal = parseInt(oldValue) + 1;
-                    } else {
-                        if (oldValue > 1) {
-                            newVal = parseInt(oldValue) - 1;
-                        } else {
-                            newVal = 1;
-                        }
-                    }
-                    btn.closest('.number-spinner').find('input').val(newVal);
-                });
-            </script>
-
-            <div class="container-fluid nopad">
-                <button class="btn btn-block btn-lg btn-success buybutton">
-                    <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
-                    420 руб
-                </button>
-            </div>
-
-
-        </div></div>*/?>
 
 
 
 
 <? endforeach; ?>
+
+<script type="text/javascript">
+    $(".number-spinner button.btn").click(function() {
+        var btn = $(this),
+            oldValue = btn.closest('.number-spinner').find('input').val().trim(),
+            newVal = 0,
+            price = parseFloat(btn.closest('.proditem').find('input[type=hidden]').val().trim());
+
+        if (btn.attr('data-dir') == 'up') {
+            newVal = parseInt(oldValue) + 1;
+        } else {
+            if (oldValue > 1) {
+                newVal = parseInt(oldValue) - 1;
+            } else {
+                newVal = 1;
+            }
+        }
+        btn.closest('.number-spinner').find('input').val(newVal);
+
+        var newPrice = newVal*price;
+        btn.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
+    });
+
+    $(".number-spinner input.prodquant").change(function() {
+        var inp = $(this);
+        inp.val(Math.round(inp.val().trim()));
+
+        var quant = inp.val().trim(),
+            quant = inp.val().trim(),
+            price = parseFloat(inp.closest('.proditem').find('input[type=hidden]').val().trim()),
+            newPrice = quant*price;
+
+
+        inp.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
+    });
+
+</script>
+
+
 <? endif; ?>

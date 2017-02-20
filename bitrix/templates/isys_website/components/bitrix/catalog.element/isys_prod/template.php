@@ -128,16 +128,16 @@ $strAlt = (
         <div class="col-xs-6 nopad prodquantity2">
             <div class="input-group number-spinner">
                 <span class="input-group-btn">
-                    <button class="btn btn-lg btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
+                    <button id="<?=$strMainID; ?>_minus" class="btn btn-lg btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
                 </span>
                 <input type="text" class="prodquant2 form-control text-center btn-block" value="1">
                 <span class="input-group-btn">
-                    <button class="btn btn-lg btn-primary" data-dir="up"><span class="glyphicon glyphicon-plus"></span></button>
+                    <button id="<?=$strMainID; ?>_plus" class="btn btn-lg btn-primary" data-dir="up"><span class="glyphicon glyphicon-plus"></span></button>
                 </span>
             </div>
         </div>
 
-        <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arResult['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>">
+        <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arResult['PRICES']['Продажа через интернет-магазин']['VALUE']?>">
 
         <div class="col-xs-1"></div>
 
@@ -148,34 +148,46 @@ $strAlt = (
             </button>
         </div>
 
-
-
-        <script type="text/javascript">
-            $(".number-spinner>span>button").click(function() {
-                var btn = $(this),
-                    oldValue = btn.closest('.number-spinner').find('input').val().trim(),
-                    newVal = 0,
-                    price = parseFloat(btn.closest('.proddescription').find('input[type=hidden]').val().trim());
-
-                if (btn.attr('data-dir') == 'up') {
-                    newVal = parseInt(oldValue) + 1;
-                } else {
-                    if (oldValue > 1) {
-                        newVal = parseInt(oldValue) - 1;
-                    } else {
-                        newVal = 1;
-                    }
-                }
-                btn.closest('.number-spinner').find('input').val(newVal);
-
-                var newPrice = newVal*price;
-                btn.closest('.proddescription').find('.sumprice').text(newPrice+" руб.");
-            });
-        </script>
-
-
-
     </div>
+
+    <script type="text/javascript">
+        $(".number-spinner>span>button").click(function() {
+            var btn = $(this),
+                oldValue = btn.closest('.number-spinner').find('input').val().trim(),
+                newVal = 0,
+                price = parseFloat(btn.closest('.proddescription').find('input[type=hidden]').val().trim());
+
+            if (btn.attr('data-dir') == 'up') {
+                newVal = parseInt(oldValue) + 1;
+            } else {
+                if (oldValue > 1) {
+                    newVal = parseInt(oldValue) - 1;
+                } else {
+                    newVal = 1;
+                }
+            }
+            btn.closest('.number-spinner').find('input').val(newVal);
+
+            var newPrice = newVal*price;
+            btn.closest('.proddescription').find('.sumprice').text(newPrice+" руб.");
+        });
+
+
+        $(".number-spinner input.prodquant2").change(function() {
+            var inp = $(this);
+            inp.val(Math.round(inp.val().trim()));
+
+            var quant = inp.val().trim(),
+                price = parseFloat(inp.closest('.proddescription').find('input[type=hidden]').val().trim()),
+                newPrice = quant*price;
+
+
+            inp.closest('.proddescription').find('.sumprice').text(newPrice+" руб.");
+        });
+
+    </script>
+
+
     <br>
 
 
