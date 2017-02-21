@@ -45,7 +45,7 @@ $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELET
 
             <div class="container-fluid nopad">
                 <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arItem['PRICES']['Продажа через интернет-магазин']['VALUE']?>">
-                <button class="btn btn-block btn-lg btn-success buybutton addtocart-button" data-item-id="<?=$strMainID;?>" data-item-quantity="<?=$strMainID; ?>_quantity">
+                <button class="btn btn-block btn-lg btn-success buybutton addtocart-button" data-item-id="<?=$arItem['ID'];?>" data-item-quantity="<?=$strMainID; ?>_quantity">
                     <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
                     <span class="sumprice">
                         <?=$arItem['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>
