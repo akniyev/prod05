@@ -54,6 +54,10 @@
     <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
     <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
+
+    <? $isFrontPage = CSite::InDir(SITE_DIR . 'index.php'); ?>
+    <? $isCatalog = CSite::InDir(SITE_DIR . 'catalog/'); ?>
+
 </head>
 <body>
     <div id="panel"><?$APPLICATION->ShowPanel();?></div>
@@ -64,7 +68,7 @@
         <div class="navbar-header">
             <button id="barrrs" type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
                     aria-expanded="false" aria-controls="navbar">
-                <span class="sr-only">Toggle navigation</span>
+                <span class="sr-only">Каталог</span>
                 <i class="fa fa-bars" aria-hidden="true"></i>
             </button>
 

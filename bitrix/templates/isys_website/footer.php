@@ -11,6 +11,16 @@
                 </a>
             </div>
             <div class="lefty margn-lr-5">
+
+                <?/* Bitrix\Main\Page\Frame::getInstance()->startDynamicWithID("small-basket-block"); ?>
+                <? $APPLICATION->IncludeComponent("bitrix:sale.basket.basket.small", "isprod", Array(
+                    "PATH_TO_BASKET" => "/basket/",	// Страница корзины
+                    "PATH_TO_ORDER" => "/order/",	// Страница оформления заказа
+                ),
+                    false
+                ); ?>
+                <? Bitrix\Main\Page\Frame::getInstance()->finishDynamicWithID("small-basket-block", ""); */?>
+
                 <span class="bastop">В корзине 12 товаров на сумму</span><br>
                 <span class="basbott lightgreentext">2578 руб.</span>
             </div>
