@@ -12,17 +12,19 @@
             </div>
             <div class="lefty margn-lr-5">
 
-                <?/* Bitrix\Main\Page\Frame::getInstance()->startDynamicWithID("small-basket-block"); ?>
+                <? Bitrix\Main\Page\Frame::getInstance()->startDynamicWithID("small-basket-block"); ?>
                 <? $APPLICATION->IncludeComponent("bitrix:sale.basket.basket.small", "isprod", Array(
-                    "PATH_TO_BASKET" => "/basket/",	// Страница корзины
-                    "PATH_TO_ORDER" => "/order/",	// Страница оформления заказа
+                    "PATH_TO_BASKET" => "/personal/cart/",	// Страница корзины
+                    "PATH_TO_ORDER" => "/personal/order/",	// Страница оформления заказа
                 ),
                     false
                 ); ?>
-                <? Bitrix\Main\Page\Frame::getInstance()->finishDynamicWithID("small-basket-block", ""); */?>
+                <? Bitrix\Main\Page\Frame::getInstance()->finishDynamicWithID("small-basket-block", ""); ?>
 
+                <?/*
                 <span class="bastop">В корзине 12 товаров на сумму</span><br>
                 <span class="basbott lightgreentext">2578 руб.</span>
+                */?>
             </div>
         </div>
 
@@ -36,6 +38,16 @@
         </div>
     </div>
 </footer>
+
+
+
+<script type="text/javascript">
+    $(function() {
+        Cart.Init();
+        //$('[data-toggle="tooltip"]').tooltip({title: "Добавлено в корзину", html: false, placement: "top", trigger: "click"});
+    });
+</script>
+
 
 
 <? //jQuery (necessary for Bootstrap's JavaScript plugins)

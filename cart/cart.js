@@ -24,16 +24,18 @@ Cart.AddItem = function (id, quantity)
 
 Cart.Init = function()
 {
-    $('a.addtocart').click(function(){
+    $('.addtocart-button').click(function(){
         var addLink = this;
         $(addLink).addClass("adding");
         var id = this.getAttribute('data-item-id');
         var quantid = this.getAttribute('data-item-quantity');
-        var addedid = this.getAttribute('id')+"_added";
-        var added = $("#"+addedid);
-        var nonaddedid = this.getAttribute('id')+"_nonadded";
-        var nonadded = $("#"+nonaddedid);
         var quantity = $("#"+quantid).val();
+        /*
+         var addedid = this.getAttribute('id')+"_added";
+         var added = $("#"+addedid);
+         var nonaddedid = this.getAttribute('id')+"_nonadded";
+         var nonadded = $("#"+nonaddedid);
+         */
         console.log(id);
         console.log(quantity);
         if ((quantity == null) || (typeof quantity === 'undefined') || (quantity == "")) { quantity = 1; }
@@ -43,19 +45,20 @@ Cart.Init = function()
                 //showing popup
                 console.log("success");
                 console.log(data);
-                show_popup(added);
+
                 //$(addLink).tooltip({title: "Добавлено в корзину", html: false, placement: "right", trigger: "manual", container: "body"}).show();
                 //setTimeout(function() {$(addLink).tooltip('destroy')},10000);
 
                 //adding to top cart sum
+                /*show_popup(added);
                 var priceF = jQuery.parseJSON(data);
-                $("#popup_basket").html("<span class='glyphicon glyphicon-shopping-cart'></span>&nbsp;&nbsp;Корзина: " + priceF['price']);
+                $("#popup_basket").html("<span class='glyphicon glyphicon-shopping-cart'></span>&nbsp;&nbsp;Корзина: " + priceF['price']);*/
             })
             .fail(function(data)
             {
                 console.log("fail");
-                console.log(data);
-                show_popup(nonadded);
+                /*console.log(data);
+                show_popup(nonadded);*/
 
                 //$(addLink).tooltip({title: "Ошибка добавления в корзину", html: false, placement: "right", trigger: "manual", container: "body"}).tooltip('show');
                 //setTimeout(function() {$(addLink).tooltip('destroy')},1000);
