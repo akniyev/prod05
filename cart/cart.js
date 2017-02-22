@@ -26,39 +26,49 @@ Cart.Init = function()
 {
     $('.addtocart-button').click(function(){
         var addLink = this;
-        $(addLink).addClass("adding");
+
+        var icon = $(addLink).children("i");
+        $(icon).removeClass("fa-shopping-basket").addClass("fa-spinner fa-pulse fa-3x fa-fw");
+
         var id = this.getAttribute('data-item-id');
         var quantid = this.getAttribute('data-item-quantity');
         var quantity = $("#"+quantid).val();
-        /*
-         var addedid = this.getAttribute('id')+"_added";
-         var added = $("#"+addedid);
-         var nonaddedid = this.getAttribute('id')+"_nonadded";
-         var nonadded = $("#"+nonaddedid);
-         */
-        console.log(id);
-        console.log(quantity);
+
+        var addedid = id+"_added";
+        var added = $("#"+addedid);
+        var nonaddedid = id+"_nonadded";
+        var nonadded = $("#"+nonaddedid);
+
         if ((quantity == null) || (typeof quantity === 'undefined') || (quantity == "")) { quantity = 1; }
         Cart.AddItem(id, quantity)
             .done(function(data)
             {
-                //showing popup
                 console.log("success");
                 console.log(data);
 
+                //showing popup
                 //$(addLink).tooltip({title: "Добавлено в корзину", html: false, placement: "right", trigger: "manual", container: "body"}).show();
                 //setTimeout(function() {$(addLink).tooltip('destroy')},10000);
 
                 //adding to top cart sum
-                /*show_popup(added);
+                show_popup(added);
                 var priceF = jQuery.parseJSON(data);
-                $("#popup_basket").html("<span class='glyphicon glyphicon-shopping-cart'></span>&nbsp;&nbsp;Корзина: " + priceF['price']);*/
+                $("span.baskettotalprice").text(priceF['price']);
+
+                var currQuant = $("span.baskettotalquantity").text();
+                console.log(currQuant);
+                if (currQuant == "0") {
+                    $("span.baskettotalquantity").closest(".bastop").html("В корзине <span class=\"baskettotalquantity\"><?=$quantity?></span> товаров на сумму</span>");
+                }
+                $("span.baskettotalquantity").text(priceF['count']);
+
+                $(icon).removeClass("fa-spinner fa-pulse fa-3x fa-fw").addClass("fa-shopping-basket");
             })
             .fail(function(data)
             {
                 console.log("fail");
-                /*console.log(data);
-                show_popup(nonadded);*/
+                console.log(data);
+                show_popup(nonadded);
 
                 //$(addLink).tooltip({title: "Ошибка добавления в корзину", html: false, placement: "right", trigger: "manual", container: "body"}).tooltip('show');
                 //setTimeout(function() {$(addLink).tooltip('destroy')},1000);

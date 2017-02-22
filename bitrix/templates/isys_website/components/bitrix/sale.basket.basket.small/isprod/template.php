@@ -26,10 +26,10 @@ foreach($arResult["ITEMS"] as $arItem){
 
         <?if($itemsCount):?>
             <span class="bastop">В корзине <span class="baskettotalquantity"><?=$quantity?></span> товаров на сумму</span><br>
-            <span class="basbott lightgreentext"><span class="baskettotalprice lightgreentext"><?=$summ?></span> руб.</span>
+            <span class="basbott lightgreentext"><span class="baskettotalprice lightgreentext"><?=$summ?> руб.</span></span>
         <?else:?>
-            <span class="bastop">Корзина пуста</span><span class="baskettotalquantity hidden">0</span><br>
-            <span class="basbott lightgreentext"><span class="baskettotalprice">0</span> руб.</span>
+            <span class="bastop">Корзина пуста<span class="baskettotalquantity hidden">0</span></span><br>
+            <span class="basbott lightgreentext"><span class="baskettotalprice lightgreentext">0 руб.</span> </span>
         <?endif;?>
 
     </a>

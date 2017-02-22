@@ -44,17 +44,30 @@ $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELET
 
 
             <div class="container-fluid nopad">
+
+                <span id="<? echo $arItem['ID']; ?>_added" class="addedtocart cartpopup hidden">
+                        <i class="fa fa-check-square-o" aria-hidden="true"></i>&nbsp;
+                        Добавлено в корзину
+                    </span>
+                <span id="<? echo $arItem['ID']; ?>_nonadded" class="notaddedtocart cartpopup hidden">
+                        <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>&nbsp;
+                        Невозможно добавить
+                </span>
+
                 <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arItem['PRICES']['Продажа через интернет-магазин']['VALUE']?>">
                 <button class="btn btn-block btn-lg btn-success buybutton addtocart-button" data-item-id="<?=$arItem['ID'];?>" data-item-quantity="<?=$strMainID; ?>_quantity">
                     <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
+
                     <span class="sumprice">
                         <?=$arItem['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>
                     </span>
+
                 </button>
+
             </div>
 
 
-            </div></div>
+    </div></div>
 
 
 

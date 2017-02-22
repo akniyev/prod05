@@ -51,60 +51,83 @@ $this->setFrameMode(true);?>
             <div class="container-fluid nopad prodquantity">
                 <div class="input-group number-spinner">
                     <span class="input-group-btn">
-                        <button class="btn btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
+                        <button id="<?=$strMainID; ?>_minus" class="btn btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
                     </span>
                     <input type="text" id="<?=$strMainID; ?>_quantity" class="prodquant form-control text-center btn-block" value="1">
                     <span class="input-group-btn">
-                        <button class="btn btn-primary" data-dir="up"><span class="glyphicon glyphicon-plus"></span></button>
+                        <button id="<?=$strMainID; ?>_plus" class="btn btn-primary" data-dir="up"><span class="glyphicon glyphicon-plus"></span></button>
                     </span>
                 </div>
             </div>
 
 
             <div class="container-fluid nopad">
-                <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arItem['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>">
-                <button class="btn btn-block btn-lg btn-success buybutton addtocart-button">
+
+                <span id="<? echo $arItem['ID']; ?>_added" class="addedtocart cartpopup hidden">
+                        <i class="fa fa-check-square-o" aria-hidden="true"></i>&nbsp;
+                        Добавлено в корзину
+                    </span>
+                <span id="<? echo $arItem['ID']; ?>_nonadded" class="notaddedtocart cartpopup hidden">
+                        <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>&nbsp;
+                        Невозможно добавить
+                </span>
+
+                <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arItem['PRICES']['Продажа через интернет-магазин']['VALUE']?>">
+                <button class="btn btn-block btn-lg btn-success buybutton addtocart-button" data-item-id="<?=$arItem['ID'];?>" data-item-quantity="<?=$strMainID; ?>_quantity">
                     <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
+
                     <span class="sumprice">
                         <?=$arItem['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>
                     </span>
+
                 </button>
+
             </div>
 
 
-            <script type="text/javascript">
-                $(".number-spinner>span>button").click(function() {
-                    var btn = $(this),
-                        oldValue = btn.closest('.number-spinner').find('input').val().trim(),
-                        newVal = 0,
-                        price = parseFloat(btn.closest('.proditem').find('input[type=hidden]').val().trim());
-
-                    if (btn.attr('data-dir') == 'up') {
-                        newVal = parseInt(oldValue) + 1;
-                    } else {
-                        if (oldValue > 1) {
-                            newVal = parseInt(oldValue) - 1;
-                        } else {
-                            newVal = 1;
-                        }
-                    }
-                    btn.closest('.number-spinner').find('input').val(newVal);
-
-                    var newPrice = newVal*price;
-                    btn.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
-                });
-            </script>
-
-
-        </div></div>
+    </div></div>
 
 
 <?} // foreach?>
 
 
 
+<script type="text/javascript">
+    $(".number-spinner button.btn").click(function() {
+        var btn = $(this),
+            oldValue = btn.closest('.number-spinner').find('input').val().trim(),
+            newVal = 0,
+            price = parseFloat(btn.closest('.proditem').find('input[type=hidden]').val().trim());
+
+        if (btn.attr('data-dir') == 'up') {
+            newVal = parseInt(oldValue) + 1;
+        } else {
+            if (oldValue > 1) {
+                newVal = parseInt(oldValue) - 1;
+            } else {
+                newVal = 1;
+            }
+        }
+        btn.closest('.number-spinner').find('input').val(newVal);
+
+        var newPrice = newVal*price;
+        btn.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
+    });
+
+    $(".number-spinner input.prodquant").change(function() {
+        var inp = $(this);
+        inp.val(Math.round(inp.val().trim()));
+
+        var quant = inp.val().trim(),
+            quant = inp.val().trim(),
+            price = parseFloat(inp.closest('.proditem').find('input[type=hidden]').val().trim()),
+            newPrice = quant*price;
 
 
+        inp.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
+    });
+
+</script>
 
 
 

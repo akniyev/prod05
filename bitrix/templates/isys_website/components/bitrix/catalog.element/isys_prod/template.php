@@ -137,15 +137,33 @@ $strAlt = (
             </div>
         </div>
 
-        <input type="hidden" id="<?=$strMainID; ?>_price" value="<?=$arResult['PRICES']['Продажа через интернет-магазин']['VALUE']?>">
-
         <div class="col-xs-1"></div>
 
         <div class="col-xs-5 nopad buybutton2">
-            <button class="btn btn-block btn-lg btn-success buybutton">
+
+            <span id="<? echo $arResult['ID']; ?>_added" class="addedtocart cartpopup hidden">
+                <i class="fa fa-check-square-o" aria-hidden="true"></i>&nbsp;
+                Добавлено в корзину
+            </span>
+            <span id="<? echo $arResult['ID']; ?>_nonadded" class="notaddedtocart cartpopup hidden">
+                <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>&nbsp;
+                Невозможно добавить
+            </span>
+
+            <input type="hidden" id="<?=$strMainID; ?>_price"
+                   value="<?=$arResult['PRICES']['Продажа через интернет-магазин']['VALUE']?>">
+
+            <button class="btn btn-block btn-lg btn-success buybutton detbutton addtocart-button"
+                    data-item-id="<?=$arResult['ID'];?>" data-item-quantity="<?=$strMainID; ?>_quantity">
+
                 <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
-                <span class="sumprice"><?=$arResult['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?></span>
+
+                <span class="sumprice">
+                        <?=$arResult['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>
+                    </span>
+
             </button>
+
         </div>
 
     </div>
