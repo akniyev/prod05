@@ -7,7 +7,8 @@
         <div class="lefty">
             <div class="lefty margn-lr-5">
                 <a href="/personal/cart/">
-                    <span id="bbask" class="glyphicon glyphicon-shopping-cart"></span>
+                    <?/*<span id="bbask" class="glyphicon glyphicon-shopping-cart"></span>*/?>
+                    <img id="basketico" src="/images/Prod05BaskIco.png" alt="В корзину" title="В корзину">
                 </a>
             </div>
             <div class="lefty margn-lr-5">
@@ -44,7 +45,6 @@
 <script type="text/javascript">
     $(function() {
         Cart.Init();
-        //$('[data-toggle="tooltip"]').tooltip({title: "Добавлено в корзину", html: false, placement: "top", trigger: "click"});
     });
 </script>
 

@@ -276,6 +276,13 @@ a:hover, a:visited{
     font-weight: bold;
 }
 
+#topphone {
+    margin-right: -45px;
+}
+#basketico {
+    height:45px;
+}
+
 .proditem button.buybutton i{
     font-size:1.25em;
 }

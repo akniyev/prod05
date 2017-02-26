@@ -77,8 +77,8 @@
             <img id="logotop" src="/images/prod05logo.png" alt="ПродМаркет" title="ПродМаркет">
 
             <span  id="hcompany" class="navbar-brand">
-            <a id="hphone" href="#">8 (988) 293-78-87 </a>
-        </span>
+                <img id="hphone" src="/images/TopPhone.png" alt="8 (988) 293-78-87" title="8 (988) 293-78-87">
+            </span>
         </div>
 
 

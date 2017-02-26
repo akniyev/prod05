@@ -46,8 +46,13 @@ if (!empty($arElements) && is_array($arElements))
 	global $searchFilter;
 	$searchFilter = array(
 		"=ID" => $arElements,
-	);
-	$APPLICATION->IncludeComponent(
+	);?>
+
+<div class="clearfix"></div>
+<div class="row">
+ <br><br>
+
+<?$APPLICATION->IncludeComponent(
 		"bitrix:catalog.section", "isys_section",
 		array(
 			"IBLOCK_TYPE" => $arParams["IBLOCK_TYPE"],
@@ -112,10 +117,17 @@ if (!empty($arElements) && is_array($arElements))
 		),
 		$arResult["THEME_COMPONENT"],
 		array('HIDE_ICONS' => 'Y')
-	);
-}
+	);?>
+
+</div>
+<?}
 elseif (is_array($arElements)){?>
+<div class="container"><br>
     <br><br>
     <h3 class="text-center text-red">Сожалеем, по вашему запросу ничего не найдено... Пожалуйста попробуйте сформулировать запрос по-другому...</h3>
     <br><br><br><br>
+</div>
 <?}?>
+
+
+

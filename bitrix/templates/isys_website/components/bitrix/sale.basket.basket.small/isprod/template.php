@@ -6,19 +6,24 @@ $summ = 0;
 $currency = '';
 $itemsCount = 0;
 $delayCount = 0;
+
+//test_dump($arResult["ITEMS"] );
+
+
 foreach($arResult["ITEMS"] as $arItem){
 	if($arItem["DELAY"] == 'N'){
 		$count++;
         $quantity += $arItem["QUANTITY"];
-		$summ += $arItem["PRICE"]*$quantity;
+		$summ += $arItem["BASE_PRICE"] * $arItem["QUANTITY"];
 		$currency = $arItem["CURRENCY"];
 		$itemsCount++;
 	}
 	else{
 		$delayCount++;
 	}
-}
-?>
+}?>
+
+
 <?$frame = $this->createFrame()->begin('');?>
 
     <!--noindex-->

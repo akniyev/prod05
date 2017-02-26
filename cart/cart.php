@@ -47,7 +47,8 @@ if (CModule::IncludeModule("catalog"))
                     "FUSER_ID" => CSaleBasket::GetBasketUserID(),
                     "LID" => SITE_ID,
                     "ORDER_ID" => "NULL",
-                    "CAN_BUY" => "Y"
+                    "CAN_BUY" => "Y",
+                    "DELAY" => "N"
                 ),
                 false,false,
                 array(
@@ -68,7 +69,7 @@ if (CModule::IncludeModule("catalog"))
                     $arFields['BASE_PRICE'] = $arFields['PRICE'] + $arFields['DISCOUNT_PRICE'];
                 }*/
 
-                $totalPrice += $arFields["PRICE"] * $arFields["QUANTITY"];
+                $totalPrice += $arFields['BASE_PRICE'] * $arFields["QUANTITY"];
                 $totalQuantity += $arFields["QUANTITY"];
                 $arItems[] = $arFields;
             }

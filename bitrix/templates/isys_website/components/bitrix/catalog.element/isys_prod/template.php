@@ -159,8 +159,8 @@ $strAlt = (
                 <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;
 
                 <span class="sumprice">
-                        <?=$arResult['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>
-                    </span>
+                    <?=$arResult['PRICES']['Продажа через интернет-магазин']['PRINT_VALUE']?>
+                </span>
 
             </button>
 
@@ -218,32 +218,30 @@ $strAlt = (
         <i class="fa fa-list" aria-hidden="true"></i>&nbsp;Характеристики
     </h3>
 
-    <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12 nopad thumbnail prodtableitem2">
-        <div class="col-xs-9 text-left itemcharname">
-            <span class="darkbluetext">Вес</span>
-        </div>
-        <div class="col-xs-3 text-center itemcharvalue">
-            1 кг
-        </div>
-    </div>
 
-    <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12 nopad thumbnail prodtableitem2">
-        <div class="col-xs-9 text-left itemcharname">
-            <span class="darkbluetext">Объем</span>
+    <?if (isset($arResult["PROPERTIES"]["CML2_MANUFACTURER"]) && ($arResult["PROPERTIES"]["CML2_MANUFACTURER"]["VALUE"] != "")){?>
+        <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12 nopad thumbnail prodtableitem2">
+            <div class="col-xs-9 text-left itemcharname">
+                <span class="darkbluetext">Производитель</span>
+            </div>
+            <div class="col-xs-3 text-center itemcharvalue">
+                <?=$arResult["PROPERTIES"]["CML2_MANUFACTURER"]["VALUE"]?>
+            </div>
         </div>
-        <div class="col-xs-3 text-center itemcharvalue">
-            1 л
-        </div>
-    </div>
+    <?}?>
 
-    <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12 nopad thumbnail prodtableitem2">
-        <div class="col-xs-9 text-left itemcharname">
-            <span class="darkbluetext">Упаковка</span>
+
+    <?if (isset($arResult["CATALOG_WEIGHT"]) && ($arResult["CATALOG_WEIGHT"] != "")){?>
+        <div class="col-md-12 col-lg-12 col-sm-12 col-xs-12 nopad thumbnail prodtableitem2">
+            <div class="col-xs-9 text-left itemcharname">
+                <span class="darkbluetext">Вес / Объем</span>
+            </div>
+            <div class="col-xs-3 text-center itemcharvalue">
+                <?=$arResult["CATALOG_WEIGHT"]?>
+            </div>
         </div>
-        <div class="col-xs-3 text-center itemcharvalue">
-            Картон
-        </div>
-    </div>
+    <?}?>
+
 
 
 

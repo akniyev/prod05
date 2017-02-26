@@ -6,7 +6,76 @@ $bDeleteColumn = false;
 $bWeightColumn = false;
 $bPropsColumn  = false;
 ?>
-<div id="basket_items_delayed" class="bx_ordercart_order_table_container" style="display:none">
+
+
+
+
+<div id="basket_items_delayed" style="display: none;">
+
+    <?foreach ($arResult["GRID"]["ROWS"] as $id=>$arItem):
+        if ($arItem["DELAY"] == "Y" && $arItem["CAN_BUY"] == "Y"):?>
+            <?//test_dump($arItem)?>
+            <div class="col-xs-12 nopad thumbnail prodtableitem">
+                <div class="col-xs-2 nopad text-center">
+                    <a href="<?=$arItem["DETAIL_PAGE_URL"]?>">
+                        <img src="<?=$arItem["PREVIEW_PICTURE_SRC"]?>" title="<?=$arItem["NAME"]?>" alt="<?=$arItem["NAME"]?>"
+                             class="img-responsive img-rounded img-thumbnail">
+                    </a>
+                </div>
+                <div class="col-xs-6 p12">
+                    <a class="p13" href="<?=$arItem["DETAIL_PAGE_URL"]?>">
+                        <span class="darkbluetext"><?=$arItem["NAME"]?></span>.
+                        Масса: <?=$arItem["WEIGHT_FORMATED"]?>.
+                    </a>
+                </div>
+
+                <div class="hidden current_price" id="current_price_<?=$arItem["ID"]?>">
+                    <?=$arItem["PRICE_FORMATED"]?>
+                </div>
+
+
+
+
+                <div class="col-xs-2">
+                    <h4 class="text-center">
+                        <?=$arItem["QUANTITY"]?>&nbsp;шт.
+                    </h4>
+                </div>
+
+
+
+                <div class="col-xs-2 nopad text-right">
+                    <h4 id="sum_<?=$arItem["ID"]?>" class="text-center darkgreentext text-bold"><?=$arItem["SUM"]?></h4>
+
+                    <a href="<?=str_replace("#ID#", $arItem["ID"], $arUrls["add"])?>" class="btn btn-primary btn-success margn-bot-10">
+                        <i class="fa fa-plus-circle" aria-hidden="true"></i><span class="hidden-xs"> Добавить в заказ</span>
+                    </a>
+
+                    <br>
+
+
+                    <a href="<?=str_replace("#ID#", $arItem["ID"], $arUrls["delete"])?>" class="btn btn-primary btn-danger">
+                        <i class="fa fa-times" aria-hidden="true"></i><span class="hidden-xs"> Удалить</span>
+                    </a>
+
+                </div>
+
+
+            </div>
+
+
+
+        <?endif;?>
+    <?endforeach;?>
+
+</div>
+
+
+
+
+
+
+<div  class="bx_ordercart_order_table_container hidden" style="display:none">
 	<table id="delayed_items">
 		<thead>
 			<tr>
