@@ -372,6 +372,10 @@ p{
     height:45px !important;
 }
 
+.margin-top-40 {
+    margin-top:40px !important;
+}
+
 
 
 @media only screen and (max-device-width : 480px){

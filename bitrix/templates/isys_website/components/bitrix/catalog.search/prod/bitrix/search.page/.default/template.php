@@ -113,9 +113,10 @@
     </div>
 </form>
 
-<?if(isset($arResult["REQUEST"]["ORIGINAL_QUERY"])):
-	?>
-	<h4 class="text-center search-language-guess">
-		<?echo GetMessage("CT_BSP_KEYBOARD_WARNING", array("#query#"=>'<a href="'.$arResult["ORIGINAL_QUERY_URL"].'">'.$arResult["REQUEST"]["ORIGINAL_QUERY"].'</a>'))?>
-	</h4><br /><?
-endif;?>
+<?if(isset($arResult["REQUEST"]["ORIGINAL_QUERY"])):?>
+
+	<h4 class="text-center search-language-guess margin-top-40">
+        <?echo GetMessage("CT_BSP_KEYBOARD_WARNING", array("#query#"=>'<a href="'.$arResult["ORIGINAL_QUERY_URL"].'">'.$arResult["REQUEST"]["ORIGINAL_QUERY"].'</a>'))?>
+	</h4>
+
+<?endif;?>
