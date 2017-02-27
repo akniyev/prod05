@@ -36,7 +36,7 @@ $this->setFrameMode(true);?>
 	$strMainID = $this->GetEditAreaId($arItem['ID']);	?>
 
 
-    <div class="col-xs-4 col-sm-4 col-md-3 col-lg-2 prodsecfull" id="<?=$strMainID;?>">
+    <div class="col-xs-6 col-sm-4 col-md-3 col-lg-2 prodsecfull" id="<?=$strMainID;?>">
         <div class="thumbnail nopad proditem">
             <a href="<?=$arItem['DETAIL_PAGE_URL']?>">
                 <img src="<?=$arItem['PREVIEW_PICTURE']['SRC']?>" title="<?=$arItem['NAME']?>" alt="<?=$arItem['NAME']?>"

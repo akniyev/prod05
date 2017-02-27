@@ -18,7 +18,7 @@ $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELET
     $this->AddDeleteAction($arItem['ID'], $arItem['DELETE_LINK'], $strElementDelete, $arElementDeleteParams);
     $strMainID = $this->GetEditAreaId($arItem['ID']);?>
 
-    <div class="col-xs-6 col-sm-6 col-md-4 col-lg-3" id="<?=$strMainID;?>">
+    <div class="col-xs-6 col-sm-4 col-md-3 col-lg-3 bestsell" id="<?=$strMainID;?>">
         <div class="thumbnail nopad proditem">
             <a href="<?=$arItem['DETAIL_PAGE_URL']?>">
                 <img src="<?=$arItem['PREVIEW_PICTURE']['SRC']?>" title="<?=$arItem['NAME']?>" alt="<?=$arItem['NAME']?>"
@@ -76,7 +76,7 @@ $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELET
 <? endforeach; ?>
 
 <script type="text/javascript">
-    $(".number-spinner button.btn").click(function() {
+    $(".bestsell .number-spinner button.btn").click(function() {
         var btn = $(this),
             oldValue = btn.closest('.number-spinner').find('input').val().trim(),
             newVal = 0,
@@ -97,7 +97,7 @@ $arElementDeleteParams = array("CONFIRM" => GetMessage('CT_BCS_TPL_ELEMENT_DELET
         btn.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
     });
 
-    $(".number-spinner input.prodquant").change(function() {
+    $(".bestsell .number-spinner input.prodquant").change(function() {
         var inp = $(this);
         inp.val(Math.round(inp.val().trim()));
 
