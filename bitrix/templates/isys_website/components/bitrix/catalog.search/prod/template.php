@@ -13,6 +13,9 @@
 $this->setFrameMode(true);
 ?>
 
+<div class=" col-md-9 col-sm-12 nopad">
+
+<div id="search" class="bx-searchtitle col-md-8 col-sm-12 col-xs-12 text-center">
 
 <?
 $arElements = $APPLICATION->IncludeComponent(
@@ -48,8 +51,27 @@ if (!empty($arElements) && is_array($arElements))
 		"=ID" => $arElements,
 	);?>
 
+</div>
+
+<div class="col-md-4 hidden-sm hidden-xs text-right">
+    <?$APPLICATION->IncludeComponent(
+        "bitrix:main.include",".default",
+        array(
+            "AREA_FILE_SHOW" => "file",
+            "AREA_FILE_SUFFIX" => "inc",
+            "EDIT_TEMPLATE" => "",
+            "COMPONENT_TEMPLATE" => ".default",
+            "PATH" => "/include/phonetop.php"
+        ),
+        false
+    );?>
+</div>
+
+
+</div>
+
 <div class="clearfix"></div>
-<div class="row">
+<div class="container nomargin">
  <br><br>
 
 <?$APPLICATION->IncludeComponent(
@@ -122,6 +144,8 @@ if (!empty($arElements) && is_array($arElements))
 </div>
 <?}
 elseif (is_array($arElements)){?>
+</div>
+
 <div class="container"><br>
     <br><br>
     <h3 class="text-center text-red">Сожалеем, по вашему запросу ничего не найдено... Пожалуйста попробуйте сформулировать запрос по-другому...</h3>
@@ -129,5 +153,5 @@ elseif (is_array($arElements)){?>
 </div>
 <?}?>
 
-
+<div class="clearfix"></div>
 

@@ -298,6 +298,9 @@ a:hover, a:visited{
 .margn-bot-20 {
     margin-bottom:20px !important;
 }
+.nomargin {
+    margin:0 !important;
+}
 
 .thumbnail {
     background-color: rgba(116, 192, 201, 0.11) !important;

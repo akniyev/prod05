@@ -130,8 +130,8 @@
         </div>
 
 
-        <div id="search" class="bx-searchtitle col-md-6 col-sm-12 nopad">
-            <?$APPLICATION->IncludeComponent(
+
+        <?$APPLICATION->IncludeComponent(
                 "bitrix:catalog.search",
                 "prod",
                 Array(
@@ -190,22 +190,10 @@
                     "USE_PRODUCT_QUANTITY" => "N"
                 )
             );?>
-        </div>
 
 
-        <div class="col-md-3 hidden-sm hidden-xs text-right">
-            <?$APPLICATION->IncludeComponent(
-                "bitrix:main.include",".default",
-                array(
-                    "AREA_FILE_SHOW" => "file",
-                    "AREA_FILE_SUFFIX" => "inc",
-                    "EDIT_TEMPLATE" => "",
-                    "COMPONENT_TEMPLATE" => ".default",
-                    "PATH" => "/include/phonetop.php"
-                ),
-                false
-            );?>
-        </div>
+
+
 
         <div class="clearfix"></div>
 
