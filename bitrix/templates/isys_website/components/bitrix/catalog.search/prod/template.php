@@ -76,7 +76,7 @@ $this->setFrameMode(true);
      <br><br>
 
     <?$APPLICATION->IncludeComponent(
-            "bitrix:catalog.section", "isys_section",
+            "bitrix:catalog.section", "isys_section_full",
             array(
                 "IBLOCK_TYPE" => $arParams["IBLOCK_TYPE"],
                 "IBLOCK_ID" => $arParams["IBLOCK_ID"],

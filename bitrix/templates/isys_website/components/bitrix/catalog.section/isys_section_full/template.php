@@ -36,7 +36,7 @@ $this->setFrameMode(true);?>
 	$strMainID = $this->GetEditAreaId($arItem['ID']);	?>
 
 
-    <div class="col-xs-6 col-sm-6 col-md-4 col-lg-3 prodsec" id="<?=$strMainID;?>">
+    <div class="col-xs-4 col-sm-4 col-md-3 col-lg-2 prodsecfull" id="<?=$strMainID;?>">
         <div class="thumbnail nopad proditem">
             <a href="<?=$arItem['DETAIL_PAGE_URL']?>">
                 <img src="<?=$arItem['PREVIEW_PICTURE']['SRC']?>" title="<?=$arItem['NAME']?>" alt="<?=$arItem['NAME']?>"
@@ -48,7 +48,7 @@ $this->setFrameMode(true);?>
                 </a>
             </h4>
 
-            <div class="container-fluid nopad prodquantity">
+            <div class="container-fluid nopad prodquantity ">
                 <div class="input-group number-spinner">
                     <span class="input-group-btn">
                         <button id="<?=$strMainID; ?>_minus" class="btn btn-info" data-dir="dwn"><span class="glyphicon glyphicon-minus"></span></button>
@@ -93,7 +93,7 @@ $this->setFrameMode(true);?>
 
 
 <script type="text/javascript">
-    $(".prodsec .number-spinner button.btn").click(function() {
+    $(".prodsecfull .number-spinner button.btn").click(function() {
         var btn = $(this),
             oldValue = btn.closest('.number-spinner').find('input').val().trim(),
             newVal = 0,
@@ -114,7 +114,7 @@ $this->setFrameMode(true);?>
         btn.closest('.proditem').find('.sumprice').text(newPrice+" руб.");
     });
 
-    $(".prodsec .number-spinner input.prodquant").change(function() {
+    $(".prodsecfull .number-spinner input.prodquant").change(function() {
         var inp = $(this);
         inp.val(Math.round(inp.val().trim()));
 
