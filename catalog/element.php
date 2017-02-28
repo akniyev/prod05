@@ -1,7 +1,7 @@
 <?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
 $APPLICATION->SetTitle("");?>
 
-
+<? var_dump($_REQUEST['SECTION_CODE']) ?>
 
 
 <?$APPLICATION->IncludeComponent(
