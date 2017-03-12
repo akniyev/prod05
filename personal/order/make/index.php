@@ -1,7 +1,13 @@
-<?
-require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
-$APPLICATION->SetTitle("Заказы");
-?><?$APPLICATION->IncludeComponent(
+<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
+$APPLICATION->SetTitle("Заказы");?>
+
+<div class="col-xs-12 col-sm-12 col-md-9 col-lg-9">
+
+    <h2 class="darkbluetext text-right">
+        <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;Оформление заказа
+    </h2><br>
+
+<?$APPLICATION->IncludeComponent(
 	"bitrix:sale.order.ajax", 
 	"prod05", 
 	array(
@@ -80,4 +86,8 @@ $APPLICATION->SetTitle("Заказы");
 		"USE_CUSTOM_ERROR_MESSAGES" => "N"
 	),
 	false
-);?><?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>
+);?>
+
+</div>
+
+<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>

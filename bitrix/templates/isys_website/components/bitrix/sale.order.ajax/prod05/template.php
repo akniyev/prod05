@@ -288,7 +288,8 @@ if (strlen($arResult["PREPAY_ADIT_FIELDS"]) > 0)
 		<!--	ORDER SAVE BLOCK	-->
 		<div id="bx-soa-orderSave" class="hidden-xs">
 			<a href="javascript:void(0)" style="margin: 10px 0" class="pull-right btn btn-default btn-lg">
-				<?=$arParams['MESS_ORDER']?>
+                <i class="fa fa-check-square-o" aria-hidden="true"></i>&nbsp;Готово
+                <?//=$arParams['MESS_ORDER']?>
 			</a>
 		</div>
 
