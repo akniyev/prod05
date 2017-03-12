@@ -1,17 +1,19 @@
-<?
-require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
-$APPLICATION->SetTitle("Заказы");
-?>
+<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
+$APPLICATION->SetTitle("Заказы");?>
 
-<? Trace($_REQUEST);
-//https://dev.1c-bitrix.ru/community/webdev/user/11948/blog/6756/
+<div class="col-xs-12 col-sm-12 col-md-9 col-lg-9">
+
+    <h2 class="darkbluetext text-right">
+        <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;Оформление заказа
+    </h2><br>
+<? //https://dev.1c-bitrix.ru/community/webdev/user/11948/blog/6756/
 ?>
 
 <?$APPLICATION->IncludeComponent(
 	"bitrix:sale.order.ajax", 
 	"prod05", 
 	array(
-		"PAY_FROM_ACCOUNT" => "N",
+		"PAY_FROM_ACCOUNT" => "Y",
 		"COUNT_DELIVERY_TAX" => "N",
 		"COUNT_DISCOUNT_4_ALL_QUANTITY" => "N",
 		"ONLY_FULL_PAY_FROM_ACCOUNT" => "N",
@@ -36,14 +38,14 @@ $APPLICATION->SetTitle("Заказы");
 		"USE_PREPAYMENT" => "N",
 		"ALLOW_USER_PROFILES" => "N",
 		"TEMPLATE_THEME" => "site",
-		"SHOW_ORDER_BUTTON" => "always",
+		"SHOW_ORDER_BUTTON" => "final_step",
 		"SHOW_TOTAL_ORDER_BUTTON" => "N",
-		"SHOW_PAY_SYSTEM_LIST_NAMES" => "N",
-		"SHOW_PAY_SYSTEM_INFO_NAME" => "N",
-		"SHOW_DELIVERY_LIST_NAMES" => "N",
-		"SHOW_DELIVERY_INFO_NAME" => "N",
-		"SHOW_DELIVERY_PARENT_NAMES" => "N",
-		"SHOW_STORES_IMAGES" => "N",
+		"SHOW_PAY_SYSTEM_LIST_NAMES" => "Y",
+		"SHOW_PAY_SYSTEM_INFO_NAME" => "Y",
+		"SHOW_DELIVERY_LIST_NAMES" => "Y",
+		"SHOW_DELIVERY_INFO_NAME" => "Y",
+		"SHOW_DELIVERY_PARENT_NAMES" => "Y",
+		"SHOW_STORES_IMAGES" => "Y",
 		"SKIP_USELESS_BLOCK" => "Y",
 		"SHOW_BASKET_HEADERS" => "N",
 		"DELIVERY_FADE_EXTRA_SERVICES" => "Y",
@@ -56,7 +58,9 @@ $APPLICATION->SetTitle("Заказы");
 		"PICKUPS_PER_PAGE" => "5",
 		"SHOW_MAP_IN_PROPS" => "N",
 		"PROPS_FADE_LIST_1" => array(
-			0 => "3",
+			0 => "2",
+			1 => "3",
+			2 => "7",
 		),
 		"PATH_TO_AUTH" => "/auth/",
 		"DISABLE_BASKET_REDIRECT" => "N",
@@ -81,9 +85,11 @@ $APPLICATION->SetTitle("Заказы");
 		"USE_YM_GOALS" => "N",
 		"USE_CUSTOM_MAIN_MESSAGES" => "N",
 		"USE_CUSTOM_ADDITIONAL_MESSAGES" => "N",
-		"USE_CUSTOM_ERROR_MESSAGES" => "N",
-		"SHOW_NOT_CALCULATED_DELIVERIES" => "L",
-		"USE_PRELOAD" => "N"
+		"USE_CUSTOM_ERROR_MESSAGES" => "N"
 	),
 	false
-);?><?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>
+);?>
+
+</div>
+
+<?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/footer.php");?>

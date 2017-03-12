@@ -66,19 +66,38 @@
     <div class="container visible-sm visible-xs" id="topmenu">
 
         <div class="navbar-header">
+
+            <div class="col-sm-2 col-xs-2 nopad">
+                <a href="/">
+                    <img id="logoleft" class="img-responsive" src="/images/prod05logo.png" alt="ПродМаркет" title="ПродМаркет">
+                </a>
+            </div>
+
+            <div class="col-sm-10 col-xs-10 nopad no-overflow">
+                <img id="hphone" class="img-responsive" src="/images/TopPhone.png" alt="8 (988) 293-78-87" title="8 (988) 293-78-87">
+            </div>
+            <div class="clearfix"></div> <hr/>
+
+
+
             <button id="barrrs" type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
                     aria-expanded="false" aria-controls="navbar">
                 <span class="sr-only">Каталог</span>
-                <i class="fa fa-bars" aria-hidden="true"></i>
+                <i class="fa fa-bars" aria-hidden="true"></i> <b id="hcatalogue" class="lightgreentext">Каталог</b>
             </button>
 
-            <a id="hcompanyname"class="navbar-brand lightgreentext" href="#">ПродМаркет</a>
-
-            <img id="logotop" src="/images/prod05logo.png" alt="ПродМаркет" title="ПродМаркет">
+<?/*            <img id="logotop" src="/images/prod05logo.png" alt="ПродМаркет" title="ПродМаркет">*/?>
 
             <span  id="hcompany" class="navbar-brand">
-                <img id="hphone" src="/images/TopPhone.png" alt="8 (988) 293-78-87" title="8 (988) 293-78-87">
+                <a id="hcompanyname" class="" href="/">
+                    <img id="logodark" class="img-responsive" src="/images/LogoDark.png" alt="ПродМаркет" title="ПродМаркет"/>
+                </a>
             </span>
+
+
+
+
+
         </div>
 
 
