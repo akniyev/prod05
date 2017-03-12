@@ -77,7 +77,7 @@ class mail_new
 
         $eventName = "SALE_NEW_ORDER";
         $event = new CEvent;
-        $event->Send($eventName, SITE_ID, $arFields, "N");
+        $event->SendImmediate($eventName, SITE_ID, $arFields, "N");
 
         return;
         // Получаем имя и мэйл пользователя
