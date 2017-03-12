@@ -1,4 +1,5 @@
 <?
+use Bitrix\Main\Application;
 class BitrixHelpers
 {
     public static function GetOrderPropId($code)
@@ -74,6 +75,24 @@ class BitrixHelpers
         $pass = substr($name, 0, 3).substr($login, -3);
         $pass = str_pad($pass, 6, "0");
         return $pass;
+    }
+
+
+    public static function PreprocessOrder(){
+        $request = Application::getInstance()->getContext()->getRequest();
+        if ($request->isPost() && strtolower($request->get('action')) == 'saveorderajax')
+        {
+            $phone = $request->get("ORDER_PROP_".self::GetOrderPropId("PHONE"));
+            $phone = self::NormalizePhone($phone);
+            $user = CUser::GetByLogin($phone)->fetch();
+            if ($user){
+                // if admin do nothing
+                if (!in_array(1, CUser::GetUserGroup($user['ID']))) {
+                    global $USER;
+                    $USER->Authorize($user['ID']);
+                }
+            }
+        }
     }
 }
 ?>

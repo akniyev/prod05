@@ -1,11 +1,8 @@
 <?php
-//include($_SERVER["DOCUMENT_ROOT"]."/helpers/BitrixHelpers.php");
+include($_SERVER["DOCUMENT_ROOT"]."/helpers/BitrixHelpers.php");
 
 class EventHandlers
 {
-    public static $userPhone;
-    public static $userName;
-
     public static function OnAfterUserAddHandler(&$arArgs)
     {
         //Trace("After");
@@ -14,9 +11,10 @@ class EventHandlers
 
     public static function OnBeforeUserAddHandler(&$arArgs)
     {
-        Trace("OnBeforeUserAddHandler");
+        return;
+        //Trace("OnBeforeUserAddHandler");
 //        Trace(self::$userPhone);
-        Trace($arArgs);
+        //Trace($arArgs);
 
         // 'no@mail.net' is default value in 'Магазин - Свойства заказа - Список свойств - Email'
         // nonempty email is required (by Bitrix core) for login autogeneration when non-registered user is making an order
@@ -43,17 +41,16 @@ class EventHandlers
 
     public static function OnSaleCalculateOrderPropsHandler(&$arOrder)
     {
-        Trace("OnSaleCalculateOrderPropsHandler");
-        $id = BitrixHelpers::GetOrderPropId("ORDER_PHONE");
-        self::$userPhone = $arOrder["ORDER_PROP"][$id];
-        self::$userName = $arOrder["ORDER_PROP"][BitrixHelpers::GetOrderPropId("ORDER_NAME")];
-
         //Trace($arOrder);
+    }
+
+    public static function OnBeforePrologHandler(){
+        BitrixHelpers::PreprocessOrder();
     }
 
     public static function OnSaleComponentOrderOneStepProcessHandler(&$arResult,&$arUserResult,&$arParams)
     {
-        Trace("OnSaleComponentOrderOneStepProcessHandler");
+        //Trace("OnSaleComponentOrderOneStepProcessHandler");
         //Trace($arResult);
         //Trace($arUserResult);
         //Trace($arParams);
@@ -75,14 +72,14 @@ class EventHandlers
 
     public static function OnOrderAddHandler($id, $arFields)
     {
-        Trace("OnOrderAddHandler");
+       // Trace("OnOrderAddHandler");
 //        Trace($id);
 //        Trace($arFields);
     }
 
     public static function OnBeforeEventAddHandler(&$event, &$lid, &$arFields)
     {
-        Trace($event);
+        //Trace($event);
         return;
         if ($event == "SALE_NEW_ORDER")
         {

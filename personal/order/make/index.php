@@ -1,4 +1,14 @@
 <?require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
+if (array_key_exists('ORDER_ID', $_GET)) {
+    global $USER;
+    $phone = $USER->GetLogin();
+    $orderNum = $_GET['ORDER_ID'];
+    $USER->Logout();
+    $_SESSION['phone']=$phone;
+    $_SESSION['order']=$orderNum;
+    LocalRedirect('/personal/order/done');
+}
+
 $APPLICATION->SetTitle("Заказы");?>
 
 <div class="col-xs-12 col-sm-12 col-md-9 col-lg-9">
