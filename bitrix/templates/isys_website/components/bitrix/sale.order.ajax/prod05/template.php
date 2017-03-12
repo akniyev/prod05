@@ -160,8 +160,7 @@ if (strlen($arResult["PREPAY_ADIT_FIELDS"]) > 0)
 			<div class="bx-soa-section-content container-fluid"></div>
 		</div>
 
-		<!--	DUPLICATE MOBILE ORDER SAVE BLOCK	-->
-		<div id="bx-soa-total-mobile" style="margin-bottom: 6px;"></div>
+
 
 		<? if (!isset($arParams['BASKET_POSITION']) || $arParams['BASKET_POSITION'] == 'before'): ?>
 			<!--	BASKET ITEMS BLOCK	-->
@@ -271,6 +270,11 @@ if (strlen($arResult["PREPAY_ADIT_FIELDS"]) > 0)
 			<div class="bx-soa-section-content container-fluid"></div>
 		</div>
 
+
+        <!--	DUPLICATE MOBILE ORDER SAVE BLOCK	-->
+        <div id="bx-soa-total-mobile" style="margin-bottom: 6px;"></div>
+
+
 		<? if ($arParams['BASKET_POSITION'] == 'after'): ?>
 			<!--	BASKET ITEMS BLOCK	-->
 			<div id="bx-soa-basket" data-visited="false" class="bx-soa-section bx-active">
@@ -288,7 +292,7 @@ if (strlen($arResult["PREPAY_ADIT_FIELDS"]) > 0)
 		<!--	ORDER SAVE BLOCK	-->
 		<div id="bx-soa-orderSave" class="hidden-xs">
 			<a href="javascript:void(0)" style="margin: 10px 0" class="pull-right btn btn-default btn-lg">
-                <i class="fa fa-check-square-o" aria-hidden="true"></i>&nbsp;Готово
+                <i class="fa fa-check-square-o" aria-hidden="true"></i>&nbsp;Заказать
                 <?//=$arParams['MESS_ORDER']?>
 			</a>
 		</div>
@@ -307,9 +311,11 @@ if (strlen($arResult["PREPAY_ADIT_FIELDS"]) > 0)
 	</div>
 
 	<!--	SIDEBAR BLOCK	-->
-	<div id="bx-soa-total" class="col-sm-3 bx-soa-sidebar">
-		<div class="bx-soa-cart-total-ghost"></div>
-		<div class="bx-soa-cart-total"></div>
+	<div class="hidden-sm hidden-xs">
+		<div id="bx-soa-total" class="col-sm-3 bx-soa-sidebar">
+			<div class="bx-soa-cart-total-ghost"></div>
+			<div class="bx-soa-cart-total"></div>
+		</div>
 	</div>
 </div>
 </form>

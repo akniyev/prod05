@@ -3,6 +3,19 @@
 use Bitrix\Main\Localization\Loc;
 ?>
 
+
+	<br><br>
+
+
+	<h1 class="redtext text-center">
+		Ваша корзина пуста. <a class="darkbluetext" href="/">Перейти к покупкам.</a>
+	</h1>
+
+
+	<br><br><br>
+
+
+<?/*
 <div class="bx-soa-empty-cart-container">
 	<div class="bx-soa-empty-cart-image">
 		<img src="" alt="">
@@ -16,3 +29,4 @@ use Bitrix\Main\Localization\Loc;
 			))?>
 	</div>
 </div>
+*/?>
