@@ -224,6 +224,7 @@ if (strlen($arResult["PREPAY_ADIT_FIELDS"]) > 0)
 			</div>
 		<? else: ?>
 			<!--	DELIVERY BLOCK	-->
+            <div style="display: none">
 			<div id="bx-soa-delivery" data-visited="false" class="bx-soa-section bx-active" <?=($hideDelivery?'style="display:none"':'')?>>
 				<div class="bx-soa-section-title-container">
 					<h2 class="bx-soa-section-title col-sm-9">
@@ -255,6 +256,7 @@ if (strlen($arResult["PREPAY_ADIT_FIELDS"]) > 0)
 				</div>
 				<div class="bx-soa-section-content container-fluid"></div>
 			</div>
+            </div>
 		<? endif ?>
 		<!--	BUYER PROPS BLOCK	-->
 		<div id="bx-soa-properties" data-visited="false" class="bx-soa-section bx-active">

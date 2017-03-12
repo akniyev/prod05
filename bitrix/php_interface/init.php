@@ -40,6 +40,13 @@ AddEventHandler("main",
     100,
     $_SERVER["DOCUMENT_ROOT"]."/helpers/eventhandlers.php");
 
+
+AddEventHandler("main","OnBeforeUserAdd",array("EventHandlers","OnBeforeUserAddHandler"),100,$_SERVER["DOCUMENT_ROOT"]."/helpers/eventhandlers.php");
+AddEventHandler("main","OnAfterUserAdd",array("EventHandlers","OnAfterUserAddHandler"),100,$_SERVER["DOCUMENT_ROOT"]."/helpers/eventhandlers.php");
+AddEventHandler("sale","OnSaleCalculateOrderProps",array("EventHandlers","OnSaleCalculateOrderPropsHandler"),100,$_SERVER["DOCUMENT_ROOT"]."/helpers/eventhandlers.php");
+AddEventHandler("sale","OnSaleComponentOrderOneStepProcess",array("EventHandlers","OnSaleComponentOrderOneStepProcessHandler"),100,$_SERVER["DOCUMENT_ROOT"]."/helpers/eventhandlers.php");
+//AddEventHandler("main", "OnBeforeEventAdd", array("EventHandlers", "OnBeforeEventAddHandler"),100,$_SERVER["DOCUMENT_ROOT"]."/helpers/eventhandlers.php");
+//Trace($res);
 /////////////////////////
 // Письмо пользователю при оформлении нового заказа
 AddEventHandler("sale", "OnSaleComponentOrderOneStepComplete", Array("mail_new", "OnOrderAdd_mail"));
