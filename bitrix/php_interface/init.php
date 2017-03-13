@@ -58,17 +58,58 @@ AddEventHandler("sale", "OnSaleComponentOrderOneStepComplete", Array("mail_new",
 class mail_new
 {
 
-    function OnOrderAdd_mail($ID, $val)
+    function OnOrderAdd_mail($orderId, $arOrder, $arParams)
     {
-        Trace("ONONON");
+        return;
+        Trace("ONONON=".$orderId);
+        Trace($arOrder);
+        Trace($arParams);
+
+        // Получаем имя и мэйл пользователя
+        $rsUser = CUser::GetList(($by = "ID"), ($order = "asc"), array("ID" => $arOrder["USER_ID"]), array("NAME", "LAST_NAME", "EMAIL"));
+        $arUser = $rsUser->GetNext();
+        Trace($arUser);
+
+        // Получаем Содержимое заказа
+        $dbBasketItems = CSaleBasket::GetList(
+            array(
+                "NAME" => "ASC",
+                "ID" => "ASC"
+            ),
+            array(
+                "FUSER_ID" => CSaleBasket::GetBasketUserID(),
+                "LID" => SITE_ID,
+                "DELAY" => "N",
+                "CAN_BUY" => "Y",
+                "ORDER_ID" => $ID
+            ),
+            false,
+            false,
+            array()
+        );
+
+        $zak = "<table border='1'>";
+        $zak = $zak."<tr><td align='center'>Товар</td><td align='center'>Цена</td><td align='center'>Кол-во</td><td align='center'>Сумма</td></tr>";
+
+        while ($arItem = $dbBasketItems->Fetch())
+        {
+            $st = (int)$arItem["QUANTITY"]*$arItem["PRICE"];
+            $kol_vo = (int)$arItem["QUANTITY"];
+            $zak = $zak."<tr><td align='left'>"."<a href='".$arItem["DETAIL_PAGE_URL"]."'>".$arItem["NAME"]."</a></td><td align='left'>".$arItem["PRICE"]."</td><td align='left'>".$kol_vo."</td><td align='left'>".$st."</td></tr>";
+        }
+        $zak = $zak."</table>";
+
+        Trace($zak);
+
+
         $arFields = array(
-            "ORDER_ID" => "123",
-            "ORDER_DATE" => "2",
-            "ORDER_USER" => "3",
+            "ORDER_ID" => $orderId,
+            "ORDER_DATE" => "",
+            "ORDER_USER" => $arUser["LOGIN"],
             "PRICE" => "4",
             "BCC" => "5",
             "EMAIL" => "prodmarket05@mail.ru",
-            "ORDER_LIST" => "",
+            "ORDER_LIST" => $zak,
             "SALE_EMAIL" => "prodmarket05@mail.ru",
             "DELIVERY_PRICE" => "100",
         );
