@@ -19,7 +19,7 @@ $phone = $_SESSION['phone'];
             <span class="darkbluetext"><i class="fa fa-user-circle-o" aria-hidden="true"></i> <?=$phone?></span>.
         </p>
         <p class="text-justify">
-            Пожалуйста ожидайте.
+            Пожалуйста, ожидайте.
             В случае необходимости Вы можете связаться с нами по телефону
         </p>
         <h3 class="text-center darkgreentext">

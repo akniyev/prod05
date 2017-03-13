@@ -79,22 +79,21 @@ class EventHandlers
 
     public static function OnBeforeEventAddHandler(&$event, &$lid, &$arFields)
     {
-        //Trace($event);
-        return;
         if ($event == "SALE_NEW_ORDER")
         {
             $orderId = $arFields['ORDER_ID'];
-
-            $dbOrderProps = CSaleOrderPropsValue::GetList(
-                array("CODE" => "ASC"),
-                array("ORDER_ID" => $orderId, "CODE"=>array("ORDER_PHONE","ORDER_ADDRESS","ORDER_ADDRESS_DETAILS","ORDER_NAME"))
-            );
-
-            while ($arOrderProps = $dbOrderProps->GetNext()) {
-                $arFields[$arOrderProps['CODE']] = $arOrderProps['~VALUE'];
-            }
-
             $arFields["ORDER_DESCRIPTION"] = trim(CSaleOrder::GetByID($orderId)["USER_DESCRIPTION"]);
+            //Trace($arFields);
+//            $dbOrderProps = CSaleOrderPropsValue::GetList(
+//                array("CODE" => "ASC"),
+//                array("ORDER_ID" => $orderId, "CODE"=>array("ORDER_PHONE","ORDER_ADDRESS","ORDER_ADDRESS_DETAILS","ORDER_NAME"))
+//            );
+//
+//            while ($arOrderProps = $dbOrderProps->GetNext()) {
+//                $arFields[$arOrderProps['CODE']] = $arOrderProps['~VALUE'];
+//            }
+
+
         }
     }
 
