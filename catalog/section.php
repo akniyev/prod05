@@ -39,8 +39,12 @@ $APPLICATION->SetTitle("");?>
 
 
 
-    <br>
-
+    <? 
+    	if (!$arrFilter) {
+    		$arrFilter = Array();
+    		$arrFilter['!CATALOG_PRICE_1'] = false;
+    	}
+    ?>
 
     <?$APPLICATION->IncludeComponent(
 	"bitrix:catalog.section", 
@@ -140,7 +144,22 @@ $APPLICATION->SetTitle("");?>
 		"SEF_RULE" => "",
 		"SECTION_CODE_PATH" => "",
 		"PAGER_BASE_LINK" => "page",
-		"PAGER_PARAMS_NAME" => "arrPager"
+		"PAGER_PARAMS_NAME" => "arrPager",
+		"OFFERS_FIELD_CODE" => array(
+			0 => "",
+			1 => "",
+		),
+		"OFFERS_PROPERTY_CODE" => array(
+			0 => "",
+			1 => "",
+		),
+		"OFFERS_SORT_FIELD" => "sort",
+		"OFFERS_SORT_ORDER" => "asc",
+		"OFFERS_SORT_FIELD2" => "id",
+		"OFFERS_SORT_ORDER2" => "desc",
+		"PRODUCT_DISPLAY_MODE" => "N",
+		"OFFERS_CART_PROPERTIES" => array(
+		)
 	),
 	false
 );?>
