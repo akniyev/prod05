@@ -13,13 +13,15 @@ $APPLICATION->SetTitle("Заказы");?>
 
 <div class="col-xs-12 col-sm-12 col-md-9 col-lg-9">
 
+
+
     <h2 class="darkbluetext text-right">
         <i class="fa fa-shopping-basket" aria-hidden="true"></i>&nbsp;Оформление заказа
-    </h2><br>
-<? //https://dev.1c-bitrix.ru/community/webdev/user/11948/blog/6756/
-?>
+    </h2>
 
-<?$APPLICATION->IncludeComponent(
+
+
+    <?$APPLICATION->IncludeComponent(
 	"bitrix:sale.order.ajax", 
 	"prod05", 
 	array(
