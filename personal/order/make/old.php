@@ -3,12 +3,7 @@ if (array_key_exists('ORDER_ID', $_GET)) {
     global $USER;
     $phone = $USER->GetLogin();
     $orderNum = $_GET['ORDER_ID'];
-
-    if (!in_array(1, CUser::GetUserGroup($user['ID']))) {
-        // logout if user is not in admin group
-        $USER->Logout();
-    }
-
+    $USER->Logout();
     $_SESSION['phone']=$phone;
     $_SESSION['order']=$orderNum;
     LocalRedirect('/personal/order/done');
@@ -28,7 +23,7 @@ $APPLICATION->SetTitle("Заказы");?>
 
     <?$APPLICATION->IncludeComponent(
 	"bitrix:sale.order.ajax", 
-	"light",
+	"prod05",
 	array(
 		"PAY_FROM_ACCOUNT" => "Y",
 		"COUNT_DELIVERY_TAX" => "N",

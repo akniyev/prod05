@@ -28,7 +28,10 @@
 
     //Scripts
     $asset->addJs("https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js");
+    $asset->addJs("//cdnjs.cloudflare.com/ajax/libs/jquery-form-validator/2.3.26/jquery.form-validator.min.js");
     $asset->addJs("/bitrix/js/bootstrap.min.js");
+    // https://github.com/ehpc/bootstrap-waitingfor
+    $asset->addJs(SITE_TEMPLATE_PATH."/js/bootstrap-waitingfor.min.js");
     $asset->addJs("/cart/cart.js");
     ?>
 

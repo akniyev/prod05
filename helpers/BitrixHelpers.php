@@ -39,8 +39,8 @@ class BitrixHelpers
      */
     public static function NormalizePhone($phoneNum)
     {
+        $phoneNum = str_replace([" ","(",")","-"],"",$phoneNum);
         $phoneNum = trim($phoneNum);
-        $phoneNum = str_replace([" ","(",")"],"",$phoneNum);
 
         if (strpos($phoneNum, "+7")===0)
         {
