@@ -45,10 +45,11 @@ use Bitrix\Main\Localization\Loc;
     <div class="col-xs-10 col-sm-10 col-md-10 col-lg-10 nopad">
         <input id="phonenum-input" type="text" name="ORDER_PROP_3" placeholder="8 999 9999999"
                autocomplete="off" class="form-control padd-5 btn-block"
-               data-validation="required custom"
+               data-validation="required custom min_digits "
                data-validation-error-msg-required="Это поле обязательно для заполнения"
-               data-validation-regexp="^[\d\s()\-]+$"
-               data-validation-error-msg-custom="Поле может содержать только цифры, пробелы, скобки и дефисы">
+               data-validation-regexp="^[\d\s()\-\+]+$"
+               data-validation-error-msg-custom="Поле может содержать только цифры, пробелы, скобки, дефисы и знак +"
+               data-validation-error-msg-min_digits="Проверьте номер: должно быть не менее 5 цифр">
     </div>
     <div class="clearfix"></div>
 
@@ -116,6 +117,15 @@ use Bitrix\Main\Localization\Loc;
     function disableFormInputs(form) {
         $(form).children(':input').attr("disabled", true);
     }
+
+    $.formUtils.addValidator({
+        name : 'min_digits',
+        validatorFunction: function(value, $el, config, language, $form) {
+            return (value.match(/\d/g) || []).length >= 5;
+        },
+        errorMessage : 'Проверьте номер: должно быть не менее 5 цифр',
+        errorMessageKey: 'badPhone'
+    });
 </script>
 
 <br>
