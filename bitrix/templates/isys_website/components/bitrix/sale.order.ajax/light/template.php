@@ -95,7 +95,7 @@ use Bitrix\Main\Localization\Loc;
                     }
                     else {
                         // if ok, redirect to success page
-                        window.location = response.order.REDIRECT_URL;
+                        window.location.replace(response.order.REDIRECT_URL);
                     }
 
                 })
@@ -134,7 +134,7 @@ use Bitrix\Main\Localization\Loc;
     <i>С Вами свяжутся в течение 15 минут. Пожалуйста ожидайте.</i>
 </h4>
 <h4>
-    <i>При заказе свыше 2000 руб. доставка бесплатна.</i>
+    <i>При заказе свыше 1500 руб. доставка бесплатна.</i>
 </h4>
 
 
