@@ -27,6 +27,7 @@ $strTitle = "";
     } else {
         $CAT_SEC = "";
     }
+    $VISIBILITY = "none;";
 
 	$TOP_DEPTH = $arResult["SECTION"]["DEPTH_LEVEL"];
 	$CURRENT_DEPTH = $TOP_DEPTH;
@@ -35,12 +36,12 @@ $strTitle = "";
 	{
 		$this->AddEditAction($arSection['ID'], $arSection['EDIT_LINK'], CIBlock::GetArrayByID($arSection["IBLOCK_ID"], "SECTION_EDIT"));
 		$this->AddDeleteAction($arSection['ID'], $arSection['DELETE_LINK'], CIBlock::GetArrayByID($arSection["IBLOCK_ID"], "SECTION_DELETE"), array("CONFIRM" => GetMessage('CT_BCSL_ELEMENT_DELETE_CONFIRM')));
-		if($CURRENT_DEPTH < $arSection["DEPTH_LEVEL"])
-		{
+		if($CURRENT_DEPTH < $arSection["DEPTH_LEVEL"]) {
 		    if ($arSection["DEPTH_LEVEL"] == 1) {
                 echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH),"<ul class='nav nav-list tree maintree'>";
             } else {
-			    echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH),"<ul class='nav nav-list tree' style='display: none;'>";
+			    echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH),"<ul class='nav nav-list tree' style='display: ".$VISIBILITY."'>";
+
 		    }
 		}
 		elseif($CURRENT_DEPTH == $arSection["DEPTH_LEVEL"])
@@ -64,19 +65,23 @@ $strTitle = "";
 		{
 			$link = '<b><i class="fa fa-chevron-right" aria-hidden="true"></i>&nbsp;'.$arSection["NAME"].$count.'</b>';
 			$strTitle = $arSection["NAME"];
+            $VISIBILITY = "block;";
+            $chevron = "down";
 		}
 		else
 		{
 			$link = '<a href="'.$arSection["SECTION_PAGE_URL"].'">'.$arSection["NAME"].$count.'</a>';
+            $VISIBILITY = "none;";
+            $chevron = "left";
 		}
 
 		echo "\n",str_repeat("\t", $arSection["DEPTH_LEVEL"]-$TOP_DEPTH);?>
         <li id="<?=$this->GetEditAreaId($arSection['ID']);?>">
 
             <?if ($arSection["DEPTH_LEVEL"] == 1) {?>
-                <label class=" tree-toggle nav-header">
+                <label class="nav-header">
                     <?=$link?>&nbsp;
-                    <i class="fa fa-chevron-circle-down" aria-hidden="true"></i>
+                    <i class="tree-toggle fa fa-chevron-circle-<?=$chevron?>" aria-hidden="true"></i>
                 </label>
             <?} else {?>
                 <?=$link?>
@@ -102,6 +107,11 @@ $strTitle = "";
 
 <script type="text/javascript">
     $('.tree-toggle').click(function () {
-        $(this).parent().children('ul.tree').toggle(200);
+        $(this).parent().parent().children('ul.tree').toggle(200);
+        if ($(this).hasClass("fa-chevron-circle-left")) {
+            $(this).removeClass("fa-chevron-circle-left").addClass("fa-chevron-circle-down");
+        } else {
+            $(this).removeClass("fa-chevron-circle-down").addClass("fa-chevron-circle-left");
+        }
     });
 </script>

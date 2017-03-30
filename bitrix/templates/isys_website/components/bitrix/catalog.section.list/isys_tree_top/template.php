@@ -18,9 +18,6 @@ $strTitle = "";
 
 
 
-
-
-
 <ul class="nav navbar-nav">
 	<?$URLADRESS = $_SERVER['REQUEST_URI'];
 	if (strpos($URLADRESS, "/catalog/") != -1) {
